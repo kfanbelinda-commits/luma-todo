@@ -54,7 +54,21 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $releaseFiles = Get-ChildItem dist -File | Where-Object {
-            $_.Name -match '\.(exe|blockmap) -or $_.Name -eq 'latest.yml'
+            $_.Name -match '\.(exe|blockmap)
+          } | Select-Object -ExpandProperty FullName
+          if (-not $releaseFiles) { throw "No release files were produced" }
+
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $tag = $env:GITHUB_REF_NAME
+            gh release create $tag $releaseFiles --verify-tag --generate-notes --title "Luma Todo $tag"
+          } else {
+            $version = node -p "require('./package.json').version"
+            $tag = "v$version"
+            gh release create $tag $releaseFiles --target $env:GITHUB_SHA --generate-notes --title "Luma Todo $tag"
+          }
+
+# Release trigger marker
+ -or $_.Name -eq 'latest.yml'
           } | Select-Object -ExpandProperty FullName
           if (-not $releaseFiles) { throw "No release files were produced" }
 
