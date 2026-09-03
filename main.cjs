@@ -18,6 +18,8 @@ let isExpanded = false;
 let resizeSession = null;
 let compactBounds = null;
 let expandedBounds = null;
+let compactDisplayState = null;
+let expandedDisplayState = null;
 let updateCheckTimer = null;
 let isPinnedAlwaysOnTop = false;
 let isDesktopHosted = false;
@@ -865,13 +867,33 @@ function loadWindowState() {
   }
 }
 
+function displayStateForBounds(bounds) {
+  const display = screen.getDisplayMatching(bounds);
+  return {
+    id: display.id,
+    workArea: display.workArea,
+    scaleFactor: display.scaleFactor,
+  };
+}
+
 function saveWindowState() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   const current = mainWindow.getBounds();
-  if (isExpanded) expandedBounds = current;
-  else compactBounds = current;
+  const displayState = displayStateForBounds(current);
+  if (isExpanded) {
+    expandedBounds = current;
+    expandedDisplayState = displayState;
+  } else {
+    compactBounds = current;
+    compactDisplayState = displayState;
+  }
   fs.mkdirSync(path.dirname(windowStatePath()), { recursive: true });
-  fs.writeFileSync(windowStatePath(), JSON.stringify({ compactBounds, expandedBounds }, null, 2), 'utf8');
+  fs.writeFileSync(windowStatePath(), JSON.stringify({
+    compactBounds,
+    expandedBounds,
+    compactDisplayState,
+    expandedDisplayState,
+  }, null, 2), 'utf8');
 }
 
 function ensureDailyBackup() {
@@ -884,7 +906,45 @@ function ensureDailyBackup() {
   if (!fs.existsSync(target)) fs.copyFileSync(source, target);
 }
 
-function windowPosition(size) {
+function clampWindowPosition(position, size, area) {
+  const minVisible = 48;
+  const minX = area.x - size.width + minVisible;
+  const maxX = area.x + area.width - minVisible;
+  const minY = area.y;
+  const maxY = area.y + area.height - minVisible;
+  return {
+    x: Math.round(Math.min(Math.max(position.x, minX), maxX)),
+    y: Math.round(Math.min(Math.max(position.y, minY), maxY)),
+  };
+}
+
+function windowPosition(size, savedBounds = null, savedDisplayState = null) {
+  if (savedBounds && Number.isFinite(savedBounds.x) && Number.isFinite(savedBounds.y)) {
+    const displays = screen.getAllDisplays();
+    const savedDisplay = savedDisplayState
+      ? displays.find((display) => String(display.id) === String(savedDisplayState.id))
+      : null;
+    const targetDisplay = savedDisplay || screen.getDisplayMatching({
+      x: savedBounds.x,
+      y: savedBounds.y,
+      width: Math.max(1, savedBounds.width || size.width),
+      height: Math.max(1, savedBounds.height || size.height),
+    });
+    const area = targetDisplay.workArea;
+
+    let position = { x: savedBounds.x, y: savedBounds.y };
+    const oldArea = savedDisplayState?.workArea;
+    if (savedDisplay && oldArea
+      && Number.isFinite(oldArea.x) && Number.isFinite(oldArea.y)
+      && (oldArea.x !== area.x || oldArea.y !== area.y)) {
+      position = {
+        x: area.x + (savedBounds.x - oldArea.x),
+        y: area.y + (savedBounds.y - oldArea.y),
+      };
+    }
+    return clampWindowPosition(position, size, area);
+  }
+
   const area = screen.getPrimaryDisplay().workArea;
   return {
     x: area.x + area.width - size.width - 28,
@@ -902,10 +962,12 @@ function createWindow() {
   isPinnedAlwaysOnTop = startupAlwaysOnTop;
   compactBounds = savedState.compactBounds || null;
   expandedBounds = savedState.expandedBounds || null;
+  compactDisplayState = savedState.compactDisplayState || null;
+  expandedDisplayState = savedState.expandedDisplayState || null;
   const initialSize = compactBounds
     ? { width: Math.max(330, compactBounds.width), height: Math.max(420, compactBounds.height) }
     : COMPACT;
-  const pos = windowPosition(initialSize);
+  const pos = windowPosition(initialSize, compactBounds, compactDisplayState);
   mainWindow = new BrowserWindow({
     ...initialSize,
     ...pos,
