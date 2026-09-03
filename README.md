@@ -21,35 +21,6 @@ Luma Todo 是一个 Windows 桌面待办与月历小组件，采用半透明玻�
 - Google Tasks 双向同步、Google Calendar 日程同步与跨设备分类恢复
 - 深浅色模式、透明度记忆、窗口置顶和分类折叠
 
-## 用 VS Code 打开
-
-双击项目根目录中的 `luma-todo.code-workspace`，或在 VS Code 中选择“文件 → 打开文件夹”并选择当前目录。
-
-第一次打开后，在 VS Code 终端运行：
-
-```powershell
-npm install
-npm start
-```
-
-也可以按 `F5`，选择“运行 Luma Todo”。
-
-## 代码位置
-
-- `main.cjs`：Windows 窗口、托盘、开机启动、缩放与本地文件
-- `preload.cjs`：桌面窗口和页面之间的安全接口
-- `index.html`：界面结构
-- `src/app.js`：待办、项目、月历和快速输入逻辑
-- `src/theme-graphite.css`：当前石墨玻璃主题
-- `src/styles.css`：基础样式
-
-## 打包 Windows 安装包
-
-```powershell
-npm run dist
-```
-
-生成结果位于 `dist` 文件夹。
 
 ## Google 同步说明
 
@@ -62,12 +33,3 @@ Google 同步需要 OAuth 2.0 授权。账号令牌和待办数据仅保存在�
 - Google 中原有的日历事件 → Luma 只读显示
 - Luma 分类名称、颜色和顺序通过隐藏的同步元数据跨设备恢复
 
-## 隐私
-
-- 本地任务、备份、Google 令牌和 OAuth 凭据不会进入 Git。
-- 项目不收集遥测数据。
-- Google 数据仅用于用户主动启用的 Tasks 与 Calendar 同步。
-
-## 发布
-
-推送形如 `v0.4.0` 的版本标签后，GitHub Actions 会在 Windows 构建 NSIS 安装包并发布到 Releases。正式构建所需的 OAuth 配置从仓库 Secret `GOOGLE_OAUTH_CREDENTIALS_B64` 临时注入。
