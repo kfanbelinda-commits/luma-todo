@@ -57,7 +57,8 @@ function normalizeState(input) {
   if (!input || !Array.isArray(input.tasks) || !Array.isArray(input.projects)) return structuredClone(seedState);
   input.settings ??= {};
   input.settings.googleConnected ??= false;
-  input.settings.alwaysOnTop = Boolean(input.settings.alwaysOnTop);
+  input.settings.alwaysOnTop = Boolean(input.settings.alwaysOnTop ?? input.settings.desktopPinned);
+  delete input.settings.desktopPinned;
   input.settings.lightMode = Boolean(input.settings.lightMode);
   input.settings.collapsedProjectIds = Array.isArray(input.settings.collapsedProjectIds)
     ? input.settings.collapsedProjectIds.map(String)
@@ -127,13 +128,22 @@ function projectTaskSort(a, b) {
   return (a.order ?? a.createdAt) - (b.order ?? b.createdAt);
 }
 
+function dismissEmptyProjectQuickAdd() {
+  if (!activeQuickProjectId) return false;
+  const input = document.querySelector(`[data-project-composer="${activeQuickProjectId}"]`);
+  if (input?.value.trim()) return false;
+  activeQuickProjectId = null;
+  renderProjects();
+  return true;
+}
+
 function renderHeader() {
   const label = $('#dateLabel');
   const pinButton = $('#pinWindowButton');
   const pinned = Boolean(state.settings.alwaysOnTop);
   pinButton.classList.toggle('active', pinned);
   pinButton.setAttribute('aria-pressed', String(pinned));
-  pinButton.title = pinned ? '取消固定在其他窗口上方' : '固定在其他窗口上方';
+  pinButton.title = pinned ? '取消置顶' : '置顶在其他窗口上方';
   pinButton.setAttribute('aria-label', pinButton.title);
   if (!taskDateFilter) {
     label.textContent = '全部';
@@ -217,7 +227,7 @@ function taskElement(task) {
   const project = projectById(task.projectId);
   const externalCalendar = Boolean(task.googleCalendarExternal || task.syncTarget === 'external-calendar');
   const item = document.createElement('article');
-  item.className = `task-item${task.completed ? ' completed' : ''}${externalCalendar ? ' external-calendar-event' : ''}`;
+  item.className = `task-item${task.completed ? ' completed' : ''}${externalCalendar ? ' external-calendar-event' : ''}${activeTaskMenuId === task.id ? ' menu-open' : ''}`;
   item.draggable = !task.completed && !externalCalendar;
   item.dataset.taskId = task.id;
   item.style.setProperty('--task-color', project.color);
@@ -237,8 +247,8 @@ function taskElement(task) {
       ${meta.length ? `<div class="task-meta">${meta.join('')}</div>` : ''}
     </div>
     <div class="task-actions">
-      ${scheduleParts.length ? `<span class="task-date-label">${scheduleParts.join(' · ')}</span>` : ''}
-      <button class="task-time task-more" title="更多操作" aria-label="${escapeAttribute(task.title)}的更多操作">•••</button>
+      <span class="task-date-label">${scheduleParts.join(' · ')}</span>
+      <button class="task-time task-more" title="更多操作" aria-label="${escapeAttribute(task.title)}的更多操作" aria-expanded="${String(activeTaskMenuId === task.id)}">•••</button>
     </div>`;
 
   if (!externalCalendar) item.querySelector('.check').addEventListener('click', () => toggleTask(task.id));
@@ -778,6 +788,8 @@ function closeTaskMenu() {
   activeTaskMenuId = null;
   $('#taskMenu').classList.add('hidden');
   $('#taskMenu').setAttribute('aria-hidden', 'true');
+  document.querySelectorAll('.task-item.menu-open').forEach((item) => item.classList.remove('menu-open'));
+  document.querySelectorAll('.task-more[aria-expanded="true"]').forEach((button) => button.setAttribute('aria-expanded', 'false'));
 }
 
 function openTaskMenu(taskId, anchor) {
@@ -785,6 +797,10 @@ function openTaskMenu(taskId, anchor) {
   if (!task) return;
   const externalCalendar = Boolean(task.googleCalendarExternal || task.syncTarget === 'external-calendar');
   activeTaskMenuId = taskId;
+  document.querySelectorAll('.task-item.menu-open').forEach((item) => item.classList.remove('menu-open'));
+  document.querySelectorAll('.task-more[aria-expanded="true"]').forEach((button) => button.setAttribute('aria-expanded', 'false'));
+  anchor.closest('.task-item')?.classList.add('menu-open');
+  anchor.setAttribute('aria-expanded', 'true');
   $('#taskMenuTitle').textContent = task.title;
   $('#taskScheduleSummary').textContent = `${task.dueDate ? formatShortDate(task.dueDate) : '无日期'}${task.time ? ` · ${task.time}` : ''}`;
   $('#taskScheduleAction').hidden = externalCalendar;
@@ -1114,6 +1130,11 @@ async function disconnectGoogle() {
 }
 
 function bindEvents() {
+  document.addEventListener('pointerdown', () => window.luma?.activate(), { capture: true });
+  document.addEventListener('pointerdown', (event) => {
+    if (!activeQuickProjectId || event.target.closest('.project-quick-add, .project-add-task')) return;
+    dismissEmptyProjectQuickAdd();
+  });
   document.querySelectorAll('.resize-handle').forEach((handle) => {
     handle.addEventListener('pointerdown', (event) => {
       event.preventDefault();
@@ -1180,13 +1201,48 @@ function bindEvents() {
     render();
   }));
 
+  const settingsDialog = $('#settingsDialog');
+  let settingsCloseTimer = null;
+  const closeSettingsDialog = () => {
+    if (!settingsDialog.open || settingsDialog.classList.contains('closing')) return;
+    settingsDialog.classList.add('closing');
+    settingsCloseTimer = setTimeout(() => {
+      if (settingsDialog.open) settingsDialog.close();
+      settingsDialog.classList.remove('closing');
+      settingsCloseTimer = null;
+    }, 150);
+  };
+  const openSettingsDialog = () => {
+    if (settingsCloseTimer) clearTimeout(settingsCloseTimer);
+    settingsCloseTimer = null;
+    settingsDialog.classList.remove('closing');
+    if (!settingsDialog.open) settingsDialog.showModal();
+  };
+
   $('#settingsButton').addEventListener('click', async () => {
     $('#autoStartToggle').checked = await window.luma?.getAutoStart();
     $('#lightModeToggle').checked = Boolean(state.settings.lightMode);
     $('#opacitySlider').value = state.settings.panelOpacity;
     applyPanelOpacity(state.settings.panelOpacity);
-    $('#settingsDialog').showModal();
+    openSettingsDialog();
     await refreshGoogleStatus();
+  });
+  $('#closeSettingsButton').addEventListener('click', closeSettingsDialog);
+  settingsDialog.addEventListener('cancel', (event) => {
+    event.preventDefault();
+    closeSettingsDialog();
+  });
+  settingsDialog.addEventListener('click', (event) => {
+    if (event.target !== settingsDialog) return;
+    const bounds = settingsDialog.getBoundingClientRect();
+    const clickedOutside = event.clientX < bounds.left || event.clientX > bounds.right
+      || event.clientY < bounds.top || event.clientY > bounds.bottom;
+    if (clickedOutside) closeSettingsDialog();
+  });
+  settingsDialog.addEventListener('close', () => {
+    if (settingsCloseTimer) clearTimeout(settingsCloseTimer);
+    settingsCloseTimer = null;
+    settingsDialog.classList.remove('closing');
   });
   $('#opacitySlider').addEventListener('input', (event) => {
     state.settings.panelOpacity = applyPanelOpacity(event.target.value);
@@ -1211,6 +1267,7 @@ function bindEvents() {
   $('#connectGoogle').addEventListener('click', connectOrSyncGoogle);
   $('#disconnectGoogle').addEventListener('click', disconnectGoogle);
   window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && dismissEmptyProjectQuickAdd()) return;
     if (event.key === 'Escape' && !$('#taskMenu').classList.contains('hidden')) {
       closeTaskMenu();
       return;

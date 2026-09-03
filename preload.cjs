@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('luma', {
   setExpanded: (expanded) => ipcRenderer.invoke('window:set-expanded', expanded),
   setAlwaysOnTop: (enabled) => ipcRenderer.invoke('window:set-always-on-top', enabled),
+  activate: () => ipcRenderer.send('window:activate'),
   hide: () => ipcRenderer.send('window:hide'),
   load: () => ipcRenderer.invoke('data:load'),
   save: (payload) => ipcRenderer.invoke('data:save', payload),

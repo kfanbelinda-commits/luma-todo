@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const http = require('http');
 const crypto = require('crypto');
+const { execFile } = require('child_process');
 
 // Keep task data in one stable location regardless of how Electron is launched.
 if (process.platform === 'win32') {
@@ -18,9 +19,137 @@ let resizeSession = null;
 let compactBounds = null;
 let expandedBounds = null;
 let updateCheckTimer = null;
+let isPinnedAlwaysOnTop = false;
+let isDesktopHosted = false;
+let desktopAttachTimer = null;
+let desktopAttachRequestId = 0;
+let desktopHostTransition = Promise.resolve(true);
+let nativeModalDepth = 0;
+let isExplicitlyHidden = false;
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+
+if (!hasSingleInstanceLock) app.quit();
 
 function dataPath() {
   return path.join(app.getPath('userData'), 'luma-data.json');
+}
+
+function desktopWindowHelperPath() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'desktop-window.ps1')
+    : path.join(__dirname, 'assets', 'desktop-window.ps1');
+}
+
+function windowHandleArgument() {
+  const handle = mainWindow.getNativeWindowHandle();
+  return handle.length >= 8 ? handle.readBigUInt64LE().toString() : String(handle.readUInt32LE());
+}
+
+function runDesktopHostTransition(enabled) {
+  if (process.platform !== 'win32' || !mainWindow || mainWindow.isDestroyed()) return Promise.resolve(false);
+  if (isDesktopHosted === Boolean(enabled)) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    execFile(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', desktopWindowHelperPath(),
+        '-Handle', windowHandleArgument(),
+        '-Mode', enabled ? 'Attach' : 'Detach',
+      ],
+      { windowsHide: true },
+      (error, stdout) => {
+        if (error) {
+          console.warn(`[Luma Todo] Desktop window mode failed: ${error.message}`);
+          resolve(false);
+          return;
+        }
+        isDesktopHosted = Boolean(enabled);
+        try {
+          const result = JSON.parse(String(stdout || '').trim());
+          if (result.boundsPreserved === false) console.warn('[Luma Todo] Desktop host transition changed the native window bounds.');
+        } catch {}
+        resolve(true);
+      },
+    );
+  });
+}
+
+function setDesktopHosted(enabled) {
+  desktopHostTransition = desktopHostTransition
+    .catch(() => false)
+    .then(() => runDesktopHostTransition(enabled));
+  return desktopHostTransition;
+}
+
+function cancelDesktopAttach() {
+  desktopAttachRequestId += 1;
+  if (!desktopAttachTimer) return;
+  clearTimeout(desktopAttachTimer);
+  desktopAttachTimer = null;
+}
+
+async function activateMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  isExplicitlyHidden = false;
+  cancelDesktopAttach();
+  if (isDesktopHosted) await setDesktopHosted(false);
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.setAlwaysOnTop(isPinnedAlwaysOnTop);
+  mainWindow.show();
+  mainWindow.moveTop();
+  mainWindow.focus();
+}
+
+async function revealMainWindow() {
+  await activateMainWindow();
+}
+
+function scheduleDesktopAttach() {
+  if (process.env.LUMA_SCREENSHOT_DIR || isPinnedAlwaysOnTop || isDesktopHosted || isExplicitlyHidden) return;
+  cancelDesktopAttach();
+  const requestId = desktopAttachRequestId;
+  desktopAttachTimer = setTimeout(async () => {
+    desktopAttachTimer = null;
+    if (requestId !== desktopAttachRequestId || !mainWindow || mainWindow.isDestroyed()
+      || isPinnedAlwaysOnTop || isDesktopHosted || isExplicitlyHidden) return;
+    if (nativeModalDepth > 0) {
+      scheduleDesktopAttach();
+      return;
+    }
+    if (mainWindow.isFocused()) return;
+    mainWindow.setAlwaysOnTop(false);
+    const attached = await setDesktopHosted(true);
+    if (!attached || !mainWindow || mainWindow.isDestroyed()) return;
+    if (requestId !== desktopAttachRequestId || isPinnedAlwaysOnTop || mainWindow.isFocused()) {
+      await setDesktopHosted(false);
+      return;
+    }
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.showInactive();
+    }
+  }, 250);
+}
+
+async function setPinnedState(enabled) {
+  if (!mainWindow || mainWindow.isDestroyed()) return false;
+  isPinnedAlwaysOnTop = Boolean(enabled);
+  cancelDesktopAttach();
+  if (isPinnedAlwaysOnTop) {
+    await setDesktopHosted(false);
+    if (!mainWindow || mainWindow.isDestroyed()) return false;
+    mainWindow.setAlwaysOnTop(true);
+    mainWindow.moveTop();
+    mainWindow.focus();
+  } else {
+    mainWindow.setAlwaysOnTop(false);
+    if (!mainWindow.isFocused()) scheduleDesktopAttach();
+  }
+  return isPinnedAlwaysOnTop;
 }
 
 function googleCredentialsPath() {
@@ -769,6 +898,8 @@ function createWindow() {
   try {
     startupSettings = JSON.parse(fs.readFileSync(dataPath(), 'utf8')).settings || {};
   } catch {}
+  const startupAlwaysOnTop = Boolean(startupSettings.alwaysOnTop ?? startupSettings.desktopPinned);
+  isPinnedAlwaysOnTop = startupAlwaysOnTop;
   compactBounds = savedState.compactBounds || null;
   expandedBounds = savedState.expandedBounds || null;
   const initialSize = compactBounds
@@ -788,7 +919,8 @@ function createWindow() {
     thickFrame: false,
     show: false,
     resizable: true,
-    alwaysOnTop: Boolean(startupSettings.alwaysOnTop),
+    minimizable: false,
+    alwaysOnTop: startupAlwaysOnTop,
     skipTaskbar: true,
     backgroundColor: '#00000000',
     icon: path.join(__dirname, 'assets', 'icon.png'),
@@ -801,16 +933,21 @@ function createWindow() {
 
   mainWindow.loadFile('index.html');
   mainWindow.once('ready-to-show', async () => {
-    mainWindow.showInactive();
+    if (process.env.LUMA_SCREENSHOT_DIR) mainWindow.showInactive();
+    else await revealMainWindow();
     if (process.env.LUMA_SCREENSHOT_DIR) {
       await new Promise((resolve) => setTimeout(resolve, 800));
       if (process.env.LUMA_SCREENSHOT_LIGHT === '1') {
         await mainWindow.webContents.executeJavaScript("applyColorMode(true); render()");
         await new Promise((resolve) => setTimeout(resolve, 120));
       }
+      if (process.env.LUMA_SCREENSHOT_DARK === '1') {
+        await mainWindow.webContents.executeJavaScript("applyColorMode(false); render()");
+        await new Promise((resolve) => setTimeout(resolve, 120));
+      }
       if (process.env.LUMA_SCREENSHOT_SETTINGS === '1') {
         await mainWindow.webContents.executeJavaScript("document.querySelector('#settingsDialog').showModal()");
-        await new Promise((resolve) => setTimeout(resolve, 120));
+        await new Promise((resolve) => setTimeout(resolve, 220));
       }
       fs.mkdirSync(process.env.LUMA_SCREENSHOT_DIR, { recursive: true });
       const compactImage = await mainWindow.webContents.capturePage();
@@ -843,28 +980,53 @@ function createWindow() {
   mainWindow.on('close', (event) => {
     if (!app.isQuitting) {
       event.preventDefault();
+      isExplicitlyHidden = true;
+      cancelDesktopAttach();
       mainWindow.hide();
     }
+  });
+  mainWindow.on('minimize', (event) => {
+    event.preventDefault();
+    cancelDesktopAttach();
+    if (isPinnedAlwaysOnTop) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.showInactive();
+      return;
+    }
+    setDesktopHosted(true).then((attached) => {
+      if (!attached || !mainWindow || mainWindow.isDestroyed()) return;
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.showInactive();
+    });
+  });
+  mainWindow.on('focus', () => {
+    cancelDesktopAttach();
+    if (!isPinnedAlwaysOnTop && isDesktopHosted) activateMainWindow();
+  });
+  mainWindow.on('blur', () => {
+    scheduleDesktopAttach();
   });
   mainWindow.on('moved', saveWindowState);
 }
 
 function createTray() {
-  const icon = nativeImage.createFromDataURL(
-    'data:image/svg+xml;base64,' + Buffer.from(`
-      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32">
-        <rect x="2" y="2" width="28" height="28" rx="9" fill="#111827"/>
-        <path d="M9 16.5l4.2 4.2L23.5 10.5" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>`).toString('base64')
-  ).resize({ width: 16, height: 16 });
+  const icon = nativeImage
+    .createFromPath(path.join(__dirname, 'assets', 'icon.png'))
+    .resize({ width: 16, height: 16, quality: 'best' });
   tray = new Tray(icon);
   tray.setToolTip('Luma Todo');
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: '显示 Luma Todo', click: () => mainWindow.show() },
+    { label: '显示 Luma Todo', click: () => { revealMainWindow(); } },
     { type: 'separator' },
     { label: '退出', click: () => { app.isQuitting = true; app.quit(); } },
   ]));
-  tray.on('click', () => mainWindow.isVisible() ? mainWindow.hide() : mainWindow.show());
+  tray.on('click', () => {
+    if (mainWindow.isVisible() && mainWindow.isFocused()) {
+      isExplicitlyHidden = true;
+      mainWindow.hide();
+    }
+    else revealMainWindow();
+  });
 }
 
 function setupAutoUpdates() {
@@ -896,7 +1058,13 @@ function setupAutoUpdates() {
   updateCheckTimer = setInterval(check, 6 * 60 * 60 * 1000);
 }
 
+app.on('second-instance', () => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  revealMainWindow();
+});
+
 app.whenReady().then(() => {
+  if (!hasSingleInstanceLock) return;
   ensureDailyBackup();
   createWindow();
   createTray();
@@ -905,6 +1073,7 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {});
 app.on('before-quit', () => {
+  cancelDesktopAttach();
   if (updateCheckTimer) clearInterval(updateCheckTimer);
 });
 
@@ -932,10 +1101,13 @@ ipcMain.handle('window:set-expanded', (_event, expanded) => {
   return mainWindow.getBounds();
 });
 
-ipcMain.handle('window:set-always-on-top', (_event, enabled) => {
-  if (!mainWindow || mainWindow.isDestroyed()) return false;
-  mainWindow.setAlwaysOnTop(Boolean(enabled));
-  return mainWindow.isAlwaysOnTop();
+ipcMain.handle('window:set-always-on-top', async (_event, enabled) => {
+  return setPinnedState(enabled);
+});
+
+ipcMain.on('window:activate', () => {
+  cancelDesktopAttach();
+  if (!isPinnedAlwaysOnTop && isDesktopHosted) activateMainWindow();
 });
 
 ipcMain.on('window:resize-start', (_event, payload) => {
@@ -977,7 +1149,11 @@ ipcMain.on('window:resize-end', () => {
   saveWindowState();
 });
 
-ipcMain.on('window:hide', () => mainWindow.hide());
+ipcMain.on('window:hide', () => {
+  isExplicitlyHidden = true;
+  cancelDesktopAttach();
+  mainWindow.hide();
+});
 
 ipcMain.handle('data:load', () => {
   try {
@@ -997,14 +1173,21 @@ ipcMain.handle('data:save', (_event, payload) => {
 });
 
 ipcMain.handle('data:export', async (_event, payload) => {
-  const result = await dialog.showSaveDialog(mainWindow, {
-    title: '导出 Luma Todo 备份',
-    defaultPath: `luma-todo-${new Date().toISOString().slice(0, 10)}.json`,
-    filters: [{ name: 'JSON 备份', extensions: ['json'] }],
-  });
-  if (result.canceled || !result.filePath) return false;
-  fs.writeFileSync(result.filePath, JSON.stringify(payload, null, 2), 'utf8');
-  return true;
+  nativeModalDepth += 1;
+  cancelDesktopAttach();
+  try {
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: '导出 Luma Todo 备份',
+      defaultPath: `luma-todo-${new Date().toISOString().slice(0, 10)}.json`,
+      filters: [{ name: 'JSON 备份', extensions: ['json'] }],
+    });
+    if (result.canceled || !result.filePath) return false;
+    fs.writeFileSync(result.filePath, JSON.stringify(payload, null, 2), 'utf8');
+    return true;
+  } finally {
+    nativeModalDepth = Math.max(0, nativeModalDepth - 1);
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused()) scheduleDesktopAttach();
+  }
 });
 
 ipcMain.handle('google:status', () => {

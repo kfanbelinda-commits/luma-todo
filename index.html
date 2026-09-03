@@ -54,7 +54,7 @@
               <button id="dateLabel" class="date-filter-label" type="button" title="点击在今天和全部任务之间切换">全部</button>
               <button id="nextTaskDate" class="date-step" type="button" aria-label="后一天">›</button>
             </div>
-            <button id="pinWindowButton" class="icon-button" aria-label="固定在其他窗口上方" aria-pressed="false" title="固定在其他窗口上方">
+            <button id="pinWindowButton" class="icon-button" aria-label="置顶在其他窗口上方" aria-pressed="false" title="置顶在其他窗口上方">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v5l-2 4v2h6v7l1 1 1-1v-7h6v-2l-2-4V3M5 3h14"/></svg>
             </button>
             <button id="toggleCalendar" class="icon-button" aria-label="展开日历" title="展开日历">
@@ -71,7 +71,11 @@
           <div class="quick-input-wrap">
             <span class="spark">✦</span>
             <input id="quickInput" autocomplete="off" placeholder="输入待办内容" />
-            <button id="addTask" class="add-button" aria-label="添加任务">↑</button>
+            <button id="addTask" class="add-button" aria-label="发送待办" title="发送待办">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M2.4 4.1 22 12 2.4 19.9l2.2-6.1L16.2 12 4.6 10.2 2.4 4.1Z" />
+              </svg>
+            </button>
           </div>
         </section>
 
@@ -159,22 +163,24 @@
 
     <dialog id="settingsDialog" class="modal settings-modal">
       <form method="dialog">
-        <div class="modal-title"><div><p class="eyebrow">偏好设置</p><h3>Luma Todo</h3></div><button value="cancel" class="icon-button">×</button></div>
-        <section class="settings-section">
-          <div><strong>开机自动显示</strong><small>登录 Windows 后显示桌面小组件</small></div>
-          <label class="switch"><input id="autoStartToggle" type="checkbox" /><span></span></label>
-        </section>
-        <section class="settings-section opacity-setting">
-          <div><strong>窗口透明度</strong><small>数值越低，背景越透明</small></div>
-          <div class="opacity-control">
-            <output id="opacityValue" for="opacitySlider">88%</output>
-            <input id="opacitySlider" class="opacity-slider" type="range" min="45" max="100" step="5" value="88" aria-label="窗口透明度" />
-          </div>
-        </section>
-        <section class="settings-section">
-          <div><strong>浅色模式</strong><small>使用明亮的玻璃面板与深色文字</small></div>
-          <label class="switch"><input id="lightModeToggle" type="checkbox" /><span></span></label>
-        </section>
+        <div class="modal-title"><div><h3>Luma Todo</h3><p class="eyebrow">偏好设置</p></div><button id="closeSettingsButton" type="button" class="icon-button settings-close-button" aria-label="关闭设置" title="关闭">×</button></div>
+        <div class="settings-list">
+          <section class="settings-section">
+            <div><strong>开机自动显示</strong><small>登录 Windows 后显示桌面小组件</small></div>
+            <label class="switch"><input id="autoStartToggle" type="checkbox" /><span></span></label>
+          </section>
+          <section class="settings-section opacity-setting">
+            <div><strong>窗口透明度</strong><small>数值越低，背景越透明</small></div>
+            <div class="opacity-control">
+              <output id="opacityValue" for="opacitySlider">88%</output>
+              <input id="opacitySlider" class="opacity-slider" type="range" min="45" max="100" step="5" value="88" aria-label="窗口透明度" />
+            </div>
+          </section>
+          <section class="settings-section">
+            <div><strong>浅色模式</strong><small>使用明亮的玻璃面板与深色文字</small></div>
+            <label class="switch"><input id="lightModeToggle" type="checkbox" /><span></span></label>
+          </section>
+        </div>
         <section class="account-card">
           <div class="google-logo">G</div>
           <div><strong>Google 同步</strong><small id="googleStatusText">正在检查状态…</small></div>
@@ -184,7 +190,7 @@
           </div>
         </section>
         <p id="googleNote" class="settings-note">连接后，点击“立即同步”可同步 Luma 待办，并将 Google Calendar 原有事件下载到 Luma。</p>
-        <button id="exportButton" type="button" class="secondary-button">导出本地备份</button>
+        <button id="exportButton" type="button" class="secondary-button settings-export">导出本地备份</button>
       </form>
     </dialog>
 
