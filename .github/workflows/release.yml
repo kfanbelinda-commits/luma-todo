@@ -66,3 +66,5 @@ jobs:
             $tag = "v$version"
             gh release create $tag $releaseFiles --target $env:GITHUB_SHA --generate-notes --title "Luma Todo $tag"
           }
+
+# Release trigger marker
