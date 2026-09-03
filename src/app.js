@@ -544,7 +544,8 @@ function renderCalendar() {
     cell.className = `calendar-day${date.getMonth() !== month ? ' muted' : ''}${key === dayOffset(0) ? ' today' : ''}${key === taskDateFilter ? ' selected-date' : ''}`;
     if (tasks.length > 4) cell.classList.add('crowded');
     if (tasks.some((task) => task.id === highlightedTaskId)) cell.classList.add('focused-date');
-    cell.innerHTML = `<span class="day-number">${date.getDate()}</span><div class="day-events"></div>`;
+    const dayLabel = date.getMonth() !== month ? `${date.getMonth() + 1}/${date.getDate()}` : String(date.getDate());
+    cell.innerHTML = `<span class="day-number">${dayLabel}</span><div class="day-events"></div>`;
     const events = cell.querySelector('.day-events');
     tasks.slice(0, 3).forEach((task) => {
       const event = document.createElement('div');
