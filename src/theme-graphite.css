@@ -240,10 +240,10 @@ h3 { font-size: 16px; font-weight: 700; }
 .project-group.collapsed .project-quick-add,
 .project-group.collapsed .completed-toggle,
 .project-group.collapsed .completed-list { display: none; }
-.project-header-actions { display: flex; align-items: center; gap: 7px; }
+.project-header-actions { display: flex; align-items: center; gap: 6px; padding-right: 2px; }
 .project-add-task {
-  width: 26px;
-  height: 26px;
+  width: 20px;
+  height: 20px;
   display: grid;
   place-items: center;
   border: 1px solid transparent;
@@ -251,11 +251,11 @@ h3 { font-size: 16px; font-weight: 700; }
   padding: 0;
   color: var(--action-primary);
   background: transparent;
-  font-size: 17px;
+  font-size: 15px;
   cursor: pointer;
 }
 .project-add-task:hover, .project-add-task:focus-visible { color: var(--action-primary-strong); border-color: var(--action-border); background: var(--action-soft-hover); outline: none; }
-.project-progress { color: rgba(232,235,242,.68); font-size: 11px; }
+.project-progress { min-width: 28px; color: rgba(232,235,242,.62); font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; }
 .edit-project-button {
   min-height: 24px;
   border: 1px solid rgba(255,255,255,.13);
@@ -878,7 +878,7 @@ select:focus-visible {
 }
 .task-item {
   min-height: 38px;
-  grid-template-columns: 16px minmax(0, 1fr) 116px;
+  grid-template-columns: 16px minmax(0, 1fr) 100px;
   align-items: center;
   gap: 7px;
   padding: 5px 6px;
@@ -922,10 +922,10 @@ select:focus-visible {
   border-radius: 4px;
 }
 .task-actions {
-  width: 108px;
-  min-width: 108px;
+  width: 100px;
+  min-width: 100px;
   display: grid;
-  grid-template-columns: minmax(0, 76px) 28px;
+  grid-template-columns: minmax(0, 72px) 24px;
   align-items: center;
   justify-content: end;
   gap: 4px;
@@ -938,13 +938,14 @@ select:focus-visible {
   font-size: 12px;
   line-height: 18px;
   text-align: right;
+  font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .task-time.task-more {
-  width: 28px;
-  min-width: 28px;
-  height: 28px;
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
   padding: 0;
   border: 0;
   border-radius: 6px;
