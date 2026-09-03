@@ -4,11 +4,13 @@
 
 ![Luma Todo](docs/images/luma-todo-overview.png)
 
-## 下载
+## 下载 当前版本：v0.4.0
 
 **[下载最新版 Luma Todo](https://github.com/kfanbelinda-commits/luma-todo/releases/latest)**
 
-当前版本：v0.4.0
+下载 Luma-Todo-Setup-0.4.1.exe 即可安装，其他 Assets 无需手动下载。
+
+
 
 > Windows 首次安装可能出现 SmartScreen 提示，因为当前安装包暂未使用代码签名证书。
 
