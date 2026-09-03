@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - "v*"
+    branches:
+      - "main"
 
 permissions:
   contents: write
@@ -14,6 +16,7 @@ concurrency:
 
 jobs:
   build-windows:
+    if: startsWith(github.ref, 'refs/tags/v') || contains(github.event.head_commit.message, '[release]')
     runs-on: windows-latest
     steps:
       - name: Check out source
@@ -51,7 +54,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $releaseFiles = Get-ChildItem dist -File | Where-Object {
-            $_.Name -match '\.(exe|blockmap)$' -or $_.Name -eq 'latest.yml'
+            $_.Name -match '\.(exe|blockmap) -or $_.Name -eq 'latest.yml'
           } | Select-Object -ExpandProperty FullName
           if (-not $releaseFiles) { throw "No release files were produced" }
-          gh release create $env:GITHUB_REF_NAME $releaseFiles --verify-tag --generate-notes --title "Luma Todo $env:GITHUB_REF_NAME"
+
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $tag = $env:GITHUB_REF_NAME
+            gh release create $tag $releaseFiles --verify-tag --generate-notes --title "Luma Todo $tag"
+          } else {
+            $version = node -p "require('./package.json').version"
+            $tag = "v$version"
+            gh release create $tag $releaseFiles --target $env:GITHUB_SHA --generate-notes --title "Luma Todo $tag"
+          }
