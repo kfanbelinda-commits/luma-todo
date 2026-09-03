@@ -50,6 +50,9 @@ let activeTaskMenuId = null;
 let projectCreationTaskId = null;
 let calendarTransitioning = false;
 let opacitySaveTimer = null;
+let calendarWheelDelta = 0;
+let calendarWheelResetTimer = null;
+let calendarWheelLockedUntil = 0;
 const expandedCompleted = new Set();
 let collapsedProjects = new Set();
 
@@ -237,8 +240,8 @@ function taskElement(task) {
   if (externalCalendar) meta.push(`<span class="sync-icon">${escapeAttribute(task.googleCalendarName || 'Google Calendar')}</span>`);
   if (late) meta.push(`<span class="overdue-chip">已顺延 ${late} 天</span>`);
   const scheduleParts = [];
-  if (task.dueDate) scheduleParts.push(task.dueDate === dayOffset(0) ? '今天' : formatShortDate(task.dueDate));
   if (task.time) scheduleParts.push(task.time);
+  if (task.dueDate) scheduleParts.push(task.dueDate === dayOffset(0) ? '今天' : formatShortDate(task.dueDate));
 
   item.innerHTML = `
     <button class="check" aria-label="${externalCalendar ? 'Google Calendar 事件' : (task.completed ? '恢复任务' : '完成任务')}"${externalCalendar ? ' disabled' : ''}></button>
@@ -313,9 +316,8 @@ function renderProjects() {
     group.style.setProperty('--group-color', project.color);
     group.innerHTML = `
       <header class="project-header">
-        <div class="project-title" role="button" tabindex="0" draggable="true" title="拖拽排序，双击编辑分类"><button class="project-collapse" type="button" aria-label="${projectCollapsed ? '展开' : '折叠'}${escapeAttribute(project.name)}" aria-expanded="${String(!projectCollapsed)}"></button>${escapeAttribute(project.name)}</div>
+        <div class="project-title" role="button" tabindex="0" draggable="true" title="拖拽排序，双击编辑分类"><button class="project-collapse" type="button" aria-label="${projectCollapsed ? '展开' : '折叠'}${escapeAttribute(project.name)}" aria-expanded="${String(!projectCollapsed)}"></button><span class="project-name">${escapeAttribute(project.name)}</span><span class="project-progress">${completed.length}/${relevant.length || 0}</span></div>
         <div class="project-header-actions">
-          <span class="project-progress">${completed.length}/${relevant.length || 0}</span>
           <button class="project-add-task" type="button" aria-label="在${escapeAttribute(project.name)}中添加待办" title="添加待办">＋</button>
         </div>
       </header>
@@ -492,6 +494,37 @@ async function openTaskInCalendar(task) {
   await toggleExpanded(true);
 }
 
+function animateCalendarMonth(direction = 0) {
+  const grid = $('#calendarGrid');
+  const title = $('#monthTitle');
+  grid.classList.remove('month-enter-next', 'month-enter-prev');
+  title.classList.remove('month-feedback');
+  void grid.offsetWidth;
+  if (direction > 0) grid.classList.add('month-enter-next');
+  else if (direction < 0) grid.classList.add('month-enter-prev');
+  title.classList.add('month-feedback');
+  setTimeout(() => {
+    grid.classList.remove('month-enter-next', 'month-enter-prev');
+    title.classList.remove('month-feedback');
+  }, 220);
+}
+
+function changeCalendarMonth(offset, animate = true) {
+  if (!offset) return;
+  calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() + offset, 1);
+  renderCalendar();
+  if (animate) animateCalendarMonth(offset);
+}
+
+function goToCurrentCalendarMonth() {
+  const now = new Date();
+  const currentIndex = calendarCursor.getFullYear() * 12 + calendarCursor.getMonth();
+  const targetIndex = now.getFullYear() * 12 + now.getMonth();
+  calendarCursor = new Date(now.getFullYear(), now.getMonth(), 1);
+  renderCalendar();
+  animateCalendarMonth(Math.sign(targetIndex - currentIndex));
+}
+
 function renderCalendar() {
   const year = calendarCursor.getFullYear();
   const month = calendarCursor.getMonth();
@@ -511,9 +544,10 @@ function renderCalendar() {
     cell.className = `calendar-day${date.getMonth() !== month ? ' muted' : ''}${key === dayOffset(0) ? ' today' : ''}${key === taskDateFilter ? ' selected-date' : ''}`;
     if (tasks.length > 4) cell.classList.add('crowded');
     if (tasks.some((task) => task.id === highlightedTaskId)) cell.classList.add('focused-date');
-    cell.innerHTML = `<span class="day-number">${date.getDate()}</span><div class="day-events"></div>`;
+    const dayLabel = date.getMonth() !== month ? `${date.getMonth() + 1}/${date.getDate()}` : String(date.getDate());
+    cell.innerHTML = `<span class="day-number">${dayLabel}</span><div class="day-events"></div>`;
     const events = cell.querySelector('.day-events');
-    tasks.forEach((task) => {
+    tasks.slice(0, 3).forEach((task) => {
       const event = document.createElement('div');
       const project = projectById(task.projectId);
       const externalCalendar = Boolean(task.googleCalendarExternal || task.syncTarget === 'external-calendar');
@@ -547,6 +581,13 @@ function renderCalendar() {
       });
       events.appendChild(event);
     });
+    if (tasks.length > 3) {
+      const overflow = document.createElement('div');
+      overflow.className = 'day-overflow';
+      overflow.textContent = `+${tasks.length - 3}`;
+      overflow.title = `还有 ${tasks.length - 3} 项待办，点击日期查看`;
+      events.appendChild(overflow);
+    }
     cell.setAttribute('role', 'button');
     cell.setAttribute('tabindex', '0');
     cell.setAttribute('title', `${date.getMonth() + 1}月${date.getDate()}日 · 单击筛选，双击添加待办`);
@@ -601,17 +642,19 @@ async function createCalendarTask(event) {
   event.preventDefault();
   const title = $('#calendarTaskTitle').value.trim();
   if (!title) return;
+  const timeResult = validatedTimeField($('#calendarTaskTime'));
+  if (!timeResult.valid) return;
   const task = {
     id: uid(),
     title,
     projectId: $('#calendarTaskProject').value || 'inbox',
     dueDate: $('#calendarTaskDate').value,
-    time: $('#calendarTaskTime').value,
+    time: timeResult.value,
     completed: false,
     createdAt: Date.now(),
     updatedAt: Date.now(),
     order: Date.now(),
-    syncTarget: $('#calendarTaskTime').value ? 'calendar' : 'tasks',
+    syncTarget: timeResult.value ? 'calendar' : 'tasks',
   };
   state.tasks.push(task);
   $('#calendarTaskDialog').close();
@@ -621,6 +664,135 @@ async function createCalendarTask(event) {
     pendingReminderTaskId = task.id;
     $('#reminderPopover').classList.remove('hidden');
   }
+}
+
+
+const TIME_OPTIONS = Array.from({ length: 96 }, (_, index) => {
+  const hour = Math.floor(index / 4);
+  const minute = (index % 4) * 15;
+  return `${pad(hour)}:${pad(minute)}`;
+});
+
+function normalizeTimeValue(raw) {
+  const value = String(raw || '').trim().replaceAll('：', ':');
+  if (!value) return '';
+  let hour;
+  let minute;
+  let match = value.match(/^(\d{1,2})(?::(\d{1,2}))?$/);
+  if (match) {
+    hour = Number(match[1]);
+    minute = match[2] == null ? 0 : Number(match[2]);
+  } else if (/^\d{3,4}$/.test(value)) {
+    hour = Number(value.slice(0, -2));
+    minute = Number(value.slice(-2));
+  } else {
+    return null;
+  }
+  if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+  return `${pad(hour)}:${pad(minute)}`;
+}
+
+function validatedTimeField(input) {
+  const normalized = normalizeTimeValue(input.value);
+  if (normalized === null) {
+    input.setCustomValidity('请输入 00:00–23:59 之间的时间');
+    input.reportValidity();
+    return { valid: false, value: '' };
+  }
+  input.setCustomValidity('');
+  input.value = normalized;
+  return { valid: true, value: normalized };
+}
+
+function closeTimePickers(except = null) {
+  document.querySelectorAll('.time-picker').forEach((picker) => {
+    if (picker !== except) picker.hidden = true;
+  });
+}
+
+function populateTimePicker(picker) {
+  if (picker.dataset.ready === '1') return;
+  picker.dataset.ready = '1';
+  const none = document.createElement('button');
+  none.type = 'button';
+  none.className = 'time-option time-option-none';
+  none.dataset.time = '';
+  none.textContent = '无时间';
+  picker.appendChild(none);
+  TIME_OPTIONS.forEach((time) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'time-option';
+    button.dataset.time = time;
+    button.textContent = time;
+    picker.appendChild(button);
+  });
+}
+
+function openTimePicker(input) {
+  const picker = input.closest('.time-field')?.querySelector('.time-picker');
+  if (!picker) return;
+  populateTimePicker(picker);
+  closeTimePickers(picker);
+  const selected = normalizeTimeValue(input.value);
+  picker.querySelectorAll('.time-option').forEach((option) => {
+    option.classList.toggle('selected', option.dataset.time === (selected || ''));
+  });
+  picker.hidden = false;
+  requestAnimationFrame(() => {
+    let target = selected ? picker.querySelector(`.time-option[data-time="${selected}"]`) : null;
+    if (!target) {
+      const now = new Date();
+      const roundedMinutes = Math.min(45, Math.round(now.getMinutes() / 15) * 15);
+      const roundedHour = roundedMinutes === 60 ? (now.getHours() + 1) % 24 : now.getHours();
+      const minute = roundedMinutes === 60 ? 0 : roundedMinutes;
+      const near = `${pad(roundedHour)}:${pad(minute)}`;
+      target = picker.querySelector(`.time-option[data-time="${near}"]`);
+    }
+    target?.scrollIntoView({ block: 'center' });
+  });
+}
+
+function bindTimePickers() {
+  document.querySelectorAll('.time-text-input').forEach((input) => {
+    const picker = input.closest('.time-field')?.querySelector('.time-picker');
+    if (!picker) return;
+    populateTimePicker(picker);
+    input.addEventListener('focus', () => openTimePicker(input));
+    input.addEventListener('click', () => openTimePicker(input));
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        openTimePicker(input);
+      } else if (event.key === 'Escape') {
+        picker.hidden = true;
+      }
+    });
+    input.addEventListener('blur', () => {
+      const normalized = normalizeTimeValue(input.value);
+      if (normalized !== null) {
+        input.value = normalized;
+        input.setCustomValidity('');
+      }
+    });
+    picker.addEventListener('pointerdown', (event) => event.preventDefault());
+    picker.addEventListener('click', (event) => {
+      const option = event.target.closest('.time-option');
+      if (!option) return;
+      input.value = option.dataset.time;
+      input.setCustomValidity('');
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      picker.hidden = true;
+      input.focus();
+    });
+  });
+  document.addEventListener('pointerdown', (event) => {
+    if (event.target.closest('.time-field')) return;
+    closeTimePickers();
+  });
+  document.querySelectorAll('#scheduleDialog, #calendarTaskDialog').forEach((dialog) => {
+    dialog.addEventListener('close', () => closeTimePickers());
+  });
 }
 
 function render() {
@@ -882,8 +1054,10 @@ async function saveTaskSchedule(event) {
   event.preventDefault();
   const task = state.tasks.find((item) => item.id === editingScheduleTaskId);
   if (!task || task.googleCalendarExternal || task.syncTarget === 'external-calendar') return;
+  const timeResult = validatedTimeField($('#scheduleTime'));
+  if (!timeResult.valid) return;
   task.dueDate = $('#scheduleDate').value;
-  task.time = $('#scheduleTime').value;
+  task.time = timeResult.value;
   task.syncTarget = task.time ? 'calendar' : 'tasks';
   task.updatedAt = Date.now();
   $('#scheduleDialog').close();
@@ -1159,9 +1333,40 @@ function bindEvents() {
   $('#pinWindowButton').addEventListener('click', toggleAlwaysOnTop);
   $('#toggleCalendar').addEventListener('click', () => toggleExpanded());
   $('#hideButton').addEventListener('click', () => window.luma?.hide());
-  $('#prevMonth').addEventListener('click', () => { calendarCursor.setMonth(calendarCursor.getMonth() - 1); renderCalendar(); });
-  $('#nextMonth').addEventListener('click', () => { calendarCursor.setMonth(calendarCursor.getMonth() + 1); renderCalendar(); });
-  $('#todayMonth').addEventListener('click', () => { calendarCursor = new Date(); calendarCursor.setDate(1); renderCalendar(); });
+  $('#prevMonth').addEventListener('click', () => changeCalendarMonth(-1));
+  $('#nextMonth').addEventListener('click', () => changeCalendarMonth(1));
+  $('#todayMonth').addEventListener('click', goToCurrentCalendarMonth);
+
+  $('#calendarPanel').addEventListener('wheel', (event) => {
+    if (!expanded || event.ctrlKey || event.shiftKey || document.querySelector('dialog[open]')) return;
+    if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+
+    const delta = event.deltaMode === 1
+      ? event.deltaY * 16
+      : event.deltaMode === 2
+        ? event.deltaY * window.innerHeight
+        : event.deltaY;
+    if (Math.abs(delta) < 1) return;
+
+    event.preventDefault();
+
+    const now = performance.now();
+    if (now < calendarWheelLockedUntil) return;
+
+    calendarWheelDelta += delta;
+    if (calendarWheelResetTimer) clearTimeout(calendarWheelResetTimer);
+    calendarWheelResetTimer = setTimeout(() => {
+      calendarWheelDelta = 0;
+      calendarWheelResetTimer = null;
+    }, 180);
+
+    if (Math.abs(calendarWheelDelta) < 90) return;
+
+    const direction = calendarWheelDelta > 0 ? 1 : -1;
+    calendarWheelDelta = 0;
+    calendarWheelLockedUntil = now + 300;
+    changeCalendarMonth(direction);
+  }, { passive: false });
   $('#newProjectButton').addEventListener('click', () => openProjectDialog());
   $('#cancelProjectButton').addEventListener('click', () => $('#projectDialog').close());
   $('#deleteProjectButton').addEventListener('click', deleteProject);
@@ -1216,7 +1421,15 @@ function bindEvents() {
     if (settingsCloseTimer) clearTimeout(settingsCloseTimer);
     settingsCloseTimer = null;
     settingsDialog.classList.remove('closing');
-    if (!settingsDialog.open) settingsDialog.showModal();
+    if (!settingsDialog.open) settingsDialog.show();
+    requestAnimationFrame(() => {
+      const anchor = $('#settingsButton').getBoundingClientRect();
+      const bounds = settingsDialog.getBoundingClientRect();
+      const left = Math.max(10, Math.min(anchor.right - bounds.width, window.innerWidth - bounds.width - 10));
+      const top = Math.max(10, Math.min(anchor.bottom + 7, window.innerHeight - bounds.height - 10));
+      settingsDialog.style.left = `${Math.round(left)}px`;
+      settingsDialog.style.top = `${Math.round(top)}px`;
+    });
   };
 
   $('#settingsButton').addEventListener('click', async () => {
@@ -1232,12 +1445,10 @@ function bindEvents() {
     event.preventDefault();
     closeSettingsDialog();
   });
-  settingsDialog.addEventListener('click', (event) => {
-    if (event.target !== settingsDialog) return;
-    const bounds = settingsDialog.getBoundingClientRect();
-    const clickedOutside = event.clientX < bounds.left || event.clientX > bounds.right
-      || event.clientY < bounds.top || event.clientY > bounds.bottom;
-    if (clickedOutside) closeSettingsDialog();
+  document.addEventListener('pointerdown', (event) => {
+    if (!settingsDialog.open || settingsDialog.classList.contains('closing')) return;
+    if (settingsDialog.contains(event.target) || event.target.closest('#settingsButton')) return;
+    closeSettingsDialog();
   });
   settingsDialog.addEventListener('close', () => {
     if (settingsCloseTimer) clearTimeout(settingsCloseTimer);
@@ -1267,6 +1478,10 @@ function bindEvents() {
   $('#connectGoogle').addEventListener('click', connectOrSyncGoogle);
   $('#disconnectGoogle').addEventListener('click', disconnectGoogle);
   window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && settingsDialog.open) {
+      closeSettingsDialog();
+      return;
+    }
     if (event.key === 'Escape' && dismissEmptyProjectQuickAdd()) return;
     if (event.key === 'Escape' && !$('#taskMenu').classList.contains('hidden')) {
       closeTaskMenu();
@@ -1283,6 +1498,7 @@ async function init() {
   applyColorMode(state.settings.lightMode);
   applyPanelOpacity(state.settings.panelOpacity);
   bindEvents();
+  bindTimePickers();
   renderColorChoices();
   render();
   await refreshGoogleStatus();

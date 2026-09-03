@@ -136,7 +136,12 @@
         <p id="scheduleTaskTitle" class="schedule-task-title"></p>
         <div class="schedule-fields">
           <label>日期<input id="scheduleDate" type="date" /></label>
-          <label>时间<input id="scheduleTime" type="time" /></label>
+          <label>时间
+            <div class="time-field">
+              <input id="scheduleTime" class="time-text-input" type="text" inputmode="numeric" autocomplete="off" placeholder="--:--" aria-label="任务时间" aria-haspopup="listbox" />
+              <div class="time-picker" role="listbox" aria-label="选择任务时间" hidden></div>
+            </div>
+          </label>
         </div>
         <div class="project-form-actions">
           <button id="clearScheduleButton" type="button" class="secondary-button schedule-clear-button">清除安排</button>
@@ -154,7 +159,12 @@
         <label>待办内容<input id="calendarTaskTitle" maxlength="120" placeholder="输入待办内容" required /></label>
         <div class="schedule-fields">
           <label>日期<input id="calendarTaskDate" type="date" required /></label>
-          <label>时间<input id="calendarTaskTime" type="time" /></label>
+          <label>时间
+            <div class="time-field">
+              <input id="calendarTaskTime" class="time-text-input" type="text" inputmode="numeric" autocomplete="off" placeholder="--:--" aria-label="任务时间" aria-haspopup="listbox" />
+              <div class="time-picker" role="listbox" aria-label="选择任务时间" hidden></div>
+            </div>
+          </label>
         </div>
         <label>所属分类<select id="calendarTaskProject" required></select></label>
         <button value="default" class="primary-button">添加待办</button>
