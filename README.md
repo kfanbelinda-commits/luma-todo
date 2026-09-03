@@ -1,7 +1,7 @@
 # Luma Todo
 
 一个轻量的 Windows 桌面待办与月历工具。
-![Uploading image.png…]()
+![Luma Todo](./assets/image.png)
 
 
 ## 下载 当前版本：v0.4.0
