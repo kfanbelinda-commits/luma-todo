@@ -237,8 +237,8 @@ function taskElement(task) {
   if (externalCalendar) meta.push(`<span class="sync-icon">${escapeAttribute(task.googleCalendarName || 'Google Calendar')}</span>`);
   if (late) meta.push(`<span class="overdue-chip">已顺延 ${late} 天</span>`);
   const scheduleParts = [];
-  if (task.dueDate) scheduleParts.push(task.dueDate === dayOffset(0) ? '今天' : formatShortDate(task.dueDate));
   if (task.time) scheduleParts.push(task.time);
+  if (task.dueDate) scheduleParts.push(task.dueDate === dayOffset(0) ? '今天' : formatShortDate(task.dueDate));
 
   item.innerHTML = `
     <button class="check" aria-label="${externalCalendar ? 'Google Calendar 事件' : (task.completed ? '恢复任务' : '完成任务')}"${externalCalendar ? ' disabled' : ''}></button>
