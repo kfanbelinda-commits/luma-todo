@@ -29,3 +29,5 @@ jobs:
           fi
           git tag "${TAG}" "$(git rev-parse HEAD)"
           git push origin "${TAG}"
+
+# Trigger run after workflow registration
