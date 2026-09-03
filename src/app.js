@@ -607,17 +607,19 @@ async function createCalendarTask(event) {
   event.preventDefault();
   const title = $('#calendarTaskTitle').value.trim();
   if (!title) return;
+  const timeResult = validatedTimeField($('#calendarTaskTime'));
+  if (!timeResult.valid) return;
   const task = {
     id: uid(),
     title,
     projectId: $('#calendarTaskProject').value || 'inbox',
     dueDate: $('#calendarTaskDate').value,
-    time: $('#calendarTaskTime').value,
+    time: timeResult.value,
     completed: false,
     createdAt: Date.now(),
     updatedAt: Date.now(),
     order: Date.now(),
-    syncTarget: $('#calendarTaskTime').value ? 'calendar' : 'tasks',
+    syncTarget: timeResult.value ? 'calendar' : 'tasks',
   };
   state.tasks.push(task);
   $('#calendarTaskDialog').close();
@@ -627,6 +629,135 @@ async function createCalendarTask(event) {
     pendingReminderTaskId = task.id;
     $('#reminderPopover').classList.remove('hidden');
   }
+}
+
+
+const TIME_OPTIONS = Array.from({ length: 96 }, (_, index) => {
+  const hour = Math.floor(index / 4);
+  const minute = (index % 4) * 15;
+  return `${pad(hour)}:${pad(minute)}`;
+});
+
+function normalizeTimeValue(raw) {
+  const value = String(raw || '').trim().replaceAll('：', ':');
+  if (!value) return '';
+  let hour;
+  let minute;
+  let match = value.match(/^(\d{1,2})(?::(\d{1,2}))?$/);
+  if (match) {
+    hour = Number(match[1]);
+    minute = match[2] == null ? 0 : Number(match[2]);
+  } else if (/^\d{3,4}$/.test(value)) {
+    hour = Number(value.slice(0, -2));
+    minute = Number(value.slice(-2));
+  } else {
+    return null;
+  }
+  if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+  return `${pad(hour)}:${pad(minute)}`;
+}
+
+function validatedTimeField(input) {
+  const normalized = normalizeTimeValue(input.value);
+  if (normalized === null) {
+    input.setCustomValidity('请输入 00:00–23:59 之间的时间');
+    input.reportValidity();
+    return { valid: false, value: '' };
+  }
+  input.setCustomValidity('');
+  input.value = normalized;
+  return { valid: true, value: normalized };
+}
+
+function closeTimePickers(except = null) {
+  document.querySelectorAll('.time-picker').forEach((picker) => {
+    if (picker !== except) picker.hidden = true;
+  });
+}
+
+function populateTimePicker(picker) {
+  if (picker.dataset.ready === '1') return;
+  picker.dataset.ready = '1';
+  const none = document.createElement('button');
+  none.type = 'button';
+  none.className = 'time-option time-option-none';
+  none.dataset.time = '';
+  none.textContent = '无时间';
+  picker.appendChild(none);
+  TIME_OPTIONS.forEach((time) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'time-option';
+    button.dataset.time = time;
+    button.textContent = time;
+    picker.appendChild(button);
+  });
+}
+
+function openTimePicker(input) {
+  const picker = input.closest('.time-field')?.querySelector('.time-picker');
+  if (!picker) return;
+  populateTimePicker(picker);
+  closeTimePickers(picker);
+  const selected = normalizeTimeValue(input.value);
+  picker.querySelectorAll('.time-option').forEach((option) => {
+    option.classList.toggle('selected', option.dataset.time === (selected || ''));
+  });
+  picker.hidden = false;
+  requestAnimationFrame(() => {
+    let target = selected ? picker.querySelector(`.time-option[data-time="${selected}"]`) : null;
+    if (!target) {
+      const now = new Date();
+      const roundedMinutes = Math.min(45, Math.round(now.getMinutes() / 15) * 15);
+      const roundedHour = roundedMinutes === 60 ? (now.getHours() + 1) % 24 : now.getHours();
+      const minute = roundedMinutes === 60 ? 0 : roundedMinutes;
+      const near = `${pad(roundedHour)}:${pad(minute)}`;
+      target = picker.querySelector(`.time-option[data-time="${near}"]`);
+    }
+    target?.scrollIntoView({ block: 'center' });
+  });
+}
+
+function bindTimePickers() {
+  document.querySelectorAll('.time-text-input').forEach((input) => {
+    const picker = input.closest('.time-field')?.querySelector('.time-picker');
+    if (!picker) return;
+    populateTimePicker(picker);
+    input.addEventListener('focus', () => openTimePicker(input));
+    input.addEventListener('click', () => openTimePicker(input));
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        openTimePicker(input);
+      } else if (event.key === 'Escape') {
+        picker.hidden = true;
+      }
+    });
+    input.addEventListener('blur', () => {
+      const normalized = normalizeTimeValue(input.value);
+      if (normalized !== null) {
+        input.value = normalized;
+        input.setCustomValidity('');
+      }
+    });
+    picker.addEventListener('pointerdown', (event) => event.preventDefault());
+    picker.addEventListener('click', (event) => {
+      const option = event.target.closest('.time-option');
+      if (!option) return;
+      input.value = option.dataset.time;
+      input.setCustomValidity('');
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      picker.hidden = true;
+      input.focus();
+    });
+  });
+  document.addEventListener('pointerdown', (event) => {
+    if (event.target.closest('.time-field')) return;
+    closeTimePickers();
+  });
+  document.querySelectorAll('#scheduleDialog, #calendarTaskDialog').forEach((dialog) => {
+    dialog.addEventListener('close', () => closeTimePickers());
+  });
 }
 
 function render() {
@@ -888,8 +1019,10 @@ async function saveTaskSchedule(event) {
   event.preventDefault();
   const task = state.tasks.find((item) => item.id === editingScheduleTaskId);
   if (!task || task.googleCalendarExternal || task.syncTarget === 'external-calendar') return;
+  const timeResult = validatedTimeField($('#scheduleTime'));
+  if (!timeResult.valid) return;
   task.dueDate = $('#scheduleDate').value;
-  task.time = $('#scheduleTime').value;
+  task.time = timeResult.value;
   task.syncTarget = task.time ? 'calendar' : 'tasks';
   task.updatedAt = Date.now();
   $('#scheduleDialog').close();
@@ -1299,6 +1432,7 @@ async function init() {
   applyColorMode(state.settings.lightMode);
   applyPanelOpacity(state.settings.panelOpacity);
   bindEvents();
+  bindTimePickers();
   renderColorChoices();
   render();
   await refreshGoogleStatus();
