@@ -50,6 +50,9 @@ let activeTaskMenuId = null;
 let projectCreationTaskId = null;
 let calendarTransitioning = false;
 let opacitySaveTimer = null;
+let calendarWheelDelta = 0;
+let calendarWheelResetTimer = null;
+let calendarWheelLockedUntil = 0;
 const expandedCompleted = new Set();
 let collapsedProjects = new Set();
 
@@ -489,6 +492,37 @@ async function openTaskInCalendar(task) {
   renderProjects();
   renderCalendar();
   await toggleExpanded(true);
+}
+
+function animateCalendarMonth(direction = 0) {
+  const grid = $('#calendarGrid');
+  const title = $('#monthTitle');
+  grid.classList.remove('month-enter-next', 'month-enter-prev');
+  title.classList.remove('month-feedback');
+  void grid.offsetWidth;
+  if (direction > 0) grid.classList.add('month-enter-next');
+  else if (direction < 0) grid.classList.add('month-enter-prev');
+  title.classList.add('month-feedback');
+  setTimeout(() => {
+    grid.classList.remove('month-enter-next', 'month-enter-prev');
+    title.classList.remove('month-feedback');
+  }, 220);
+}
+
+function changeCalendarMonth(offset, animate = true) {
+  if (!offset) return;
+  calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() + offset, 1);
+  renderCalendar();
+  if (animate) animateCalendarMonth(offset);
+}
+
+function goToCurrentCalendarMonth() {
+  const now = new Date();
+  const currentIndex = calendarCursor.getFullYear() * 12 + calendarCursor.getMonth();
+  const targetIndex = now.getFullYear() * 12 + now.getMonth();
+  calendarCursor = new Date(now.getFullYear(), now.getMonth(), 1);
+  renderCalendar();
+  animateCalendarMonth(Math.sign(targetIndex - currentIndex));
 }
 
 function renderCalendar() {
@@ -1298,9 +1332,40 @@ function bindEvents() {
   $('#pinWindowButton').addEventListener('click', toggleAlwaysOnTop);
   $('#toggleCalendar').addEventListener('click', () => toggleExpanded());
   $('#hideButton').addEventListener('click', () => window.luma?.hide());
-  $('#prevMonth').addEventListener('click', () => { calendarCursor.setMonth(calendarCursor.getMonth() - 1); renderCalendar(); });
-  $('#nextMonth').addEventListener('click', () => { calendarCursor.setMonth(calendarCursor.getMonth() + 1); renderCalendar(); });
-  $('#todayMonth').addEventListener('click', () => { calendarCursor = new Date(); calendarCursor.setDate(1); renderCalendar(); });
+  $('#prevMonth').addEventListener('click', () => changeCalendarMonth(-1));
+  $('#nextMonth').addEventListener('click', () => changeCalendarMonth(1));
+  $('#todayMonth').addEventListener('click', goToCurrentCalendarMonth);
+
+  $('#calendarPanel').addEventListener('wheel', (event) => {
+    if (!expanded || event.ctrlKey || event.shiftKey || document.querySelector('dialog[open]')) return;
+    if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+
+    const delta = event.deltaMode === 1
+      ? event.deltaY * 16
+      : event.deltaMode === 2
+        ? event.deltaY * window.innerHeight
+        : event.deltaY;
+    if (Math.abs(delta) < 1) return;
+
+    event.preventDefault();
+
+    const now = performance.now();
+    if (now < calendarWheelLockedUntil) return;
+
+    calendarWheelDelta += delta;
+    if (calendarWheelResetTimer) clearTimeout(calendarWheelResetTimer);
+    calendarWheelResetTimer = setTimeout(() => {
+      calendarWheelDelta = 0;
+      calendarWheelResetTimer = null;
+    }, 180);
+
+    if (Math.abs(calendarWheelDelta) < 90) return;
+
+    const direction = calendarWheelDelta > 0 ? 1 : -1;
+    calendarWheelDelta = 0;
+    calendarWheelLockedUntil = now + 300;
+    changeCalendarMonth(direction);
+  }, { passive: false });
   $('#newProjectButton').addEventListener('click', () => openProjectDialog());
   $('#cancelProjectButton').addEventListener('click', () => $('#projectDialog').close());
   $('#deleteProjectButton').addEventListener('click', deleteProject);
