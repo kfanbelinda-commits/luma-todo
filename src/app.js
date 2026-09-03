@@ -513,7 +513,7 @@ function renderCalendar() {
     if (tasks.some((task) => task.id === highlightedTaskId)) cell.classList.add('focused-date');
     cell.innerHTML = `<span class="day-number">${date.getDate()}</span><div class="day-events"></div>`;
     const events = cell.querySelector('.day-events');
-    tasks.forEach((task) => {
+    tasks.slice(0, 3).forEach((task) => {
       const event = document.createElement('div');
       const project = projectById(task.projectId);
       const externalCalendar = Boolean(task.googleCalendarExternal || task.syncTarget === 'external-calendar');
@@ -547,6 +547,13 @@ function renderCalendar() {
       });
       events.appendChild(event);
     });
+    if (tasks.length > 3) {
+      const overflow = document.createElement('div');
+      overflow.className = 'day-overflow';
+      overflow.textContent = `+${tasks.length - 3}`;
+      overflow.title = `还有 ${tasks.length - 3} 项待办，点击日期查看`;
+      events.appendChild(overflow);
+    }
     cell.setAttribute('role', 'button');
     cell.setAttribute('tabindex', '0');
     cell.setAttribute('title', `${date.getMonth() + 1}月${date.getDate()}日 · 单击筛选，双击添加待办`);
@@ -1216,7 +1223,15 @@ function bindEvents() {
     if (settingsCloseTimer) clearTimeout(settingsCloseTimer);
     settingsCloseTimer = null;
     settingsDialog.classList.remove('closing');
-    if (!settingsDialog.open) settingsDialog.showModal();
+    if (!settingsDialog.open) settingsDialog.show();
+    requestAnimationFrame(() => {
+      const anchor = $('#settingsButton').getBoundingClientRect();
+      const bounds = settingsDialog.getBoundingClientRect();
+      const left = Math.max(10, Math.min(anchor.right - bounds.width, window.innerWidth - bounds.width - 10));
+      const top = Math.max(10, Math.min(anchor.bottom + 7, window.innerHeight - bounds.height - 10));
+      settingsDialog.style.left = `${Math.round(left)}px`;
+      settingsDialog.style.top = `${Math.round(top)}px`;
+    });
   };
 
   $('#settingsButton').addEventListener('click', async () => {
@@ -1232,12 +1247,10 @@ function bindEvents() {
     event.preventDefault();
     closeSettingsDialog();
   });
-  settingsDialog.addEventListener('click', (event) => {
-    if (event.target !== settingsDialog) return;
-    const bounds = settingsDialog.getBoundingClientRect();
-    const clickedOutside = event.clientX < bounds.left || event.clientX > bounds.right
-      || event.clientY < bounds.top || event.clientY > bounds.bottom;
-    if (clickedOutside) closeSettingsDialog();
+  document.addEventListener('pointerdown', (event) => {
+    if (!settingsDialog.open || settingsDialog.classList.contains('closing')) return;
+    if (settingsDialog.contains(event.target) || event.target.closest('#settingsButton')) return;
+    closeSettingsDialog();
   });
   settingsDialog.addEventListener('close', () => {
     if (settingsCloseTimer) clearTimeout(settingsCloseTimer);
@@ -1267,6 +1280,10 @@ function bindEvents() {
   $('#connectGoogle').addEventListener('click', connectOrSyncGoogle);
   $('#disconnectGoogle').addEventListener('click', disconnectGoogle);
   window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && settingsDialog.open) {
+      closeSettingsDialog();
+      return;
+    }
     if (event.key === 'Escape' && dismissEmptyProjectQuickAdd()) return;
     if (event.key === 'Escape' && !$('#taskMenu').classList.contains('hidden')) {
       closeTaskMenu();
