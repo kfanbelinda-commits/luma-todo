@@ -864,6 +864,16 @@ select:focus-visible {
   box-shadow: 0 0 0 2px var(--action-focus-ring);
 }
 
+/* The quick-entry field edits inline inside its container; only the container
+   should show focus, not a second rectangle around the text field itself. */
+.quick-input-wrap input:focus,
+.quick-input-wrap input:focus-visible {
+  outline: none;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .switch input:checked + span { background: var(--action-primary); }
 .switch input:checked + span::after { background: var(--action-on-primary); }
 
