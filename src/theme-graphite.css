@@ -555,6 +555,94 @@ h3 { font-size: 19px; }
 .schedule-task-title { overflow: hidden; color: white; font-size: 15px; font-weight: 650; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
 .schedule-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .schedule-fields input { color-scheme: dark; }
+
+.time-field {
+  position: relative;
+  margin-top: 6px;
+}
+.time-text-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 34px 0 11px;
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 12px;
+  outline: none;
+  color: var(--ink);
+  background: rgba(255,255,255,.055);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .01em;
+}
+.time-field::after {
+  content: '⌄';
+  position: absolute;
+  right: 12px;
+  top: 13px;
+  color: rgba(239,242,248,.58);
+  font-size: 13px;
+  line-height: 1;
+  pointer-events: none;
+}
+.time-text-input:focus,
+.time-text-input:focus-visible {
+  border-color: var(--action-border);
+  box-shadow: 0 0 0 2px var(--action-focus-ring);
+}
+.time-picker {
+  position: absolute;
+  z-index: 80;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  max-height: 218px;
+  overflow-y: auto;
+  padding: 5px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 10px;
+  background: rgba(39,42,49,.995);
+  box-shadow: 0 16px 40px rgba(0,0,0,.34);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(190,198,212,.28) transparent;
+}
+.time-picker[hidden] { display: none; }
+.time-picker::-webkit-scrollbar { width: 5px; }
+.time-picker::-webkit-scrollbar-thumb { border-radius: 5px; background: rgba(190,198,212,.28); }
+.time-option {
+  width: 100%;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 9px;
+  color: rgba(248,249,252,.88);
+  background: transparent;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  cursor: pointer;
+}
+.time-option:hover,
+.time-option:focus-visible { background: rgba(255,255,255,.07); }
+.time-option.selected {
+  color: var(--action-primary-strong);
+  background: var(--action-soft-hover);
+}
+.time-option.selected::after {
+  content: '✓';
+  color: var(--action-primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+.time-option-none {
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  border-radius: 6px 6px 0 0;
+  color: rgba(239,242,248,.66);
+}
+.schedule-modal,
+.calendar-task-modal { overflow: visible; }
 .calendar-task-modal select {
   min-height: 44px;
   border: 1px solid rgba(255,255,255,.11);
@@ -790,6 +878,30 @@ html[data-theme="light"] .project-quick-input {
   background: rgba(255,255,255,.80);
 }
 html[data-theme="light"] .schedule-fields input { color-scheme: light; }
+html[data-theme="light"] .time-text-input {
+  border-color: rgba(58,71,92,.14);
+  color: #202938;
+  background: rgba(255,255,255,.80);
+}
+html[data-theme="light"] .time-field::after { color: rgba(58,71,92,.54); }
+html[data-theme="light"] .time-picker {
+  border-color: rgba(58,71,92,.14);
+  background: rgba(248,250,252,.995);
+  box-shadow: 0 16px 40px rgba(45,55,72,.18);
+  scrollbar-color: rgba(82,91,107,.25) transparent;
+}
+html[data-theme="light"] .time-picker::-webkit-scrollbar-thumb { background: rgba(82,91,107,.25); }
+html[data-theme="light"] .time-option { color: #344054; }
+html[data-theme="light"] .time-option:hover,
+html[data-theme="light"] .time-option:focus-visible { background: rgba(58,71,92,.07); }
+html[data-theme="light"] .time-option.selected {
+  color: #202938;
+  background: rgba(32,41,56,.09);
+}
+html[data-theme="light"] .time-option-none {
+  border-color: rgba(58,71,92,.10);
+  color: #667085;
+}
 html[data-theme="light"] .settings-section,
 html[data-theme="light"] .account-card { background: rgba(255,255,255,.52); }
 html[data-theme="light"] .opacity-control output { color: #344054; }
