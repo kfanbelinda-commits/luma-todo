@@ -385,6 +385,37 @@ h3 { font-size: 16px; font-weight: 700; }
   height: calc(100% - 112px);
   border-color: rgba(255,255,255,.055);
 }
+#monthTitle {
+  transition: color 160ms ease, opacity 160ms ease;
+}
+#monthTitle.month-feedback {
+  animation: month-title-feedback 220ms ease;
+}
+.calendar-grid.month-enter-next {
+  animation: calendar-enter-next 180ms ease-out;
+}
+.calendar-grid.month-enter-prev {
+  animation: calendar-enter-prev 180ms ease-out;
+}
+@keyframes calendar-enter-next {
+  from { opacity: .72; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes calendar-enter-prev {
+  from { opacity: .72; transform: translateY(-7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes month-title-feedback {
+  0% { opacity: .62; }
+  100% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #monthTitle.month-feedback,
+  .calendar-grid.month-enter-next,
+  .calendar-grid.month-enter-prev {
+    animation: none;
+  }
+}
 .calendar-day {
   padding: 5px;
   border-color: rgba(255,255,255,.05);
