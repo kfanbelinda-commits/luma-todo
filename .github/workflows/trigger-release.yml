@@ -1,0 +1,31 @@
+name: Trigger Windows Release
+
+on:
+  push:
+    branches:
+      - "release-v0.4.3"
+
+permissions:
+  contents: write
+
+jobs:
+  tag-main:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Create release tag from package version
+        shell: bash
+        run: |
+          VERSION="$(node -p "require(\'./package.json\').version")"
+          TAG="v${VERSION}"
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "${TAG} already exists"
+            exit 0
+          fi
+          git tag "${TAG}" "$(git rev-parse HEAD)"
+          git push origin "${TAG}"
