@@ -1,35 +1,48 @@
 # Luma Todo
 
-Luma Todo 是一个 Windows 桌面待办与月历小组件，采用半透明玻璃界面。默认以紧凑组件显示，点击日历按钮后向左展开月历。
+一个轻量的 Windows 桌面待办与月历工具。
+
+![Luma Todo](docs/images/luma-todo-overview.png)
 
 ## 下载
 
-从 [GitHub Releases](https://github.com/kfanbelinda-commits/luma-todo/releases/latest) 下载最新版 Windows 安装包。安装后，Luma Todo 会自动检查并下载后续更新。
+**[下载最新版 Luma Todo](https://github.com/kfanbelinda-commits/luma-todo/releases/latest)**
 
-## 已实现
+当前版本：v0.4.0
 
-- 今日待办、未来节点和项目分组
-- 项目名称与颜色、任务拖拽归类
-- 中文日期时间快速解析
-- 带时间任务创建后的提醒选择
-- 月历展开与收起
-- 未完成任务顺延天数提示
-- 完成进度和已完成折叠
-- 本地持久化、每日自动备份、手动导出
-- Windows 开机启动开关和系统托盘
-- 四边与四角拖拽缩放，并自动记住紧凑态和日历态尺寸
-- Google Tasks 双向同步、Google Calendar 日程同步与跨设备分类恢复
-- 深浅色模式、透明度记忆、窗口置顶和分类折叠
+> Windows 首次安装可能出现 SmartScreen 提示，因为当前安装包暂未使用代码签名证书。
 
+## 功能
 
-## Google 同步说明
+- 桌面待办与月历
+- 分类管理与任务拖拽
+- 中文日期、时间识别
+- 今日任务与逾期顺延
+- Google Tasks 双向同步
+- Google Calendar 日程同步
+- 深色 / 浅色模式
+- 透明度、窗口置顶、开机启动
+- 本地保存、每日备份、手动导出
+- 自动检查并安装新版本
 
-Google 同步需要 OAuth 2.0 授权。账号令牌和待办数据仅保存在用户电脑的应用数据目录，不会提交到本仓库。
+## Google 同步
 
-推荐的数据规则：
+连接 Google 账号后：
 
-- 普通任务和仅含日期的任务 ↔ Google Tasks
-- 选择同步到日历的 Luma 日程 ↔ Google Calendar
-- Google 中原有的日历事件 → Luma 只读显示
-- Luma 分类名称、颜色和顺序通过隐藏的同步元数据跨设备恢复
+- 普通任务、日期任务 → Google Tasks
+- 日程任务 → Google Calendar
+- Google Calendar 原有日程 → Luma 中只读显示
+- 分类信息可随 Google 同步到其他设备
+
+iPhone 可以使用 **Google Tasks** 查看全部待办，也可以使用 **Google Calendar** 查看有日期的任务和日程。
+
+## 数据与隐私
+
+Luma Todo 的任务和备份保存在本机。
+
+Google 登录令牌使用本地安全存储保存，项目不收集遥测数据，个人任务、日历数据和登录信息不会上传到 GitHub。
+
+## 使用说明
+
+详细的新建、编辑、拖动、分类和同步操作，请查看《Luma Todo 产品使用说明书》。
 
