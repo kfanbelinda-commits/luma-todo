@@ -503,14 +503,16 @@ h3 { font-size: 19px; }
 .day-events {
   min-height: 0;
   gap: 1px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(190,198,212,.30) transparent;
+  overflow: hidden;
 }
-.day-events::-webkit-scrollbar { width: 3px; }
-.day-events::-webkit-scrollbar-thumb { border-radius: 3px; background: rgba(190,198,212,.30); }
+.day-overflow {
+  margin-top: 2px;
+  padding: 1px 4px;
+  color: rgba(232,236,244,.62);
+  font-size: 10px;
+  line-height: 1.15;
+  font-weight: 650;
+}
 .day-event { flex: 0 0 auto; padding: 2px 5px; color: white; font-size: 11px; line-height: 1.15; }
 .calendar-day.crowded .day-event { padding: 1px 4px; font-size: 11px; line-height: 1.05; }
 .calendar-footer { padding: 9px 16px; color: rgba(242,244,249,.80); font-size: 11px; }
@@ -590,7 +592,7 @@ h3 { font-size: 19px; }
 .task-menu {
   position: fixed;
   z-index: 40;
-  width: 286px;
+  width: 258px;
   max-height: calc(100vh - 20px);
   overflow-y: auto;
   padding: 10px;
@@ -612,14 +614,14 @@ h3 { font-size: 19px; }
   background: transparent;
   cursor: pointer;
 }
-.task-menu-action { display: flex; align-items: center; justify-content: space-between; padding: 9px; font-size: 13px; text-align: left; }
+.task-menu-action { display: flex; align-items: center; justify-content: space-between; padding: 8px 9px; font-size: 13px; text-align: left; }
 .task-menu-action small { color: rgba(232,236,244,.62); font-size: 10px; }
 .task-menu-action:hover, .task-menu-link:hover, .task-project-choice:hover { background: rgba(255,255,255,.07); }
 .task-menu-action.danger { color: #ffadb8; }
 .task-menu-section { margin: 4px 0; padding: 7px 0; border-top: 1px solid rgba(255,255,255,.08); border-bottom: 1px solid rgba(255,255,255,.08); }
 .task-menu-label { display: block; padding: 0 9px 5px; color: rgba(232,236,244,.62); font-size: 10px; }
 .task-project-choices { display: grid; gap: 2px; }
-.task-project-choice { min-height: 31px; display: grid; grid-template-columns: 8px 1fr auto; align-items: center; gap: 8px; padding: 6px 9px; font-size: 12px; text-align: left; }
+.task-project-choice { min-height: 29px; display: grid; grid-template-columns: 8px 1fr auto; align-items: center; gap: 8px; padding: 5px 9px; font-size: 12px; text-align: left; }
 .task-project-choice i { width: 7px; height: 7px; border-radius: 50%; background: var(--choice-color); }
 .task-project-choice b { color: var(--action-primary); }
 .task-menu-link { padding: 8px 9px; color: var(--action-primary); font-size: 12px; text-align: left; }
@@ -920,10 +922,10 @@ select:focus-visible {
   border-radius: 4px;
 }
 .task-actions {
-  width: 116px;
-  min-width: 116px;
+  width: 108px;
+  min-width: 108px;
   display: grid;
-  grid-template-columns: minmax(0, 84px) 28px;
+  grid-template-columns: minmax(0, 76px) 28px;
   align-items: center;
   justify-content: end;
   gap: 4px;
@@ -1003,65 +1005,51 @@ html[data-theme="light"] .task-item.menu-open .task-more {
   background: var(--action-soft-hover);
 }
 
-/* Compact system-style settings dialog. Other dialogs remain unchanged. */
+/* Compact settings flyout anchored near the toolbar. */
 .settings-modal {
-  width: 344px;
-  max-width: calc(100vw - 28px);
-  max-height: calc(100vh - 28px);
+  position: fixed;
+  inset: auto;
+  width: 332px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
+  margin: 0;
   padding: 0;
-  border: 1px solid rgba(255,255,255,.2);
-  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 12px;
   color: var(--ink);
-  background: rgba(37,39,46,.99);
-  box-shadow: 0 26px 70px rgba(0,0,0,.56), 0 0 0 1px rgba(0,0,0,.2);
+  background: rgba(37,39,46,.985);
+  box-shadow: 0 18px 46px rgba(0,0,0,.42), 0 0 0 1px rgba(0,0,0,.16);
   backdrop-filter: blur(18px);
   opacity: 0;
-  transform: scale(.975);
-  transform-origin: center;
-  transition: opacity 150ms ease, transform 150ms ease,
-    overlay 150ms ease allow-discrete, display 150ms ease allow-discrete;
+  transform: translateY(-4px) scale(.985);
+  transform-origin: top right;
+  transition: opacity 130ms ease, transform 130ms ease,
+    overlay 130ms ease allow-discrete, display 130ms ease allow-discrete;
 }
 .settings-modal[open] {
   opacity: 1;
-  transform: scale(1);
+  transform: none;
 }
 .settings-modal.closing {
   opacity: 0;
-  transform: scale(.985);
+  transform: translateY(-3px) scale(.99);
   pointer-events: none;
 }
-.settings-modal::backdrop {
-  inset: 9px;
-  border-radius: var(--panel-radius);
-  background: rgba(0,0,0,.52);
-  backdrop-filter: blur(3.5px);
-  opacity: 0;
-  transition: opacity 150ms ease, overlay 150ms ease allow-discrete,
-    display 150ms ease allow-discrete;
-}
-.settings-modal[open]::backdrop { opacity: 1; }
-.settings-modal.closing::backdrop { opacity: 0; }
+.settings-modal::backdrop { background: transparent; backdrop-filter: none; }
 @starting-style {
   .settings-modal[open] {
     opacity: 0;
-    transform: scale(.975);
+    transform: translateY(-4px) scale(.985);
   }
-  .settings-modal[open]::backdrop { opacity: 0; }
 }
 .settings-modal form {
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding: 15px 16px 14px;
+  padding: 14px 15px 13px;
 }
-.settings-modal .modal-title {
-  min-height: 37px;
-  align-items: flex-start;
-}
-.settings-modal .modal-title h3 {
-  font-size: 17px;
-  line-height: 20px;
-}
+.settings-modal .modal-title { min-height: 35px; align-items: flex-start; }
+.settings-modal .modal-title h3 { font-size: 17px; line-height: 20px; }
 .settings-modal .modal-title .eyebrow {
   margin-top: 2px;
   color: rgba(232,236,244,.56);
@@ -1070,15 +1058,14 @@ html[data-theme="light"] .task-item.menu-open .task-more {
   letter-spacing: .04em;
 }
 .settings-close-button {
-  width: 28px;
-  min-width: 28px;
-  height: 28px;
-  margin-top: 1px;
+  width: 27px;
+  min-width: 27px;
+  height: 27px;
+  margin-top: 0;
   border: 0;
-  color: rgba(232,236,244,.46);
+  color: rgba(232,236,244,.44);
   background: transparent;
   box-shadow: none;
-  transition: color 120ms ease, background-color 120ms ease;
 }
 .settings-close-button:hover,
 .settings-close-button:focus-visible {
@@ -1086,62 +1073,43 @@ html[data-theme="light"] .task-item.menu-open .task-more {
   background: rgba(255,255,255,.07);
 }
 .settings-list {
-  margin-top: 10px;
-  border-top: 1px solid rgba(255,255,255,.075);
-  border-bottom: 1px solid rgba(255,255,255,.075);
+  margin-top: 8px;
+  border-top: 1px solid rgba(255,255,255,.07);
+  border-bottom: 1px solid rgba(255,255,255,.07);
 }
 .settings-modal .settings-section {
-  min-height: 56px;
-  padding: 8px 2px;
+  min-height: 52px;
+  padding: 7px 2px;
   border: 0;
-  border-bottom: 1px solid rgba(255,255,255,.065);
+  border-bottom: 1px solid rgba(255,255,255,.055);
   border-radius: 0;
   background: transparent;
 }
 .settings-modal .settings-section:last-child { border-bottom: 0; }
 .settings-modal .settings-section strong,
-.settings-modal .account-card strong {
-  font-size: 13px;
-  line-height: 17px;
-}
+.settings-modal .account-card strong { font-size: 13px; line-height: 17px; }
 .settings-modal .settings-section small,
-.settings-modal .account-card small {
-  margin-top: 1px;
-  font-size: 10px;
-  line-height: 14px;
-}
-.settings-modal .opacity-control {
-  min-width: 126px;
-  grid-template-columns: 34px 1fr;
-  gap: 6px;
-}
+.settings-modal .account-card small { margin-top: 1px; font-size: 10px; line-height: 14px; }
+.settings-modal .opacity-control { min-width: 122px; grid-template-columns: 34px 1fr; gap: 6px; }
 .settings-modal .account-card {
-  min-height: 58px;
-  margin-top: 13px;
-  padding: 10px;
-  border: 1px solid rgba(255,255,255,.075);
-  border-radius: 11px;
-  background: rgba(255,255,255,.045);
+  min-height: 56px;
+  margin-top: 11px;
+  padding: 9px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 9px;
+  background: rgba(255,255,255,.035);
 }
-.settings-modal .google-logo {
-  width: 31px;
-  height: 31px;
-}
+.settings-modal .google-logo { width: 30px; height: 30px; }
 .settings-modal .google-actions { gap: 5px; }
 .settings-modal .soft-button { padding: 6px 8px; }
-.settings-modal .settings-note {
-  margin-top: 7px;
-  padding: 0 2px;
-  font-size: 10px;
-  line-height: 15px;
-}
+.settings-modal .settings-note { margin-top: 6px; padding: 0 2px; font-size: 10px; line-height: 15px; }
 .settings-modal .settings-export {
   align-self: flex-start;
   width: auto;
-  margin-top: 8px;
+  margin-top: 7px;
   padding: 5px 2px;
   border: 0;
-  color: rgba(232,236,244,.66);
+  color: rgba(232,236,244,.64);
   background: transparent;
   box-shadow: none;
 }
@@ -1192,3 +1160,5 @@ html[data-theme="light"] .settings-modal .settings-export:focus-visible {
   color: rgba(20,28,40,.92);
   background: transparent;
 }
+
+html[data-theme="light"] .day-overflow { color: rgba(58,71,92,.58); }
