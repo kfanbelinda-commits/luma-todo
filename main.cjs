@@ -512,6 +512,7 @@ async function syncGoogleState(state) {
       const remoteUpdatedAt = Date.parse(remote.updated || 0) || syncTime;
       const previousRemoteUpdatedAt = Number(task.googleRemoteUpdatedAt || 0);
       applyCalendarEvent(task, remote);
+      task.time = '';
       task.projectId = ensureGoogleCalendarProject(state).id;
       task.completed = false;
       task.syncTarget = 'external-calendar';
@@ -661,7 +662,10 @@ async function syncGoogleState(state) {
       lastGoogleSyncAt: syncTime,
     };
     applyCalendarEvent(task, event);
-    if (!isLumaEvent) task.projectId = project.id;
+    if (!isLumaEvent) {
+      task.projectId = project.id;
+      task.time = '';
+    }
     retainedTasks.push(task);
     state.tasks.push(task);
     downloaded += 1;

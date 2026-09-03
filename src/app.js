@@ -75,6 +75,7 @@ function normalizeState(input) {
   input.tasks.forEach((task) => {
     task.completed = Boolean(task.completed);
     task.googleCalendarExternal = Boolean(task.googleCalendarExternal || task.syncTarget === 'external-calendar');
+    if (task.googleCalendarExternal) task.time = '';
     task.projectId ??= 'inbox';
     task.syncTarget ??= task.time ? 'calendar' : 'tasks';
     task.updatedAt ??= task.createdAt || Date.now();
@@ -112,7 +113,7 @@ function isTodayTask(task) {
 function taskSort(a, b) {
   const rank = (task) => {
     const externalCalendar = task.googleCalendarExternal || task.syncTarget === 'external-calendar';
-    if (externalCalendar && !task.time) return 0;
+    if (externalCalendar) return 0;
     if (!task.time) return 1;
     return 2;
   };
