@@ -210,6 +210,7 @@ h3 { font-size: 16px; font-weight: 700; }
 .project-group + .project-group { border-top: 1px solid rgba(255,255,255,.09); }
 .project-header { min-height: 22px; padding: 0 4px 3px; }
 .project-title { gap: 7px; color: rgba(255,255,255,.94); font-size: 14px; font-weight: 700; }
+.project-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .project-color { width: 6px; height: 6px; box-shadow: none; }
 .project-collapse {
   width: 12px;
@@ -240,10 +241,11 @@ h3 { font-size: 16px; font-weight: 700; }
 .project-group.collapsed .project-quick-add,
 .project-group.collapsed .completed-toggle,
 .project-group.collapsed .completed-list { display: none; }
-.project-header-actions { display: flex; align-items: center; gap: 6px; padding-right: 2px; }
+.project-header-actions { display: flex; align-items: center; padding-right: 2px; }
 .project-add-task {
   width: 20px;
   height: 20px;
+  opacity: .46;
   display: grid;
   place-items: center;
   border: 1px solid transparent;
@@ -254,8 +256,18 @@ h3 { font-size: 16px; font-weight: 700; }
   font-size: 15px;
   cursor: pointer;
 }
+.project-header:hover .project-add-task,
+.project-add-task:focus-visible { opacity: 1; }
 .project-add-task:hover, .project-add-task:focus-visible { color: var(--action-primary-strong); border-color: var(--action-border); background: var(--action-soft-hover); outline: none; }
-.project-progress { min-width: 28px; color: rgba(232,235,242,.62); font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; }
+.project-progress {
+  flex: 0 0 auto;
+  margin-left: 2px;
+  color: rgba(232,235,242,.48);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
 .edit-project-button {
   min-height: 24px;
   border: 1px solid rgba(255,255,255,.13);
@@ -866,7 +878,7 @@ select:focus-visible {
 }
 .project-header {
   min-height: 28px;
-  padding: 0 2px 5px;
+  padding: 0 4px 5px 2px;
 }
 
 .task-list,
