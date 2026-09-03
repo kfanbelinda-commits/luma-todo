@@ -1,0 +1,71 @@
+{
+  "name": "luma-todo",
+  "version": "0.4.0",
+  "description": "A calm, desktop-first todo widget for Windows.",
+  "homepage": "https://github.com/kfanbelinda-commits/luma-todo",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kfanbelinda-commits/luma-todo.git"
+  },
+  "main": "main.cjs",
+  "author": "Luma Todo",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check main.cjs && node --check preload.cjs && node --check src/app.js",
+    "dist": "electron-builder --win --publish never",
+    "release": "electron-builder --win --publish always"
+  },
+  "devDependencies": {
+    "electron": "^44.1.1",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.lumatodo.desktop",
+    "productName": "Luma Todo",
+    "asar": true,
+    "electronUpdaterCompatibility": ">=2.16",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "index.html",
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "credentials.json",
+        "to": "credentials.json"
+      }
+    ],
+    "win": {
+      "icon": "assets/icon.ico",
+      "artifactName": "Luma-Todo-Setup-${version}.${ext}",
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Luma Todo"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "kfanbelinda-commits",
+        "repo": "luma-todo",
+        "releaseType": "release"
+      }
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  }
+}

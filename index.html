@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Luma Todo</title>
+    <link rel="stylesheet" href="src/styles.css" />
+    <link rel="stylesheet" href="src/theme-graphite.css" />
+  </head>
+  <body>
+    <div class="resize-handle resize-edge resize-n" data-edge="n"></div>
+    <div class="resize-handle resize-edge resize-e" data-edge="e"></div>
+    <div class="resize-handle resize-edge resize-s" data-edge="s"></div>
+    <div class="resize-handle resize-edge resize-w" data-edge="w"></div>
+    <div class="resize-handle resize-corner resize-nw" data-edge="nw"></div>
+    <div class="resize-handle resize-corner resize-ne" data-edge="ne"></div>
+    <div class="resize-handle resize-corner resize-se" data-edge="se"></div>
+    <div class="resize-handle resize-corner resize-sw" data-edge="sw"></div>
+    <main id="app" class="app-shell">
+      <section id="calendarPanel" class="calendar-panel panel" aria-hidden="true">
+        <header class="calendar-header drag-region">
+          <div>
+            <p class="eyebrow">计划与时间节点</p>
+            <h2 id="monthTitle">2026 年 9 月</h2>
+          </div>
+          <div class="month-controls no-drag">
+            <button id="prevMonth" class="icon-button" aria-label="上个月">‹</button>
+            <button id="todayMonth" class="soft-button">今天</button>
+            <button id="nextMonth" class="icon-button" aria-label="下个月">›</button>
+          </div>
+        </header>
+        <div class="weekdays" aria-hidden="true">
+          <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+        </div>
+        <div id="calendarGrid" class="calendar-grid"></div>
+      </section>
+
+      <section class="todo-panel panel">
+        <header class="topbar drag-region">
+          <div class="brand">
+            <span class="brand-mark" aria-hidden="true">
+              <svg class="luma-bulb" viewBox="0 0 24 24" fill="none">
+                <path d="M8.2 15.1c-1.35-1.08-2.2-2.75-2.2-4.61a6 6 0 0 1 12 0c0 1.86-.85 3.53-2.2 4.61-.58.47-.8.89-.8 1.4H9c0-.51-.22-.93-.8-1.4Z" />
+                <path d="M9.4 19h5.2M10.5 21h3M12 2V.8M4.9 3.4l-.85-.85M19.1 3.4l.85-.85M3 10.5H1.8M22.2 10.5H21" />
+                <path class="bulb-glow" d="M9.1 10.2a3 3 0 0 1 3-3" />
+              </svg>
+            </span>
+            <h1>我的待办</h1>
+          </div>
+          <div class="top-actions no-drag">
+            <div class="date-filter" aria-label="按日期筛选待办">
+              <button id="previousTaskDate" class="date-step" type="button" aria-label="前一天">‹</button>
+              <button id="dateLabel" class="date-filter-label" type="button" title="点击在今天和全部任务之间切换">全部</button>
+              <button id="nextTaskDate" class="date-step" type="button" aria-label="后一天">›</button>
+            </div>
+            <button id="pinWindowButton" class="icon-button" aria-label="固定在其他窗口上方" aria-pressed="false" title="固定在其他窗口上方">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v5l-2 4v2h6v7l1 1 1-1v-7h6v-2l-2-4V3M5 3h14"/></svg>
+            </button>
+            <button id="toggleCalendar" class="icon-button" aria-label="展开日历" title="展开日历">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/></svg>
+            </button>
+            <button id="settingsButton" class="icon-button" aria-label="设置" title="设置">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.55V21h-4v-.08A1.7 1.7 0 0 0 8.97 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1.03H3v-4h.08A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88L4.2 7l2.83-2.83.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 10 3.02V3h4v.08a1.7 1.7 0 0 0 1.03 1.55 1.7 1.7 0 0 0 1.88-.34l.06-.06L19.8 7l-.06.06a1.7 1.7 0 0 0-.34 1.88A1.7 1.7 0 0 0 20.92 10H21v4h-.08A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+            </button>
+            <button id="hideButton" class="icon-button" aria-label="隐藏" title="隐藏到托盘">×</button>
+          </div>
+        </header>
+
+        <section class="quick-entry">
+          <div class="quick-input-wrap">
+            <span class="spark">✦</span>
+            <input id="quickInput" autocomplete="off" placeholder="输入待办内容" />
+            <button id="addTask" class="add-button" aria-label="添加任务">↑</button>
+          </div>
+        </section>
+
+        <section class="task-scroll">
+          <div id="projectGroups"></div>
+          <button id="newProjectButton" class="new-project-button">＋ 添加分类</button>
+
+        </section>
+      </section>
+    </main>
+
+    <div id="reminderPopover" class="popover hidden" role="dialog">
+      <p>需要提前多久提醒？</p>
+      <div class="chip-row">
+        <button data-reminder="0">准时</button>
+        <button data-reminder="10">10 分钟</button>
+        <button data-reminder="30">30 分钟</button>
+        <button data-reminder="60">1 小时</button>
+        <button data-reminder="none">不提醒</button>
+      </div>
+    </div>
+
+    <div id="taskMenu" class="task-menu hidden" role="menu" aria-hidden="true">
+      <div class="task-menu-header">
+        <strong id="taskMenuTitle"></strong>
+        <button id="closeTaskMenu" type="button" aria-label="关闭任务菜单">×</button>
+      </div>
+      <button id="taskScheduleAction" class="task-menu-action" type="button">
+        <span>日期和时间</span><small id="taskScheduleSummary"></small>
+      </button>
+      <div class="task-menu-section">
+        <span class="task-menu-label">移动到分类</span>
+        <div id="taskProjectChoices" class="task-project-choices"></div>
+        <button id="taskNewProjectAction" class="task-menu-link" type="button">＋ 新建分类并移入</button>
+      </div>
+      <button id="taskCalendarAction" class="task-menu-action" type="button"></button>
+      <button id="taskDeleteAction" class="task-menu-action danger" type="button">删除任务</button>
+    </div>
+
+    <dialog id="projectDialog" class="modal">
+      <form method="dialog" id="projectForm">
+        <div class="modal-title"><h3 id="projectDialogTitle">添加分类</h3><button id="cancelProjectButton" type="button" class="icon-button" aria-label="关闭">×</button></div>
+        <label>分类名称<input id="projectName" maxlength="24" placeholder="例如：客户项目、个人事务" required /></label>
+        <label>分类颜色<div id="colorChoices" class="color-choices"></div></label>
+        <div class="project-form-actions">
+          <button id="deleteProjectButton" type="button" class="danger-button" hidden>删除分类</button>
+          <button id="projectSubmitButton" value="default" class="primary-button">创建分类</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="scheduleDialog" class="modal schedule-modal">
+      <form method="dialog" id="scheduleForm">
+        <div class="modal-title">
+          <div><p class="eyebrow">日期与提醒</p><h3>安排任务</h3></div>
+          <button id="cancelScheduleButton" type="button" class="icon-button" aria-label="关闭">×</button>
+        </div>
+        <p id="scheduleTaskTitle" class="schedule-task-title"></p>
+        <div class="schedule-fields">
+          <label>日期<input id="scheduleDate" type="date" /></label>
+          <label>时间<input id="scheduleTime" type="time" /></label>
+        </div>
+        <div class="project-form-actions">
+          <button id="clearScheduleButton" type="button" class="secondary-button schedule-clear-button">清除安排</button>
+          <button value="default" class="primary-button">保存安排</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="calendarTaskDialog" class="modal calendar-task-modal">
+      <form method="dialog" id="calendarTaskForm">
+        <div class="modal-title">
+          <div><p class="eyebrow">月历待办</p><h3>新建待办</h3></div>
+          <button id="cancelCalendarTaskButton" type="button" class="icon-button" aria-label="关闭">×</button>
+        </div>
+        <label>待办内容<input id="calendarTaskTitle" maxlength="120" placeholder="输入待办内容" required /></label>
+        <div class="schedule-fields">
+          <label>日期<input id="calendarTaskDate" type="date" required /></label>
+          <label>时间<input id="calendarTaskTime" type="time" /></label>
+        </div>
+        <label>所属分类<select id="calendarTaskProject" required></select></label>
+        <button value="default" class="primary-button">添加待办</button>
+      </form>
+    </dialog>
+
+    <dialog id="settingsDialog" class="modal settings-modal">
+      <form method="dialog">
+        <div class="modal-title"><div><p class="eyebrow">偏好设置</p><h3>Luma Todo</h3></div><button value="cancel" class="icon-button">×</button></div>
+        <section class="settings-section">
+          <div><strong>开机自动显示</strong><small>登录 Windows 后显示桌面小组件</small></div>
+          <label class="switch"><input id="autoStartToggle" type="checkbox" /><span></span></label>
+        </section>
+        <section class="settings-section opacity-setting">
+          <div><strong>窗口透明度</strong><small>数值越低，背景越透明</small></div>
+          <div class="opacity-control">
+            <output id="opacityValue" for="opacitySlider">88%</output>
+            <input id="opacitySlider" class="opacity-slider" type="range" min="45" max="100" step="5" value="88" aria-label="窗口透明度" />
+          </div>
+        </section>
+        <section class="settings-section">
+          <div><strong>浅色模式</strong><small>使用明亮的玻璃面板与深色文字</small></div>
+          <label class="switch"><input id="lightModeToggle" type="checkbox" /><span></span></label>
+        </section>
+        <section class="account-card">
+          <div class="google-logo">G</div>
+          <div><strong>Google 同步</strong><small id="googleStatusText">正在检查状态…</small></div>
+          <div class="google-actions">
+            <button id="connectGoogle" type="button" class="soft-button">连接</button>
+            <button id="disconnectGoogle" type="button" class="soft-button" hidden>断开</button>
+          </div>
+        </section>
+        <p id="googleNote" class="settings-note">连接后，点击“立即同步”可同步 Luma 待办，并将 Google Calendar 原有事件下载到 Luma。</p>
+        <button id="exportButton" type="button" class="secondary-button">导出本地备份</button>
+      </form>
+    </dialog>
+
+    <script src="src/app.js"></script>
+  </body>
+</html>

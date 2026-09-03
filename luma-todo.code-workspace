@@ -1,0 +1,15 @@
+{
+  "folders": [
+    {
+      "name": "Luma Todo",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "node_modules": true,
+      "dist": true
+    },
+    "editor.formatOnSave": true
+  }
+}

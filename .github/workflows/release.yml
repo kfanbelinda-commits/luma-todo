@@ -1,0 +1,57 @@
+name: Release Windows
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Restore Google OAuth build configuration
+        shell: pwsh
+        env:
+          GOOGLE_OAUTH_CREDENTIALS_B64: ${{ secrets.GOOGLE_OAUTH_CREDENTIALS_B64 }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:GOOGLE_OAUTH_CREDENTIALS_B64)) {
+            throw "Missing repository secret GOOGLE_OAUTH_CREDENTIALS_B64"
+          }
+          $bytes = [Convert]::FromBase64String($env:GOOGLE_OAUTH_CREDENTIALS_B64)
+          [IO.File]::WriteAllBytes((Join-Path $env:GITHUB_WORKSPACE "credentials.json"), $bytes)
+
+      - name: Check source
+        run: npm run check
+
+      - name: Build Windows installer
+        run: npm run dist
+
+      - name: Publish GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $releaseFiles = Get-ChildItem dist -File | Where-Object {
+            $_.Name -match '\.(exe|blockmap)$' -or $_.Name -eq 'latest.yml'
+          } | Select-Object -ExpandProperty FullName
+          if (-not $releaseFiles) { throw "No release files were produced" }
+          gh release create $env:GITHUB_REF_NAME $releaseFiles --verify-tag --generate-notes --title "Luma Todo $env:GITHUB_REF_NAME"

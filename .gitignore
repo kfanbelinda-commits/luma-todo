@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.codex-tmp/
+.vscode/
+*.log
+credentials.json
+google-token.enc
+**/luma-data.json
+**/luma-window-state.json
+**/Backups/
+*.zip
+*.lnk
+assets/preview-*.png
+.DS_Store
