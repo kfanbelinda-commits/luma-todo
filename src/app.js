@@ -707,6 +707,10 @@ function positionCalendarDetail() {
 }
 
 function openCalendarDetail(dateKey) {
+  if (calendarDetailDate === dateKey) {
+    closeCalendarDetail();
+    return;
+  }
   calendarDetailDate = dateKey;
   $('#calendarPanel')?.classList.add('calendar-detail-open');
   const selected = fromDateKey(dateKey);
@@ -1530,6 +1534,14 @@ function bindEvents() {
   $('#nextMonth').addEventListener('click', () => changeCalendarMonth(1));
   $('#todayMonth').addEventListener('click', goToCurrentCalendarMonth);
   $('#closeCalendarDetail').addEventListener('click', closeCalendarDetail);
+
+  $('#calendarPanel').addEventListener('pointerdown', (event) => {
+    if (!calendarDetailDate) return;
+    if (event.target.closest('#calendarDetail')) return;
+    if (event.target.closest('.calendar-day')) return;
+    if (event.target.closest('.month-controls')) return;
+    closeCalendarDetail();
+  });
   $('#addCalendarSchedule').addEventListener('click', () => {
     if (calendarDetailDate) openCalendarTaskDialog(calendarDetailDate);
   });
@@ -1688,6 +1700,7 @@ function bindEvents() {
       return;
     }
     if (event.key === 'Escape' && calendarDetailDate && !document.querySelector('dialog[open]')) {
+      event.preventDefault();
       closeCalendarDetail();
       return;
     }
