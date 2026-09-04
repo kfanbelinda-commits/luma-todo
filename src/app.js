@@ -537,7 +537,7 @@ function renderProjects() {
     group.style.setProperty('--group-color', project.color);
     group.innerHTML = `
       <header class="project-header">
-        <div class="project-title" role="button" tabindex="0" draggable="true" title="拖拽排序，双击编辑分类"><button class="project-collapse" type="button" aria-label="${projectCollapsed ? '展开' : '折叠'}${escapeAttribute(project.name)}" aria-expanded="${String(!projectCollapsed)}"></button><span class="project-name">${escapeAttribute(project.name)}</span><span class="project-progress">${completed.length}/${relevant.length || 0}</span></div>
+        <div class="project-title" role="button" tabindex="0" draggable="true" aria-expanded="${String(!projectCollapsed)}" title="点击展开/收起，拖拽排序，双击编辑分类"><button class="project-collapse" type="button" tabindex="-1" aria-hidden="true"></button><span class="project-color-dot" aria-hidden="true"></span><span class="project-name">${escapeAttribute(project.name)}</span><span class="project-progress">${completed.length}/${relevant.length || 0}</span></div>
         <div class="project-header-actions">
           <button class="project-add-task" type="button" aria-label="在${escapeAttribute(project.name)}中添加待办" title="添加待办">＋</button>
         </div>
@@ -576,18 +576,24 @@ function renderProjects() {
     });
     const projectTitle = group.querySelector('.project-title');
     const collapseButton = group.querySelector('.project-collapse');
-    collapseButton.addEventListener('click', async (event) => {
-      event.stopPropagation();
+    let projectTitleClickTimer = null;
+    let projectWasDragged = false;
+    const toggleProjectCollapsed = async () => {
       if (collapsedProjects.has(project.id)) collapsedProjects.delete(project.id);
       else collapsedProjects.add(project.id);
       activeQuickProjectId = null;
       state.settings.collapsedProjectIds = [...collapsedProjects];
       await persist();
       renderProjects();
+    };
+    collapseButton.addEventListener('click', (event) => {
+      event.stopPropagation();
+      toggleProjectCollapsed();
     });
     collapseButton.addEventListener('dblclick', (event) => event.stopPropagation());
     projectTitle.draggable = !googleCalendarProject;
     projectTitle.addEventListener('dragstart', (event) => {
+      projectWasDragged = true;
       draggedProjectId = project.id;
       group.classList.add('project-dragging');
       event.dataTransfer.effectAllowed = 'move';
@@ -597,10 +603,27 @@ function renderProjects() {
       draggedProjectId = null;
       group.classList.remove('project-dragging');
       document.querySelectorAll('.project-group.project-drop-before, .project-group.project-drop-after').forEach((item) => item.classList.remove('project-drop-before', 'project-drop-after'));
+      setTimeout(() => { projectWasDragged = false; }, 0);
     });
-    if (!googleCalendarProject) projectTitle.addEventListener('dblclick', () => openProjectDialog(project.id));
+    projectTitle.addEventListener('click', (event) => {
+      if (event.target.closest('.project-collapse') || projectWasDragged) return;
+      clearTimeout(projectTitleClickTimer);
+      projectTitleClickTimer = setTimeout(() => {
+        projectTitleClickTimer = null;
+        toggleProjectCollapsed();
+      }, 180);
+    });
+    if (!googleCalendarProject) projectTitle.addEventListener('dblclick', (event) => {
+      if (event.target.closest('.project-collapse')) return;
+      clearTimeout(projectTitleClickTimer);
+      projectTitleClickTimer = null;
+      openProjectDialog(project.id);
+    });
     projectTitle.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' && !googleCalendarProject) openProjectDialog(project.id);
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        toggleProjectCollapsed();
+      }
     });
     group.addEventListener('dragover', (event) => {
       if (draggedTaskId) {
