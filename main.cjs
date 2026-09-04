@@ -387,11 +387,12 @@ function projectMetadataForTask(state, task) {
 
 function taskNotes(state, task) {
   return LUMA_TASK_NOTES_PREFIX + JSON.stringify({
-    version: 2,
+    version: 3,
     taskId: task.id,
     ...projectMetadataForTask(state, task),
     order: Number(task.order ?? task.createdAt ?? 0),
     reminder: task.reminder ?? null,
+    time: /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(task.time || '') ? task.time : '',
     updatedAt: Number(task.updatedAt || task.createdAt || Date.now()),
   });
 }
@@ -424,13 +425,8 @@ function calendarBody(state, task) {
     const endDate = task.endDate && task.endDate >= task.dueDate ? task.endDate : task.dueDate;
     if (task.time) {
       const start = new Date(`${task.dueDate}T${task.time}:00`);
-      let end;
-      if (endDate && endDate !== task.dueDate) {
-        end = new Date(`${endDate}T${task.endTime || task.time}:00`);
-        if (end <= start) end = new Date(start.getTime() + 30 * 60000);
-      } else {
-        end = new Date(start.getTime() + 30 * 60000);
-      }
+      let end = new Date(`${endDate}T${task.endTime || task.time}:00`);
+      if (end <= start) end = new Date(start.getTime() + 30 * 60000);
       body.start = { dateTime: start.toISOString() };
       body.end = { dateTime: end.toISOString() };
     } else {
@@ -495,7 +491,7 @@ function applyGoogleTask(task, remoteTask, details = {}) {
   task.dueDate = remoteTask.due ? remoteTask.due.slice(0, 10) : '';
   task.endDate = '';
   task.endTime = '';
-  task.time = '';
+  task.time = /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(details.time || '') ? details.time : '';
   task.projectId = details.projectId || task.projectId || 'inbox';
   if (details.order != null) task.order = Number(details.order);
   if (Object.hasOwn(details, 'reminder')) task.reminder = details.reminder;
@@ -776,7 +772,7 @@ async function syncGoogleState(state) {
       const remote = remoteDeleted ? null : foundRemote;
       const remoteUpdatedAt = Date.parse(foundRemote?.updated || 0);
       const remoteDetails = remote ? (googleTaskMetadata(remote) || {}) : {};
-      const needsMetadataUpgrade = remote && Number(remoteDetails.version || 1) < 2;
+      const needsMetadataUpgrade = remote && Number(remoteDetails.version || 1) < 3;
 
       if (remoteDeleted && !localChangedSinceSync(task)) {
         deleted += 1;
