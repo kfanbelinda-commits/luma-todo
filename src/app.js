@@ -95,24 +95,12 @@ function normalizeState(input) {
     task.googleCalendarExternal = Boolean(task.googleCalendarExternal || task.syncTarget === 'external-calendar');
     task.itemType = (task.itemType === 'event' || task.googleCalendarExternal) ? 'event' : 'todo';
     task.projectId ??= 'inbox';
-    task.syncTarget ??= task.time ? 'calendar' : 'tasks';
-
-    // Current rule: a concrete time belongs to an Event, not a Todo.
-    // Migrate legacy timed Todos while preserving their former project color.
-    if (!task.googleCalendarExternal && task.itemType === 'todo' && task.time) {
-      const previousProject = input.projects.find((project) => project.id === task.projectId);
-      task.itemType = 'event';
-      task.endDate = task.endDate || task.dueDate || '';
-      task.eventColor = /^#[0-9a-f]{6}$/i.test(task.eventColor || '')
-        ? task.eventColor
-        : (/^#[0-9a-f]{6}$/i.test(previousProject?.color || '') ? previousProject.color : DEFAULT_EVENT_COLOR);
-      task.projectId = 'inbox';
-      task.syncTarget = 'calendar';
-    }
+    task.syncTarget ??= task.itemType === 'event' ? 'calendar' : 'tasks';
 
     if (task.itemType === 'event') {
       task.endDate = task.endDate || task.dueDate || '';
       task.eventColor = /^#[0-9a-f]{6}$/i.test(task.eventColor || '') ? task.eventColor : DEFAULT_EVENT_COLOR;
+      task.endTime = task.time ? (task.endTime || addMinutesToTime(task.time, 30)) : '';
     }
     task.updatedAt ??= task.createdAt || Date.now();
   });
@@ -147,8 +135,17 @@ function eventCoversDate(task, dateKey) {
 
 function eventRangeLabel(task) {
   const endDate = task.endDate || task.dueDate;
-  if (!task.dueDate || endDate === task.dueDate) return task.time || '全天';
-  return `${formatShortDate(task.dueDate)}–${formatShortDate(endDate)}`;
+  if (!task.dueDate) return task.time || '全天';
+
+  if (!task.time) {
+    return endDate === task.dueDate
+      ? '全天'
+      : `${formatShortDate(task.dueDate)}–${formatShortDate(endDate)}`;
+  }
+
+  const endTime = task.endTime || addMinutesToTime(task.time, 30);
+  if (endDate === task.dueDate) return `${task.time}–${endTime}`;
+  return `${formatShortDate(task.dueDate)} ${task.time}–${formatShortDate(endDate)} ${endTime}`;
 }
 
 function eventColorFor(task) {
@@ -1084,17 +1081,60 @@ async function moveTaskToDate(taskId, dateKey) {
   render();
 }
 
-function calendarItemModeFromTimeField() {
-  const raw = String($('#calendarTaskTime')?.value || '').trim();
-  return raw ? 'event' : 'todo';
+function syncCalendarEventEndTimeState() {
+  const endTimeInput = $('#calendarTaskEndTime');
+  if (!endTimeInput) return;
+
+  const eventMode = calendarCreateMode === 'event';
+  const rawStart = String($('#calendarTaskTime')?.value || '').trim();
+  const allDay = eventMode && (!rawStart || rawStart === '全天');
+
+  endTimeInput.disabled = allDay;
+  if (!eventMode) return;
+
+  if (allDay) {
+    endTimeInput.value = '全天';
+    return;
+  }
+
+  const normalizedStart = normalizeTimeValue(rawStart);
+  if (normalizedStart && (!endTimeInput.value || endTimeInput.value === '全天')) {
+    endTimeInput.value = addMinutesToTime(normalizedStart, 30);
+  }
+}
+
+function setCalendarItemMode(mode) {
+  const nextMode = mode === 'event' ? 'event' : 'todo';
+  calendarCreateMode = nextMode;
+
+  if (nextMode === 'event') {
+    const startInput = $('#calendarTaskTime');
+    if (!String(startInput?.value || '').trim()) startInput.value = '全天';
+    if (!$('#calendarTaskEndDate').value) $('#calendarTaskEndDate').value = $('#calendarTaskDate').value;
+  } else if (String($('#calendarTaskTime')?.value || '').trim() === '全天') {
+    $('#calendarTaskTime').value = '';
+  }
+
+  syncCalendarEventEndTimeState();
+  updateCalendarItemDialogMode();
 }
 
 function updateCalendarItemDialogMode() {
-  const eventMode = calendarItemModeFromTimeField() === 'event';
+  const eventMode = calendarCreateMode === 'event';
   $('#calendarTaskEndDateLabel').hidden = !eventMode;
+  $('#calendarTaskEndTimeLabel').hidden = !eventMode;
   $('#calendarTaskProjectLabel').hidden = eventMode;
   $('#calendarEventColorLabel').hidden = !eventMode;
+
+  document.querySelectorAll('[data-calendar-mode]').forEach((button) => {
+    const active = button.dataset.calendarMode === calendarCreateMode;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+
   if (eventMode) renderEventColorChoices();
+  syncCalendarEventEndTimeState();
+
   if (!editingCalendarEventId) {
     $('#calendarTaskEyebrow').textContent = '月历事项';
     $('#calendarTaskDialogTitle').textContent = '新建事项';
@@ -1102,39 +1142,39 @@ function updateCalendarItemDialogMode() {
     $('#calendarTaskSubmit').textContent = '添加事项';
   } else {
     $('#calendarTaskEyebrow').textContent = eventMode ? '月历日程' : '月历待办';
-    $('#calendarTaskDialogTitle').textContent = eventMode ? '编辑日程' : '转为待办';
+    $('#calendarTaskDialogTitle').textContent = eventMode ? '编辑日程' : '编辑待办';
     $('#calendarTaskTitleText').textContent = eventMode ? '日程内容' : '待办内容';
     $('#calendarTaskSubmit').textContent = eventMode ? '保存日程' : '保存待办';
   }
+
   $('#calendarTaskDateText').textContent = eventMode ? '开始日期' : '待办日期';
-  $('#calendarTaskTimeText').textContent = '时间';
+  $('#calendarTaskTimeText').textContent = eventMode ? '开始时间' : '时间';
+  $('#calendarItemTypeHint').textContent = eventMode
+    ? '日程可设为全天，也可以设置开始和结束时间，并支持跨日期'
+    : '待办可以设置日期和具体时间，仍会保留在「我的待办」';
+  $('#deleteCalendarEventButton').hidden = !editingCalendarEventId;
+  if (editingCalendarEventId) $('#deleteCalendarEventButton').textContent = '删除事项';
 }
 
-function openCalendarTaskDialog(dateKey, mode = 'auto', eventId = null) {
+function openCalendarTaskDialog(dateKey, mode = 'todo', eventId = null) {
   const editingEvent = eventId
     ? state.tasks.find((task) => task.id === eventId && isCalendarEvent(task) && !task.googleCalendarExternal && task.syncTarget !== 'external-calendar')
     : null;
+
   editingCalendarEventId = editingEvent?.id || null;
-  calendarCreateMode = editingEvent ? 'event' : 'auto';
+  calendarCreateMode = editingEvent ? 'event' : (mode === 'event' ? 'event' : 'todo');
   selectedEventColor = editingEvent ? eventColorFor(editingEvent) : DEFAULT_EVENT_COLOR;
 
   $('#calendarTaskTitle').value = editingEvent?.title || '';
   $('#calendarTaskDate').value = editingEvent?.dueDate || dateKey;
   $('#calendarTaskEndDate').value = editingEvent?.endDate || editingEvent?.dueDate || dateKey;
-  $('#calendarTaskTime').value = editingEvent ? (editingEvent.time || '全天') : '';
+  $('#calendarTaskTime').value = editingEvent
+    ? (editingEvent.time || '全天')
+    : (calendarCreateMode === 'event' ? '全天' : '');
+  $('#calendarTaskEndTime').value = editingEvent
+    ? (editingEvent.time ? (editingEvent.endTime || addMinutesToTime(editingEvent.time, 30)) : '全天')
+    : (calendarCreateMode === 'event' ? '全天' : '');
   $('#calendarTaskProject').innerHTML = projectOptions('inbox');
-
-  if (editingEvent) {
-    $('#calendarTaskEyebrow').textContent = '月历日程';
-    $('#calendarTaskDialogTitle').textContent = '编辑日程';
-    $('#calendarTaskTitleText').textContent = '日程内容';
-    $('#calendarTaskDateText').textContent = '开始日期';
-    $('#calendarTaskTimeText').textContent = '时间';
-    $('#deleteCalendarEventButton').hidden = false;
-    $('#calendarTaskSubmit').textContent = '保存日程';
-  } else {
-    $('#deleteCalendarEventButton').hidden = true;
-  }
 
   updateCalendarItemDialogMode();
   $('#calendarTaskDialog').showModal();
@@ -1146,29 +1186,59 @@ async function createCalendarTask(event) {
   const title = $('#calendarTaskTitle').value.trim();
   if (!title) return;
 
-  const rawTime = String($('#calendarTaskTime').value || '').trim();
-  const allDay = rawTime === '全天';
+  const eventMode = calendarCreateMode === 'event';
+  const rawStartTime = String($('#calendarTaskTime').value || '').trim();
+  const allDay = eventMode && (!rawStartTime || rawStartTime === '全天');
   let time = '';
-  if (rawTime && !allDay) {
-    const normalized = normalizeTimeValue(rawTime);
+
+  if (!allDay && rawStartTime) {
+    const normalized = normalizeTimeValue(rawStartTime);
     if (normalized === null) {
-      $('#calendarTaskTime').setCustomValidity('请选择“无时间”“全天”或输入 00:00–23:59');
+      $('#calendarTaskTime').setCustomValidity(eventMode
+        ? '请选择“全天”或输入 00:00–23:59'
+        : '请选择“无时间”或输入 00:00–23:59');
       $('#calendarTaskTime').reportValidity();
       return;
     }
     time = normalized;
+  } else if (!eventMode && rawStartTime === '全天') {
+    $('#calendarTaskTime').setCustomValidity('待办可以无时间或设置具体时间');
+    $('#calendarTaskTime').reportValidity();
+    return;
   }
   $('#calendarTaskTime').setCustomValidity('');
 
   const dueDate = $('#calendarTaskDate').value;
-  const eventMode = Boolean(allDay || time);
-  const endDate = eventMode ? ($('#calendarTaskEndDate').value || dueDate) : '';
-  if (eventMode && endDate < dueDate) {
-    $('#calendarTaskEndDate').setCustomValidity('结束日期不能早于开始日期');
-    $('#calendarTaskEndDate').reportValidity();
-    return;
+  let endDate = '';
+  let endTime = '';
+
+  if (eventMode) {
+    endDate = $('#calendarTaskEndDate').value || dueDate;
+    if (endDate < dueDate) {
+      $('#calendarTaskEndDate').setCustomValidity('结束日期不能早于开始日期');
+      $('#calendarTaskEndDate').reportValidity();
+      return;
+    }
+    $('#calendarTaskEndDate').setCustomValidity('');
+
+    if (!allDay) {
+      const rawEndTime = String($('#calendarTaskEndTime').value || '').trim();
+      endTime = normalizeTimeValue(rawEndTime) || '';
+      if (!endTime) {
+        endTime = addMinutesToTime(time, 30);
+        $('#calendarTaskEndTime').value = endTime;
+      }
+
+      const startMoment = new Date(`${dueDate}T${time}:00`);
+      const endMoment = new Date(`${endDate}T${endTime}:00`);
+      if (endMoment <= startMoment) {
+        $('#calendarTaskEndTime').setCustomValidity('结束时间必须晚于开始时间');
+        $('#calendarTaskEndTime').reportValidity();
+        return;
+      }
+    }
   }
-  $('#calendarTaskEndDate').setCustomValidity('');
+  $('#calendarTaskEndTime').setCustomValidity('');
 
   if (editingCalendarEventId) {
     const task = state.tasks.find((item) => item.id === editingCalendarEventId);
@@ -1176,9 +1246,11 @@ async function createCalendarTask(event) {
       task.title = title;
       task.dueDate = dueDate;
       task.completed = false;
+
       if (eventMode) {
         task.endDate = endDate;
         task.time = allDay ? '' : time;
+        task.endTime = allDay ? '' : endTime;
         task.eventColor = selectedEventColor;
         task.itemType = 'event';
         task.projectId = 'inbox';
@@ -1186,12 +1258,13 @@ async function createCalendarTask(event) {
       } else {
         task.endDate = '';
         task.endTime = '';
-        task.time = '';
+        task.time = time;
         task.eventColor = '';
         task.itemType = 'todo';
         task.projectId = $('#calendarTaskProject').value || 'inbox';
         task.syncTarget = 'tasks';
       }
+
       task.updatedAt = Date.now();
       editingCalendarEventId = null;
       $('#calendarTaskDialog').close();
@@ -1207,7 +1280,8 @@ async function createCalendarTask(event) {
     projectId: eventMode ? 'inbox' : ($('#calendarTaskProject').value || 'inbox'),
     dueDate,
     endDate,
-    time: eventMode && !allDay ? time : '',
+    endTime: eventMode && !allDay ? endTime : '',
+    time: allDay ? '' : time,
     eventColor: eventMode ? selectedEventColor : '',
     itemType: eventMode ? 'event' : 'todo',
     completed: false,
@@ -1216,6 +1290,7 @@ async function createCalendarTask(event) {
     order: Date.now(),
     syncTarget: eventMode ? 'calendar' : 'tasks',
   };
+
   state.tasks.push(task);
   $('#calendarTaskDialog').close();
   await persist();
@@ -1254,6 +1329,14 @@ function normalizeTimeValue(raw) {
   }
   if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
   return `${pad(hour)}:${pad(minute)}`;
+}
+
+function addMinutesToTime(time, minutes) {
+  const normalized = normalizeTimeValue(time);
+  if (!normalized) return '';
+  const [hour, minute] = normalized.split(':').map(Number);
+  const total = (hour * 60 + minute + minutes + 1440) % 1440;
+  return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
 }
 
 function validatedTimeField(input) {
@@ -1303,24 +1386,30 @@ function populateTimePicker(picker) {
 
 function openTimePicker(input) {
   const picker = input.closest('.time-field')?.querySelector('.time-picker');
-  if (!picker) return;
+  if (!picker || input.disabled) return;
+
   populateTimePicker(picker);
   closeTimePickers(picker);
+
+  const isCalendarStart = input.id === 'calendarTaskTime';
+  const allowAllDay = isCalendarStart && calendarCreateMode === 'event';
+  const allDayOption = picker.querySelector('.time-option-all-day');
+  if (allDayOption) allDayOption.hidden = !allowAllDay;
+
   const rawValue = String(input.value || '').trim();
-  const selected = input.id === 'calendarTaskTime' && rawValue === '全天'
+  const selected = allowAllDay && rawValue === '全天'
     ? '全天'
     : normalizeTimeValue(rawValue);
+
   picker.querySelectorAll('.time-option').forEach((option) => {
     option.classList.toggle('selected', option.dataset.time === (selected || ''));
   });
+
   picker.hidden = false;
   requestAnimationFrame(() => {
-    if (input.id === 'calendarTaskTime') {
-      const allDayOption = picker.querySelector('.time-option-all-day');
-      if (allDayOption) {
-        picker.scrollTop = Math.max(0, allDayOption.offsetTop);
-        return;
-      }
+    if (allowAllDay && allDayOption) {
+      picker.scrollTop = Math.max(0, allDayOption.offsetTop);
+      return;
     }
 
     let target = selected ? picker.querySelector(`.time-option[data-time="${selected}"]`) : null;
@@ -1340,6 +1429,7 @@ function bindTimePickers() {
   document.querySelectorAll('.time-text-input').forEach((input) => {
     const picker = input.closest('.time-field')?.querySelector('.time-picker');
     if (!picker) return;
+
     populateTimePicker(picker);
     input.addEventListener('focus', () => openTimePicker(input));
     input.addEventListener('click', () => openTimePicker(input));
@@ -1351,31 +1441,44 @@ function bindTimePickers() {
         picker.hidden = true;
       }
     });
+
     input.addEventListener('blur', () => {
-      if (input.id === 'calendarTaskTime' && String(input.value || '').trim() === '全天') {
+      const raw = String(input.value || '').trim();
+      const allowAllDay = input.id === 'calendarTaskTime' && calendarCreateMode === 'event';
+      if (allowAllDay && raw === '全天') {
         input.setCustomValidity('');
+        syncCalendarEventEndTimeState();
         return;
       }
-      const normalized = normalizeTimeValue(input.value);
+
+      const normalized = normalizeTimeValue(raw);
       if (normalized !== null) {
         input.value = normalized;
         input.setCustomValidity('');
       }
+      if (input.id === 'calendarTaskTime') syncCalendarEventEndTimeState();
     });
+
     picker.addEventListener('pointerdown', (event) => event.preventDefault());
     picker.addEventListener('click', (event) => {
       const option = event.target.closest('.time-option');
-      if (!option) return;
+      if (!option || option.hidden) return;
+
       input.value = option.dataset.time;
       input.setCustomValidity('');
+
+      if (input.id === 'calendarTaskTime') {
+        syncCalendarEventEndTimeState();
+      }
+
       input.dispatchEvent(new Event('change', { bubbles: true }));
-      if (input.id === 'calendarTaskTime') updateCalendarItemDialogMode();
       picker.hidden = true;
       input.focus();
     });
   });
-  $('#calendarTaskTime')?.addEventListener('input', updateCalendarItemDialogMode);
-  $('#calendarTaskTime')?.addEventListener('change', updateCalendarItemDialogMode);
+
+  $('#calendarTaskTime')?.addEventListener('input', syncCalendarEventEndTimeState);
+  $('#calendarTaskTime')?.addEventListener('change', syncCalendarEventEndTimeState);
 
   document.addEventListener('pointerdown', (event) => {
     if (event.target.closest('.time-field')) return;
@@ -1663,30 +1766,18 @@ async function saveTaskSchedule(event) {
   event.preventDefault();
   const task = state.tasks.find((item) => item.id === editingScheduleTaskId);
   if (!task || task.googleCalendarExternal || task.syncTarget === 'external-calendar') return;
+
   const timeResult = validatedTimeField($('#scheduleTime'));
   if (!timeResult.valid) return;
 
-  const previousProject = projectById(task.projectId);
   task.dueDate = $('#scheduleDate').value;
   task.time = timeResult.value;
-
-  if (task.time) {
-    task.itemType = 'event';
-    task.endDate = task.dueDate;
-    task.eventColor = /^#[0-9a-f]{6}$/i.test(task.eventColor || '')
-      ? task.eventColor
-      : (/^#[0-9a-f]{6}$/i.test(previousProject?.color || '') ? previousProject.color : DEFAULT_EVENT_COLOR);
-    task.projectId = 'inbox';
-    task.syncTarget = 'calendar';
-  } else {
-    task.itemType = 'todo';
-    task.endDate = '';
-    task.endTime = '';
-    task.eventColor = '';
-    task.syncTarget = 'tasks';
-  }
-
+  task.itemType = 'todo';
+  task.endDate = '';
+  task.endTime = '';
+  task.eventColor = '';
   task.updatedAt = Date.now();
+
   $('#scheduleDialog').close();
   editingScheduleTaskId = null;
   await persist();
@@ -2044,6 +2135,8 @@ function bindEvents() {
   $('#cancelCalendarTaskButton').addEventListener('click', () => { editingCalendarEventId = null; $('#calendarTaskDialog').close(); });
   $('#deleteCalendarEventButton').addEventListener('click', deleteEditingCalendarEvent);
   $('#calendarTaskForm').addEventListener('submit', createCalendarTask);
+  $('#calendarModeTodo').addEventListener('click', () => setCalendarItemMode('todo'));
+  $('#calendarModeEvent').addEventListener('click', () => setCalendarItemMode('event'));
   $('#closeTaskMenu').addEventListener('click', closeTaskMenu);
   $('#taskScheduleAction').addEventListener('click', () => {
     const taskId = activeTaskMenuId;
