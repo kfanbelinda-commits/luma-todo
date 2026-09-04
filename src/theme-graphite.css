@@ -2841,3 +2841,146 @@ html[data-theme="light"] .calendar-span-event.google-calendar-event:hover {
 #calendarEventColorLabel[hidden] {
   display: none !important;
 }
+
+
+/* Explicit Todo/Event calendar editor. */
+.calendar-item-type-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  margin: -2px 0 13px;
+  padding: 3px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  background: rgba(255,255,255,.035);
+}
+
+.calendar-mode-button {
+  min-height: 32px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: rgba(232,236,244,.66);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.calendar-mode-button:hover {
+  color: rgba(248,250,253,.92);
+  background: rgba(255,255,255,.05);
+}
+
+.calendar-mode-button.active[data-calendar-mode="todo"] {
+  color: #bfe5cf;
+  border-color: rgba(118,199,168,.28);
+  background: rgba(118,199,168,.12);
+}
+
+.calendar-mode-button.active[data-calendar-mode="event"] {
+  color: #c5d9f2;
+  border-color: rgba(121,167,211,.30);
+  background: rgba(121,167,211,.13);
+}
+
+.calendar-create-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: auto auto auto;
+  align-items: start;
+}
+
+.calendar-start-date-field {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.calendar-time-field {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.calendar-project-field {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.calendar-end-date-field {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.calendar-end-time-field {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.calendar-event-color-field {
+  grid-column: 1 / -1;
+  grid-row: 3;
+}
+
+#calendarTaskProjectLabel[hidden],
+#calendarTaskEndDateLabel[hidden],
+#calendarTaskEndTimeLabel[hidden],
+#calendarEventColorLabel[hidden] {
+  display: none !important;
+}
+
+#calendarTaskEndTime:disabled {
+  cursor: default;
+  opacity: .58;
+}
+
+.calendar-create-fields .calendar-event-color-field .event-color-choices {
+  min-height: 30px;
+  gap: 7px;
+}
+
+.calendar-create-fields .calendar-event-color-field .event-color-choice {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+}
+
+.calendar-create-fields + .calendar-item-type-hint {
+  margin-top: -4px;
+  white-space: normal;
+}
+
+/* Light Fluent-style segmented control. */
+html[data-theme="light"] .calendar-item-type-switch {
+  border-color: #e5e5e5;
+  background: #f5f5f5;
+}
+
+html[data-theme="light"] .calendar-mode-button {
+  color: #616161;
+}
+
+html[data-theme="light"] .calendar-mode-button:hover {
+  color: #242424;
+  background: rgba(255,255,255,.72);
+}
+
+html[data-theme="light"] .calendar-mode-button.active[data-calendar-mode="todo"] {
+  color: #32694a;
+  border-color: color-mix(in srgb, #63b985 30%, #ffffff 70%);
+  background: color-mix(in srgb, #63b985 12%, #ffffff 88%);
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+
+html[data-theme="light"] .calendar-mode-button.active[data-calendar-mode="event"] {
+  color: #3f6389;
+  border-color: color-mix(in srgb, #79a7d3 32%, #ffffff 68%);
+  background: color-mix(in srgb, #79a7d3 13%, #ffffff 87%);
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+
+html[data-theme="light"] #calendarTaskEndTime:disabled {
+  color: #8a8a8a;
+  border-color: #e1e1e1;
+  background: #f7f7f7;
+  opacity: 1;
+}
