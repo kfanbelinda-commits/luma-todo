@@ -58,7 +58,7 @@ body:hover .resize-corner::after { opacity: .28; }
 
 .app-shell {
   gap: 9px;
-  padding: 9px;
+  padding: 2px;
   grid-template-columns: 0 1fr;
   transition: none;
 }
