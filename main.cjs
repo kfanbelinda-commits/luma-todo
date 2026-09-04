@@ -9,15 +9,15 @@ const DEMO_MODE = !app.isPackaged && process.argv.includes('--demo');
 const DEMO_RESET_MODE = DEMO_MODE && process.argv.includes('--demo-reset');
 const ICLOUD_TEST_MODE = !app.isPackaged && process.argv.includes('--icloud-test');
 
-// Keep production, demo, and iCloud experiments completely separate.
+// Demo data stays isolated. The iCloud experiment deliberately uses the real
+// Luma userData so it can be tested against the user's actual Event database.
+// The normal single-instance lock prevents production and the experiment from
+// writing the same data file at the same time.
 if (process.platform === 'win32') {
-  const appDataName = ICLOUD_TEST_MODE
-    ? 'luma-todo-icloud-test'
-    : (DEMO_MODE ? 'luma-todo-demo' : 'luma-todo');
+  const appDataName = DEMO_MODE ? 'luma-todo-demo' : 'luma-todo';
   app.setPath('userData', path.join(app.getPath('home'), 'AppData', 'Roaming', appDataName));
-} else if (DEMO_MODE || ICLOUD_TEST_MODE) {
-  const suffix = ICLOUD_TEST_MODE ? '-icloud-test' : '-demo';
-  app.setPath('userData', `${app.getPath('userData')}${suffix}`);
+} else if (DEMO_MODE) {
+  app.setPath('userData', `${app.getPath('userData')}-demo`);
 }
 
 const COMPACT = { width: 410, height: 550 };
