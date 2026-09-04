@@ -2121,7 +2121,7 @@ function renderGoogleStatus(status) {
   const connected = Boolean(status?.connected);
   state.settings.googleConnected = connected;
   $('#googleStatusText').textContent = connected ? '已连接 · Tasks 与 Calendar' : '未连接';
-  $('#connectGoogle').textContent = status?.requiresCalendarReauth ? '重新授权' : (connected ? '立即同步' : '连接');
+  $('#connectGoogle').textContent = status?.requiresCalendarReauth ? '重新授权' : (connected ? '同步' : '连接');
   $('#disconnectGoogle').hidden = !connected;
   if (!status?.credentialsAvailable) {
     $('#googleNote').textContent = '项目目录中没有找到 credentials.json。';
@@ -2218,18 +2218,22 @@ async function disconnectGoogle() {
 
 function renderRemindersBridgeStatus(status) {
   const available = Boolean(status && status.available);
-  const folder = String((status && status.folder) || '');
-  const outputPath = String((status && status.outputPath) || '');
+  const enabled = Boolean(status && status.enabled);
+  const chooseButton = $('#chooseRemindersBridgeFolder');
 
-  $('#remindersBridgeStatusText').textContent = available ? 'iCloud Drive 已就绪' : '未找到 iCloud Drive';
+  $('#remindersBridgeStatusText').textContent = available
+    ? (enabled ? '已启用 · 自动更新' : 'iCloud Drive 已就绪')
+    : '需要选择 iCloud Drive';
+
   $('#exportRemindersBridge').disabled = !available;
+  chooseButton.hidden = available;
 
   if (available) {
-    $('#remindersBridgeNote').textContent =
-      'Todo 将写入：' + outputPath + '。Event 不会进入这个文件。';
+    $('#remindersBridgeNote').textContent = enabled
+      ? 'Luma 保存待办时会自动更新到 iCloud Drive。'
+      : '点“同步”一次后，后续修改会自动更新。';
   } else {
-    $('#remindersBridgeNote').textContent =
-      '未自动找到 iCloud Drive。请点“选择”，手动选择 Windows 文件资源管理器中的 iCloud Drive 文件夹。';
+    $('#remindersBridgeNote').textContent = '请选择 iCloud Drive 位置后启用待办同步。';
   }
 }
 
@@ -2273,7 +2277,7 @@ async function exportRemindersBridge() {
       folder: status && status.folder ? status.folder : '',
     });
     $('#remindersBridgeNote').textContent =
-      '已生成 ' + (result?.count || 0) + ' 个 Todo：' + (result?.outputPath || '');
+      '已同步 ' + (result?.count || 0) + ' 个待办；后续修改会自动更新。';
     await refreshRemindersBridgeStatus();
   } catch (error) {
     $('#remindersBridgeNote').textContent =
@@ -2296,7 +2300,7 @@ function renderIcloudStatus(status) {
     : ((status && status.demo) ? 'Demo 中不可连接' : '未连接');
 
   connectButton.hidden = false;
-  connectButton.textContent = connected ? '立即同步' : '连接';
+  connectButton.textContent = connected ? '同步' : '连接';
   $('#disconnectIcloud').hidden = !connected;
   credentialPanel.hidden = connected;
   calendarPanel.hidden = !connected;
@@ -2321,14 +2325,14 @@ function renderIcloudStatus(status) {
 
     connectButton.disabled = false;
     $('#icloudNote').textContent = calendarSelect.value
-      ? '已连接。当前实验版先同步 Luma Event → 所选 iCloud 日历。'
-      : '已连接。请选择要写入的 iCloud 日历，再点击“立即同步”。';
+      ? 'Luma 日程将同步到所选 iCloud 日历。'
+      : '请选择用于 Luma 日程的 iCloud 日历。';
   } else if (status && status.demo) {
     $('#icloudNote').textContent = '演示模式不会连接真实 iCloud 账户；请用 npm run start:icloud 测试。';
     connectButton.disabled = true;
     calendarSelect.innerHTML = '<option value="">选择 iCloud 日历…</option>';
   } else {
-    $('#icloudNote').textContent = '输入 Apple 账户邮箱和 App 专用密码，先测试并发现 iCloud 日历。';
+    $('#icloudNote').textContent = '使用 Apple 账户邮箱和 App 专用密码连接。';
     connectButton.disabled = false;
     calendarSelect.innerHTML = '<option value="">选择 iCloud 日历…</option>';
   }
