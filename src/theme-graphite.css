@@ -3593,3 +3593,113 @@ html[data-theme="light"] .calendar-todo-check:focus-visible {
   background: color-mix(in srgb, var(--event-color) 14%, #ffffff 86%);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--event-color) 18%, transparent);
 }
+
+
+/* Todo completion grace period: checkbox itself doubles as undo. */
+@keyframes todo-complete-feedback {
+  0% { opacity: 1; }
+  45% { opacity: .62; }
+  100% { opacity: .76; }
+}
+
+@keyframes todo-check-feedback {
+  0% { transform: scale(.78); }
+  58% { transform: scale(1.10); }
+  100% { transform: scale(1); }
+}
+
+/* Right Todo list: keep the row in place for 1.5s, but show completion immediately. */
+.task-item.pending-completion {
+  opacity: .76;
+  animation: todo-complete-feedback 220ms ease-out both;
+}
+
+.task-item.pending-completion .check {
+  animation: todo-check-feedback 220ms ease-out both;
+}
+
+.task-item.pending-completion .task-title {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+/* Calendar: pending completion keeps the checkbox visible so a second click can undo. */
+.day-event.calendar-todo-item.pending-completion {
+  gap: 5px;
+  padding: 2px 5px 2px 4px;
+  opacity: .76;
+  animation: todo-complete-feedback 220ms ease-out both;
+}
+
+.calendar-todo-check.is-checked {
+  position: relative;
+  color: #fff;
+  background: var(--event-color);
+  animation: todo-check-feedback 220ms ease-out both;
+}
+
+.calendar-todo-check.is-checked::after {
+  content: '✓';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 7px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* Date detail uses the same reversible completion state. */
+.calendar-detail-todo-row.pending-completion {
+  opacity: .72;
+  animation: todo-complete-feedback 220ms ease-out both;
+}
+
+.calendar-detail-todo-row.pending-completion .calendar-detail-task-title {
+  text-decoration: line-through;
+}
+
+.calendar-detail-check.is-checked {
+  position: relative;
+  color: #fff;
+  background: var(--detail-color);
+  animation: todo-check-feedback 220ms ease-out both;
+}
+
+.calendar-detail-check.is-checked::after {
+  content: '✓';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-item.pending-completion,
+  .task-item.pending-completion .check,
+  .day-event.calendar-todo-item.pending-completion,
+  .calendar-todo-check.is-checked,
+  .calendar-detail-todo-row.pending-completion,
+  .calendar-detail-check.is-checked {
+    animation: none;
+  }
+}
+
+html[data-theme="light"] .task-item.pending-completion .task-title {
+  color: #8a8a8a;
+}
+
+html[data-theme="light"] .calendar-todo-check.is-checked {
+  border-color: var(--event-color);
+  background: var(--event-color);
+}
+
+html[data-theme="light"] .calendar-detail-check.is-checked {
+  border-color: var(--detail-color);
+  background: var(--detail-color);
+}
