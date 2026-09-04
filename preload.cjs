@@ -22,8 +22,4 @@ contextBridge.exposeInMainWorld('luma', {
   icloudConnect: (payload) => ipcRenderer.invoke('icloud:connect', payload),
   icloudDisconnect: () => ipcRenderer.invoke('icloud:disconnect'),
   icloudSync: (payload) => ipcRenderer.invoke('icloud:sync', payload),
-  remindersBridgeStatus: () => ipcRenderer.invoke('reminders-bridge:status'),
-  remindersBridgeChooseFolder: () => ipcRenderer.invoke('reminders-bridge:choose-folder'),
-  remindersBridgeExport: (payload) => ipcRenderer.invoke('reminders-bridge:export', payload),
-  remindersBridgeAutoExport: (state) => ipcRenderer.invoke('reminders-bridge:auto-export', state),
 });
