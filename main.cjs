@@ -294,6 +294,12 @@ function nextDateKey(dateKey) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+function previousDateKey(dateKey) {
+  const date = new Date(`${dateKey}T12:00:00`);
+  date.setDate(date.getDate() - 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 const LUMA_TASK_NOTES_PREFIX = '[Luma Todo]\n';
 const LUMA_METADATA_NOTES_PREFIX = '[Luma Todo Sync Metadata v1]\n';
 const LUMA_METADATA_TITLE = 'Luma Todo 同步数据（请勿删除）';
@@ -391,6 +397,7 @@ function taskNotes(state, task) {
 
 function calendarBody(state, task) {
   const project = projectMetadataForTask(state, task);
+  const itemType = task.itemType === 'event' ? 'event' : 'todo';
   const body = {
     summary: task.title,
     extendedProperties: {
@@ -398,6 +405,7 @@ function calendarBody(state, task) {
         lumaTodo: 'true',
         lumaVersion: '2',
         lumaTaskId: String(task.id),
+        lumaItemType: itemType,
         lumaProjectId: project.projectId,
         lumaProjectName: project.projectName,
         lumaProjectColor: project.projectColor,
@@ -409,6 +417,27 @@ function calendarBody(state, task) {
       },
     },
   };
+
+  if (itemType === 'event') {
+    const endDate = task.endDate && task.endDate >= task.dueDate ? task.endDate : task.dueDate;
+    if (task.time) {
+      const start = new Date(`${task.dueDate}T${task.time}:00`);
+      let end;
+      if (endDate && endDate !== task.dueDate) {
+        end = new Date(`${endDate}T${task.endTime || task.time}:00`);
+        if (end <= start) end = new Date(start.getTime() + 30 * 60000);
+      } else {
+        end = new Date(start.getTime() + 30 * 60000);
+      }
+      body.start = { dateTime: start.toISOString() };
+      body.end = { dateTime: end.toISOString() };
+    } else {
+      body.start = { date: task.dueDate };
+      body.end = { date: nextDateKey(endDate || task.dueDate) };
+    }
+    return body;
+  }
+
   if (task.time) {
     const start = new Date(`${task.dueDate}T${task.time}:00`);
     const end = new Date(start.getTime() + 30 * 60000);
@@ -424,6 +453,7 @@ function calendarBody(state, task) {
 function applyCalendarEvent(task, event) {
   const details = event.extendedProperties?.private || {};
   task.title = event.summary || task.title;
+
   if (event.start?.date) {
     task.dueDate = event.start.date;
     task.time = '';
@@ -432,6 +462,20 @@ function applyCalendarEvent(task, event) {
     task.dueDate = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
     task.time = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`;
   }
+
+  if (event.end?.date) {
+    task.endDate = previousDateKey(event.end.date);
+    task.endTime = '';
+  } else if (event.end?.dateTime) {
+    const end = new Date(event.end.dateTime);
+    task.endDate = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
+    task.endTime = `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`;
+  } else {
+    task.endDate = task.dueDate || '';
+    task.endTime = '';
+  }
+
+  if (Object.hasOwn(details, 'lumaItemType')) task.itemType = details.lumaItemType === 'event' ? 'event' : 'todo';
   if (Object.hasOwn(details, 'lumaCompleted')) task.completed = details.lumaCompleted === 'true';
   if (Object.hasOwn(details, 'lumaReminder')) task.reminder = details.lumaReminder === '' ? null : Number(details.lumaReminder);
   task.projectId = details.lumaProjectId || task.projectId || 'inbox';
@@ -440,8 +484,11 @@ function applyCalendarEvent(task, event) {
 
 function applyGoogleTask(task, remoteTask, details = {}) {
   task.title = remoteTask.title || task.title;
+  task.itemType = 'todo';
   task.completed = remoteTask.status === 'completed';
   task.dueDate = remoteTask.due ? remoteTask.due.slice(0, 10) : '';
+  task.endDate = '';
+  task.endTime = '';
   task.time = '';
   task.projectId = details.projectId || task.projectId || 'inbox';
   if (details.order != null) task.order = Number(details.order);
@@ -583,6 +630,7 @@ function calendarTaskDetails(event) {
   return {
     version: Number(details.lumaVersion || 1),
     taskId: details.lumaTaskId,
+    itemType: details.lumaItemType === 'event' ? 'event' : 'todo',
     projectId: details.lumaProjectId || 'inbox',
     projectName: details.lumaProjectName,
     projectColor: details.lumaProjectColor,
@@ -643,7 +691,7 @@ async function syncGoogleState(state) {
       const remoteUpdatedAt = Date.parse(remote.updated || 0) || syncTime;
       const previousRemoteUpdatedAt = Number(task.googleRemoteUpdatedAt || 0);
       applyCalendarEvent(task, remote);
-      task.time = '';
+      task.itemType = 'event';
       task.projectId = ensureGoogleCalendarProject(state).id;
       task.completed = false;
       task.syncTarget = 'external-calendar';
@@ -784,6 +832,9 @@ async function syncGoogleState(state) {
       updatedAt: remoteUpdatedAt,
       order: Number(event.extendedProperties?.private?.lumaOrder || remoteUpdatedAt),
       reminder: null,
+      itemType: isLumaEvent
+        ? (event.extendedProperties?.private?.lumaItemType === 'event' ? 'event' : 'todo')
+        : 'event',
       syncTarget: isLumaEvent ? 'calendar' : 'external-calendar',
       googleCalendarEventId: event.id,
       googleCalendarId: calendarIdForEvent(event),
@@ -794,8 +845,8 @@ async function syncGoogleState(state) {
     };
     applyCalendarEvent(task, event);
     if (!isLumaEvent) {
+      task.itemType = 'event';
       task.projectId = project.id;
-      task.time = '';
     }
     retainedTasks.push(task);
     state.tasks.push(task);
@@ -817,6 +868,7 @@ async function syncGoogleState(state) {
       updatedAt: remoteUpdatedAt,
       order: Number(details.order || remoteUpdatedAt),
       reminder: details.reminder ?? null,
+      itemType: 'todo',
       syncTarget: 'tasks',
       googleTaskId: remoteTask.id,
       googleRemoteUpdatedAt: remoteUpdatedAt,
