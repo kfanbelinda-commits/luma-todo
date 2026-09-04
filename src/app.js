@@ -885,7 +885,7 @@ function renderCalendar() {
       if (taskId) await moveTaskToDate(taskId, key);
     });
     cell.addEventListener('click', () => openCalendarDetail(key));
-    cell.addEventListener('dblclick', () => openCalendarTaskDialog(key, 'todo'));
+    cell.addEventListener('dblclick', () => openCalendarTaskDialog(key));
     cell.addEventListener('keydown', (event) => {
       if ((event.key === 'Enter' || event.key === ' ') && event.target === cell) {
         event.preventDefault();
@@ -1049,31 +1049,55 @@ async function moveTaskToDate(taskId, dateKey) {
   render();
 }
 
-function openCalendarTaskDialog(dateKey, mode = 'todo', eventId = null) {
-  calendarCreateMode = mode === 'event' ? 'event' : 'todo';
-  const eventMode = calendarCreateMode === 'event';
-  const editingEvent = eventMode && eventId
+function calendarItemModeFromTimeField() {
+  if (editingCalendarEventId) return 'event';
+  const raw = String($('#calendarTaskTime')?.value || '').trim();
+  return raw ? 'event' : 'todo';
+}
+
+function updateCalendarItemDialogMode() {
+  const eventMode = calendarItemModeFromTimeField() === 'event';
+  $('#calendarTaskEndDateLabel').hidden = !eventMode;
+  $('#calendarTaskProjectLabel').hidden = eventMode;
+  $('#calendarEventColorLabel').hidden = !eventMode;
+  if (eventMode) renderEventColorChoices();
+  if (!editingCalendarEventId) {
+    $('#calendarTaskEyebrow').textContent = '月历事项';
+    $('#calendarTaskDialogTitle').textContent = '新建事项';
+    $('#calendarTaskTitleText').textContent = '事项内容';
+    $('#calendarTaskDateText').textContent = eventMode ? '开始日期' : '日期';
+    $('#calendarTaskTimeText').textContent = '时间';
+    $('#calendarTaskSubmit').textContent = '添加事项';
+  }
+}
+
+function openCalendarTaskDialog(dateKey, mode = 'auto', eventId = null) {
+  const editingEvent = eventId
     ? state.tasks.find((task) => task.id === eventId && isCalendarEvent(task) && !task.googleCalendarExternal && task.syncTarget !== 'external-calendar')
     : null;
   editingCalendarEventId = editingEvent?.id || null;
+  calendarCreateMode = editingEvent ? 'event' : 'auto';
   selectedEventColor = editingEvent ? eventColorFor(editingEvent) : DEFAULT_EVENT_COLOR;
 
   $('#calendarTaskTitle').value = editingEvent?.title || '';
   $('#calendarTaskDate').value = editingEvent?.dueDate || dateKey;
   $('#calendarTaskEndDate').value = editingEvent?.endDate || editingEvent?.dueDate || dateKey;
-  $('#calendarTaskTime').value = editingEvent?.time || '';
+  $('#calendarTaskTime').value = editingEvent ? (editingEvent.time || '全天') : '';
   $('#calendarTaskProject').innerHTML = projectOptions('inbox');
-  $('#calendarTaskEyebrow').textContent = eventMode ? '月历日程' : '月历待办';
-  $('#calendarTaskDialogTitle').textContent = editingEvent ? '编辑日程' : (eventMode ? '新建日程' : '新建待办');
-  $('#calendarTaskTitleText').textContent = eventMode ? '日程内容' : '待办内容';
-  $('#calendarTaskDateText').textContent = eventMode ? '开始日期' : '日期';
-  $('#calendarTaskTimeText').textContent = eventMode ? '开始时间' : '时间';
-  $('#calendarTaskEndDateLabel').hidden = !eventMode;
-  $('#calendarTaskProjectLabel').hidden = eventMode;
-  $('#calendarEventColorLabel').hidden = !eventMode;
-  renderEventColorChoices();
-  $('#deleteCalendarEventButton').hidden = !editingEvent;
-  $('#calendarTaskSubmit').textContent = editingEvent ? '保存日程' : (eventMode ? '添加日程' : '添加待办');
+
+  if (editingEvent) {
+    $('#calendarTaskEyebrow').textContent = '月历日程';
+    $('#calendarTaskDialogTitle').textContent = '编辑日程';
+    $('#calendarTaskTitleText').textContent = '日程内容';
+    $('#calendarTaskDateText').textContent = '开始日期';
+    $('#calendarTaskTimeText').textContent = '时间';
+    $('#deleteCalendarEventButton').hidden = false;
+    $('#calendarTaskSubmit').textContent = '保存日程';
+  } else {
+    $('#deleteCalendarEventButton').hidden = true;
+  }
+
+  updateCalendarItemDialogMode();
   $('#calendarTaskDialog').showModal();
   requestAnimationFrame(() => $('#calendarTaskTitle').focus());
 }
@@ -1082,11 +1106,23 @@ async function createCalendarTask(event) {
   event.preventDefault();
   const title = $('#calendarTaskTitle').value.trim();
   if (!title) return;
-  const timeResult = validatedTimeField($('#calendarTaskTime'));
-  if (!timeResult.valid) return;
+
+  const rawTime = String($('#calendarTaskTime').value || '').trim();
+  const allDay = rawTime === '全天';
+  let time = '';
+  if (rawTime && !allDay) {
+    const normalized = normalizeTimeValue(rawTime);
+    if (normalized === null) {
+      $('#calendarTaskTime').setCustomValidity('请选择“无时间”“全天”或输入 00:00–23:59');
+      $('#calendarTaskTime').reportValidity();
+      return;
+    }
+    time = normalized;
+  }
+  $('#calendarTaskTime').setCustomValidity('');
 
   const dueDate = $('#calendarTaskDate').value;
-  const eventMode = calendarCreateMode === 'event';
+  const eventMode = Boolean(editingCalendarEventId || allDay || time);
   const endDate = eventMode ? ($('#calendarTaskEndDate').value || dueDate) : '';
   if (eventMode && endDate < dueDate) {
     $('#calendarTaskEndDate').setCustomValidity('结束日期不能早于开始日期');
@@ -1095,13 +1131,13 @@ async function createCalendarTask(event) {
   }
   $('#calendarTaskEndDate').setCustomValidity('');
 
-  if (eventMode && editingCalendarEventId) {
+  if (editingCalendarEventId) {
     const task = state.tasks.find((item) => item.id === editingCalendarEventId);
     if (task && !task.googleCalendarExternal && task.syncTarget !== 'external-calendar') {
       task.title = title;
       task.dueDate = dueDate;
       task.endDate = endDate;
-      task.time = timeResult.value;
+      task.time = allDay ? '' : time;
       task.eventColor = selectedEventColor;
       task.itemType = 'event';
       task.completed = false;
@@ -1121,24 +1157,19 @@ async function createCalendarTask(event) {
     projectId: eventMode ? 'inbox' : ($('#calendarTaskProject').value || 'inbox'),
     dueDate,
     endDate,
-    time: timeResult.value,
+    time: eventMode && !allDay ? time : '',
     eventColor: eventMode ? selectedEventColor : '',
     itemType: eventMode ? 'event' : 'todo',
     completed: false,
     createdAt: Date.now(),
     updatedAt: Date.now(),
     order: Date.now(),
-    syncTarget: eventMode ? 'calendar' : (timeResult.value ? 'calendar' : 'tasks'),
+    syncTarget: eventMode ? 'calendar' : 'tasks',
   };
   state.tasks.push(task);
   $('#calendarTaskDialog').close();
   await persist();
   render();
-
-  if (!eventMode && task.time) {
-    pendingReminderTaskId = task.id;
-    $('#reminderPopover').classList.remove('hidden');
-  }
 }
 
 async function deleteEditingCalendarEvent() {
@@ -1202,6 +1233,14 @@ function populateTimePicker(picker) {
   none.dataset.time = '';
   none.textContent = '无时间';
   picker.appendChild(none);
+  if (picker.closest('#calendarTaskDialog')) {
+    const allDay = document.createElement('button');
+    allDay.type = 'button';
+    allDay.className = 'time-option time-option-all-day';
+    allDay.dataset.time = '全天';
+    allDay.textContent = '全天';
+    picker.appendChild(allDay);
+  }
   TIME_OPTIONS.forEach((time) => {
     const button = document.createElement('button');
     button.type = 'button';
@@ -1217,7 +1256,10 @@ function openTimePicker(input) {
   if (!picker) return;
   populateTimePicker(picker);
   closeTimePickers(picker);
-  const selected = normalizeTimeValue(input.value);
+  const rawValue = String(input.value || '').trim();
+  const selected = input.id === 'calendarTaskTime' && rawValue === '全天'
+    ? '全天'
+    : normalizeTimeValue(rawValue);
   picker.querySelectorAll('.time-option').forEach((option) => {
     option.classList.toggle('selected', option.dataset.time === (selected || ''));
   });
@@ -1252,6 +1294,10 @@ function bindTimePickers() {
       }
     });
     input.addEventListener('blur', () => {
+      if (input.id === 'calendarTaskTime' && String(input.value || '').trim() === '全天') {
+        input.setCustomValidity('');
+        return;
+      }
       const normalized = normalizeTimeValue(input.value);
       if (normalized !== null) {
         input.value = normalized;
@@ -1265,10 +1311,14 @@ function bindTimePickers() {
       input.value = option.dataset.time;
       input.setCustomValidity('');
       input.dispatchEvent(new Event('change', { bubbles: true }));
+      if (input.id === 'calendarTaskTime') updateCalendarItemDialogMode();
       picker.hidden = true;
       input.focus();
     });
   });
+  $('#calendarTaskTime')?.addEventListener('input', updateCalendarItemDialogMode);
+  $('#calendarTaskTime')?.addEventListener('change', updateCalendarItemDialogMode);
+
   document.addEventListener('pointerdown', (event) => {
     if (event.target.closest('.time-field')) return;
     closeTimePickers();
@@ -1867,11 +1917,8 @@ function bindEvents() {
     if (!event.target.closest('#calendarPanel')) return;
     closeCalendarDetail();
   }, { capture: true });
-  $('#addCalendarSchedule').addEventListener('click', () => {
-    if (calendarDetailDate) openCalendarTaskDialog(calendarDetailDate, 'event');
-  });
-  $('#addCalendarTodo').addEventListener('click', () => {
-    if (calendarDetailDate) openCalendarTaskDialog(calendarDetailDate, 'todo');
+  $('#addCalendarItem').addEventListener('click', () => {
+    if (calendarDetailDate) openCalendarTaskDialog(calendarDetailDate);
   });
 
   $('#calendarPanel').addEventListener('wheel', (event) => {
