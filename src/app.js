@@ -665,6 +665,7 @@ function renderCalendar() {
 function closeCalendarDetail() {
   calendarDetailDate = null;
   const detail = $('#calendarDetail');
+  $('#calendarPanel')?.classList.remove('calendar-detail-open');
   detail.classList.add('hidden');
   detail.setAttribute('aria-hidden', 'true');
   renderCalendar();
@@ -707,6 +708,7 @@ function positionCalendarDetail() {
 
 function openCalendarDetail(dateKey) {
   calendarDetailDate = dateKey;
+  $('#calendarPanel')?.classList.add('calendar-detail-open');
   const selected = fromDateKey(dateKey);
   if (selected.getFullYear() !== calendarCursor.getFullYear() || selected.getMonth() !== calendarCursor.getMonth()) {
     calendarCursor = new Date(selected.getFullYear(), selected.getMonth(), 1);
@@ -719,10 +721,12 @@ function openCalendarDetail(dateKey) {
 function renderCalendarDetail() {
   const detail = $('#calendarDetail');
   if (!detail || !calendarDetailDate || !expanded) {
+    $('#calendarPanel')?.classList.remove('calendar-detail-open');
     detail?.classList.add('hidden');
     detail?.setAttribute('aria-hidden', 'true');
     return;
   }
+  $('#calendarPanel')?.classList.add('calendar-detail-open');
 
   const selectedDate = fromDateKey(calendarDetailDate);
   const lunar = formatLunarDate(selectedDate);
@@ -1284,7 +1288,10 @@ async function toggleExpanded(force) {
     await new Promise((resolve) => requestAnimationFrame(resolve));
     await window.luma?.setExpanded(nextExpanded);
     expanded = nextExpanded;
-    if (!expanded) calendarDetailDate = null;
+    if (!expanded) {
+      calendarDetailDate = null;
+      $('#calendarPanel')?.classList.remove('calendar-detail-open');
+    }
     app.classList.toggle('expanded', expanded);
     await new Promise((resolve) => requestAnimationFrame(resolve));
   } finally {
