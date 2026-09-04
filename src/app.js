@@ -185,7 +185,8 @@ function addCalendarEventResizeHandle(host, task, edge) {
     if (event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
-    beginCalendarEventResize(task.id, edge);
+    handle.parentElement?.classList.add('event-resizing');
+    beginCalendarEventResize(task.id, edge, event.pointerId);
   });
   handle.addEventListener('click', (event) => {
     event.preventDefault();
@@ -194,18 +195,28 @@ function addCalendarEventResizeHandle(host, task, edge) {
   host.appendChild(handle);
 }
 
-function beginCalendarEventResize(taskId, edge) {
+function beginCalendarEventResize(taskId, edge, pointerId) {
   const task = state.tasks.find((item) => item.id === taskId);
   if (!localResizableCalendarEvent(task)) return;
+
+  const panel = $('#calendarPanel');
+  if (panel && Number.isInteger(pointerId)) {
+    try {
+      panel.setPointerCapture(pointerId);
+    } catch {
+      // Continue with the document-level pointer listeners.
+    }
+  }
+
   calendarEventResizeState = {
     taskId,
     edge,
+    pointerId,
     originalStart: task.dueDate,
     originalEnd: task.endDate || task.dueDate,
     previewDate: edge === 'start' ? task.dueDate : (task.endDate || task.dueDate),
   };
   document.body.classList.add('calendar-event-resizing');
-  renderCalendar();
 }
 
 function calendarResizeDateAtPoint(clientX, clientY) {
@@ -238,6 +249,16 @@ function updateCalendarEventResize(event) {
 async function finishCalendarEventResize(cancel = false) {
   const resize = calendarEventResizeState;
   if (!resize) return;
+
+  const panel = $('#calendarPanel');
+  if (panel && Number.isInteger(resize.pointerId)) {
+    try {
+      if (panel.hasPointerCapture(resize.pointerId)) panel.releasePointerCapture(resize.pointerId);
+    } catch {
+      // Capture may already have been released by the browser.
+    }
+  }
+
   calendarEventResizeState = null;
   document.body.classList.remove('calendar-event-resizing');
 
@@ -1911,13 +1932,19 @@ function bindEvents() {
   $('#closeCalendarDetail').addEventListener('click', closeCalendarDetail);
 
   document.addEventListener('pointermove', (event) => {
-    if (calendarEventResizeState) updateCalendarEventResize(event);
+    if (calendarEventResizeState && event.pointerId === calendarEventResizeState.pointerId) {
+      updateCalendarEventResize(event);
+    }
   });
-  document.addEventListener('pointerup', () => {
-    if (calendarEventResizeState) finishCalendarEventResize(false);
+  document.addEventListener('pointerup', (event) => {
+    if (calendarEventResizeState && event.pointerId === calendarEventResizeState.pointerId) {
+      finishCalendarEventResize(false);
+    }
   });
-  document.addEventListener('pointercancel', () => {
-    if (calendarEventResizeState) finishCalendarEventResize(true);
+  document.addEventListener('pointercancel', (event) => {
+    if (calendarEventResizeState && event.pointerId === calendarEventResizeState.pointerId) {
+      finishCalendarEventResize(true);
+    }
   });
   window.addEventListener('blur', () => {
     if (calendarEventResizeState) finishCalendarEventResize(true);
