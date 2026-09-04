@@ -1465,3 +1465,222 @@ html[data-theme="light"] .month-lunar {
 .date-summary-chevron {
   display: none;
 }
+
+
+/* Calendar date detail: overlay only, never changes the calendar/todo layout. */
+.calendar-panel {
+  position: relative;
+}
+.calendar-detail {
+  position: absolute;
+  z-index: 18;
+  top: 86px;
+  right: 20px;
+  bottom: 20px;
+  width: min(350px, 43%);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 14px;
+  background: rgba(34,37,44,.96);
+  box-shadow: 0 16px 40px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.07);
+  overflow: hidden;
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 150ms ease, transform 170ms ease;
+}
+.calendar-detail.hidden {
+  display: flex !important;
+  opacity: 0;
+  transform: translateX(10px);
+  pointer-events: none;
+  visibility: hidden;
+}
+.calendar-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 17px 12px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.calendar-detail-header h3 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.2;
+}
+.calendar-detail-lunar {
+  margin: 4px 0 0;
+  color: rgba(232,236,244,.58);
+  font-size: 11px;
+}
+.calendar-detail-close {
+  width: 25px;
+  height: 25px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: rgba(239,242,248,.58);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.calendar-detail-close:hover {
+  color: white;
+  background: rgba(255,255,255,.08);
+}
+.calendar-detail-section {
+  padding: 12px 16px 10px;
+}
+.calendar-detail-section + .calendar-detail-section {
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+.calendar-detail-todos {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+}
+.calendar-detail-section-title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 7px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.calendar-detail-count {
+  color: rgba(232,236,244,.48);
+  font-size: 11px;
+  font-weight: 500;
+}
+.calendar-detail-hint {
+  margin: -3px 0 8px;
+  color: rgba(232,236,244,.45);
+  font-size: 10px;
+}
+.calendar-detail-list {
+  display: grid;
+  gap: 3px;
+}
+.calendar-detail-schedule,
+.calendar-detail-todo-row {
+  min-width: 0;
+  min-height: 32px;
+  display: grid;
+  grid-template-columns: 8px 46px minmax(0,1fr) auto;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 8px;
+  padding: 5px 7px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+}
+.calendar-detail-schedule:not(.readonly) {
+  cursor: pointer;
+}
+.calendar-detail-schedule:not(.readonly):hover,
+.calendar-detail-todo-row:hover {
+  background: rgba(255,255,255,.055);
+}
+.calendar-detail-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--detail-color);
+}
+.calendar-detail-time {
+  color: rgba(232,236,244,.55);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+.calendar-detail-task-title {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(250,251,253,.91);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+}
+.calendar-detail-project {
+  max-width: 62px;
+  overflow: hidden;
+  border-radius: 999px;
+  padding: 2px 6px;
+  color: var(--detail-color);
+  background: color-mix(in srgb, var(--detail-color) 14%, transparent);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9.5px;
+}
+.calendar-detail-todo-row {
+  grid-template-columns: 18px minmax(0,1fr) auto auto;
+}
+.calendar-detail-check {
+  width: 15px;
+  height: 15px;
+  border: 1px solid var(--detail-color);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+.calendar-detail-overdue {
+  color: rgba(240,186,115,.75);
+  font-size: 9.5px;
+}
+.calendar-detail-add {
+  width: 100%;
+  margin-top: 8px;
+  border: 1px dashed rgba(255,255,255,.11);
+  border-radius: 8px;
+  padding: 7px;
+  color: rgba(239,242,248,.60);
+  background: rgba(255,255,255,.025);
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+.calendar-detail-add:hover {
+  color: rgba(255,255,255,.92);
+  background: rgba(255,255,255,.06);
+}
+.calendar-detail-empty {
+  margin: 4px 7px 6px;
+  color: rgba(232,236,244,.40);
+  font-size: 10.5px;
+}
+html[data-theme="light"] .calendar-detail {
+  border-color: rgba(57,70,92,.13);
+  background: rgba(249,250,252,.97);
+  box-shadow: 0 16px 40px rgba(61,72,92,.16), inset 0 1px 0 rgba(255,255,255,.86);
+}
+html[data-theme="light"] .calendar-detail-header,
+html[data-theme="light"] .calendar-detail-section + .calendar-detail-section {
+  border-color: rgba(57,70,92,.09);
+}
+html[data-theme="light"] .calendar-detail-lunar,
+html[data-theme="light"] .calendar-detail-count,
+html[data-theme="light"] .calendar-detail-time,
+html[data-theme="light"] .calendar-detail-hint,
+html[data-theme="light"] .calendar-detail-empty {
+  color: rgba(58,71,92,.55);
+}
+html[data-theme="light"] .calendar-detail-task-title {
+  color: #263244;
+}
+html[data-theme="light"] .calendar-detail-close {
+  color: rgba(58,71,92,.58);
+}
+html[data-theme="light"] .calendar-detail-close:hover,
+html[data-theme="light"] .calendar-detail-schedule:not(.readonly):hover,
+html[data-theme="light"] .calendar-detail-todo-row:hover {
+  color: #263244;
+  background: rgba(58,71,92,.055);
+}
+html[data-theme="light"] .calendar-detail-add {
+  border-color: rgba(57,70,92,.13);
+  color: rgba(58,71,92,.62);
+  background: rgba(58,71,92,.025);
+}
