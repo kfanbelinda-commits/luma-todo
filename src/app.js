@@ -124,9 +124,14 @@ function projectById(id) {
   return state.projects.find((project) => project.id === id) || state.projects[0];
 }
 
+function isSystemCalendarProject(projectOrId) {
+  const id = typeof projectOrId === 'string' ? projectOrId : projectOrId?.id;
+  return id === 'google-calendar' || id === 'apple-calendar';
+}
+
 function projectOptions(selectedId = 'inbox') {
   return [...state.projects]
-    .filter((project) => project.id !== 'google-calendar')
+    .filter((project) => !isSystemCalendarProject(project))
     .sort((a, b) => a.order - b.order)
     .map((project) => `<option value="${escapeAttribute(project.id)}"${project.id === selectedId ? ' selected' : ''}>${escapeAttribute(project.name)}</option>`)
     .join('');
@@ -530,8 +535,8 @@ function renderProjects() {
   const orderedProjects = [...state.projects].sort((a, b) => a.order - b.order);
 
   for (const project of orderedProjects) {
-    const googleCalendarProject = project.id === 'google-calendar';
-    if (googleCalendarProject) continue;
+    const systemCalendarProject = isSystemCalendarProject(project);
+    if (systemCalendarProject) continue;
     const relevant = state.tasks.filter((task) => !isCalendarEvent(task) && task.projectId === project.id && (!taskDateFilter || task.dueDate === taskDateFilter));
     const active = relevant.filter((task) => !task.completed).sort(projectTaskSort);
     const completed = relevant.filter((task) => task.completed);
@@ -595,7 +600,7 @@ function renderProjects() {
       toggleProjectCollapsed();
     });
     collapseButton.addEventListener('dblclick', (event) => event.stopPropagation());
-    projectTitle.draggable = !googleCalendarProject;
+    projectTitle.draggable = !systemCalendarProject;
     projectTitle.addEventListener('dragstart', (event) => {
       projectWasDragged = true;
       draggedProjectId = project.id;
@@ -617,7 +622,7 @@ function renderProjects() {
         toggleProjectCollapsed();
       }, 180);
     });
-    if (!googleCalendarProject) projectTitle.addEventListener('dblclick', (event) => {
+    if (!systemCalendarProject) projectTitle.addEventListener('dblclick', (event) => {
       if (event.target.closest('.project-collapse')) return;
       clearTimeout(projectTitleClickTimer);
       projectTitleClickTimer = null;
@@ -663,9 +668,9 @@ function renderProjects() {
       draggedProjectId = null;
     });
     const projectAddButton = group.querySelector('.project-add-task');
-    projectAddButton.hidden = googleCalendarProject;
+    projectAddButton.hidden = systemCalendarProject;
     projectAddButton.addEventListener('click', async () => {
-      if (googleCalendarProject) return;
+      if (systemCalendarProject) return;
       if (collapsedProjects.delete(project.id)) {
         state.settings.collapsedProjectIds = [...collapsedProjects];
         await persist();
@@ -1783,7 +1788,7 @@ async function updateTaskTitle(id, title) {
 
 async function moveTaskToProject(id, projectId) {
   const task = state.tasks.find((item) => item.id === id);
-  if (!task || projectId === 'google-calendar' || task.googleCalendarExternal || task.syncTarget === 'external-calendar') return;
+  if (!task || isSystemCalendarProject(projectId) || task.googleCalendarExternal || task.syncTarget === 'external-calendar') return;
   task.projectId = projectId;
   task.updatedAt = Date.now();
   const targetOrders = state.tasks
