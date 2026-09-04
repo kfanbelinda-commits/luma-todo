@@ -2217,29 +2217,50 @@ function renderIcloudStatus(status) {
   const connected = Boolean(status && status.connected);
   const calendars = Array.isArray(status && status.calendars) ? status.calendars : [];
   const credentialPanel = $('#icloudCredentialPanel');
+  const calendarPanel = $('#icloudCalendarPanel');
+  const calendarSelect = $('#icloudCalendarSelect');
+  const connectButton = $('#connectIcloud');
 
   $('#icloudStatusText').textContent = connected
     ? '已连接 · ' + calendars.length + ' 个日历'
     : ((status && status.demo) ? 'Demo 中不可连接' : '未连接');
-  $('#connectIcloud').hidden = connected;
+
+  connectButton.hidden = false;
+  connectButton.textContent = connected ? '立即同步' : '连接';
   $('#disconnectIcloud').hidden = !connected;
   credentialPanel.hidden = connected;
+  calendarPanel.hidden = !connected;
 
   if (connected) {
     $('#icloudEmail').value = (status && status.email) || '';
     $('#icloudPassword').value = '';
-    const names = calendars.map((calendar) => calendar.name).filter(Boolean);
-    const preview = names.slice(0, 4).join('、');
-    const more = names.length > 4 ? ' 等 ' + names.length + ' 个' : '';
-    $('#icloudNote').textContent = preview
-      ? 'CalDAV 已连通，已发现：' + preview + more + '。下一步接 Event 双向同步。'
-      : 'CalDAV 已连通。下一步接 Event 双向同步。';
+
+    const currentValue = calendarSelect.value;
+    calendarSelect.innerHTML = '<option value="">选择 iCloud 日历…</option>';
+    calendars.forEach((calendar) => {
+      const option = document.createElement('option');
+      option.value = calendar.url;
+      option.textContent = calendar.name || '未命名日历';
+      calendarSelect.appendChild(option);
+    });
+
+    const preferred = (status && status.selectedCalendarUrl) || currentValue || '';
+    if (preferred && calendars.some((calendar) => calendar.url === preferred)) {
+      calendarSelect.value = preferred;
+    }
+
+    connectButton.disabled = false;
+    $('#icloudNote').textContent = calendarSelect.value
+      ? '已连接。当前实验版先同步 Luma Event → 所选 iCloud 日历。'
+      : '已连接。请选择要写入的 iCloud 日历，再点击“立即同步”。';
   } else if (status && status.demo) {
-    $('#icloudNote').textContent = '演示模式不会连接真实 iCloud 账户；请用 npm run start:real 测试。';
-    $('#connectIcloud').disabled = true;
+    $('#icloudNote').textContent = '演示模式不会连接真实 iCloud 账户；请用 npm run start:icloud 测试。';
+    connectButton.disabled = true;
+    calendarSelect.innerHTML = '<option value="">选择 iCloud 日历…</option>';
   } else {
     $('#icloudNote').textContent = '输入 Apple 账户邮箱和 App 专用密码，先测试并发现 iCloud 日历。';
-    $('#connectIcloud').disabled = false;
+    connectButton.disabled = false;
+    calendarSelect.innerHTML = '<option value="">选择 iCloud 日历…</option>';
   }
 }
 
@@ -2275,6 +2296,43 @@ async function connectIcloud() {
   } finally {
     button.disabled = false;
   }
+}
+
+async function syncIcloud() {
+  const button = $('#connectIcloud');
+  const calendarUrl = $('#icloudCalendarSelect').value;
+  if (!calendarUrl) {
+    $('#icloudNote').textContent = '请先选择要写入的 iCloud 日历。';
+    return;
+  }
+
+  button.disabled = true;
+  $('#icloudNote').textContent = '正在同步 Luma Event 到 iCloud…';
+  try {
+    const result = await window.luma?.icloudSync({ state, calendarUrl });
+    state = normalizeState(result.state);
+    await persist();
+    render();
+    const summary = result.summary || {};
+    $('#icloudNote').textContent =
+      '同步完成：写入“' + (summary.calendarName || 'iCloud 日历') + '”，'
+      + '新增 ' + (summary.created || 0) + ' 项、更新 ' + (summary.updated || 0)
+      + ' 项、无需更新 ' + (summary.unchanged || 0) + ' 项。';
+    await refreshIcloudStatus();
+  } catch (error) {
+    $('#icloudNote').textContent = '同步失败：' + googleErrorMessage(error);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function connectOrSyncIcloud() {
+  const status = await window.luma?.icloudStatus();
+  if (status && status.connected) {
+    await syncIcloud();
+    return;
+  }
+  await connectIcloud();
 }
 
 async function disconnectIcloud() {
@@ -2517,7 +2575,7 @@ function bindEvents() {
   });
   $('#connectGoogle').addEventListener('click', connectOrSyncGoogle);
   $('#disconnectGoogle').addEventListener('click', disconnectGoogle);
-  $('#connectIcloud').addEventListener('click', connectIcloud);
+  $('#connectIcloud').addEventListener('click', connectOrSyncIcloud);
   $('#disconnectIcloud').addEventListener('click', disconnectIcloud);
   window.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && settingsDialog.open) {
