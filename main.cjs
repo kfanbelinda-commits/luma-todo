@@ -305,6 +305,7 @@ const LUMA_METADATA_NOTES_PREFIX = '[Luma Todo Sync Metadata v1]\n';
 const LUMA_METADATA_TITLE = 'Luma Todo 同步数据（请勿删除）';
 const FALLBACK_PROJECT_COLORS = ['#7289f5', '#8b6ef5', '#4fb58f', '#f0a85a', '#ef7180', '#4da7c9'];
 const GOOGLE_CALENDAR_PROJECT_ID = 'google-calendar';
+const DEFAULT_EVENT_COLOR = '#91a9c7';
 
 function ensureGoogleCalendarProject(state) {
   state.projects ??= [];
@@ -406,6 +407,7 @@ function calendarBody(state, task) {
         lumaVersion: '2',
         lumaTaskId: String(task.id),
         lumaItemType: itemType,
+        lumaEventColor: itemType === 'event' ? String(task.eventColor || DEFAULT_EVENT_COLOR) : '',
         lumaProjectId: project.projectId,
         lumaProjectName: project.projectName,
         lumaProjectColor: project.projectColor,
@@ -476,6 +478,10 @@ function applyCalendarEvent(task, event) {
   }
 
   if (Object.hasOwn(details, 'lumaItemType')) task.itemType = details.lumaItemType === 'event' ? 'event' : 'todo';
+  const remoteEventColor = details.lumaEventColor || event._lumaCalendarColor || task.eventColor || DEFAULT_EVENT_COLOR;
+  if ((task.itemType === 'event' || task.googleCalendarExternal || task.syncTarget === 'external-calendar') && /^#[0-9a-f]{6}$/i.test(remoteEventColor)) {
+    task.eventColor = remoteEventColor;
+  }
   if (Object.hasOwn(details, 'lumaCompleted')) task.completed = details.lumaCompleted === 'true';
   if (Object.hasOwn(details, 'lumaReminder')) task.reminder = details.lumaReminder === '' ? null : Number(details.lumaReminder);
   task.projectId = details.lumaProjectId || task.projectId || 'inbox';
@@ -542,6 +548,7 @@ async function listEventsForCalendar(calendar, { lumaOnly = false } = {}) {
       ...event,
       _lumaCalendarId: calendar.id,
       _lumaCalendarName: calendar.summaryOverride || calendar.summary || calendar.id,
+      _lumaCalendarColor: /^#[0-9a-f]{6}$/i.test(calendar.backgroundColor || '') ? calendar.backgroundColor : DEFAULT_EVENT_COLOR,
     })));
     pageToken = page.nextPageToken || '';
   } while (pageToken);
@@ -631,6 +638,7 @@ function calendarTaskDetails(event) {
     version: Number(details.lumaVersion || 1),
     taskId: details.lumaTaskId,
     itemType: details.lumaItemType === 'event' ? 'event' : 'todo',
+    eventColor: /^#[0-9a-f]{6}$/i.test(details.lumaEventColor || '') ? details.lumaEventColor : '',
     projectId: details.lumaProjectId || 'inbox',
     projectName: details.lumaProjectName,
     projectColor: details.lumaProjectColor,
