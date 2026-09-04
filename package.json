@@ -17,7 +17,8 @@
     "release": "electron-builder --win --publish always",
     "start:demo": "electron . --demo",
     "start:real": "electron .",
-    "start:demo:reset": "electron . --demo --demo-reset"
+    "start:demo:reset": "electron . --demo --demo-reset",
+    "start:icloud": "electron . --icloud-test"
   },
   "devDependencies": {
     "electron": "^44.1.1",
