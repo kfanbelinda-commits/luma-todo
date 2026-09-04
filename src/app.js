@@ -1463,6 +1463,7 @@ function openTaskMenu(taskId, anchor) {
   $('#taskScheduleAction').hidden = externalCalendar;
   $('#taskProjectChoices').closest('.task-menu-section').hidden = externalCalendar;
   $('#taskDeleteAction').hidden = externalCalendar;
+  $('#taskConvertEventAction').hidden = externalCalendar || task.completed || isCalendarEvent(task);
   $('#taskCalendarAction').disabled = externalCalendar;
   $('#taskCalendarAction').innerHTML = externalCalendar
     ? `<span>来自 ${escapeAttribute(task.googleCalendarName || 'Google Calendar')}</span><small>只读同步</small>`
@@ -1491,6 +1492,21 @@ function openTaskMenu(taskId, anchor) {
     menu.style.left = `${left}px`;
     menu.style.top = `${top}px`;
   });
+}
+
+async function convertTaskToCalendarEvent(taskId) {
+  const task = state.tasks.find((item) => item.id === taskId);
+  if (!task || task.completed || isCalendarEvent(task) || task.googleCalendarExternal || task.syncTarget === 'external-calendar') return;
+  task.itemType = 'event';
+  task.dueDate = task.dueDate || dayOffset(0);
+  task.endDate = task.dueDate;
+  task.eventColor = DEFAULT_EVENT_COLOR;
+  task.syncTarget = 'calendar';
+  task.updatedAt = Date.now();
+  activeTaskMenuId = null;
+  closeTaskMenu();
+  await persist();
+  render();
 }
 
 async function toggleTaskCalendar() {
@@ -1911,6 +1927,10 @@ function bindEvents() {
     openProjectDialog(null, taskId);
   });
   $('#taskCalendarAction').addEventListener('click', toggleTaskCalendar);
+  $('#taskConvertEventAction').addEventListener('click', () => {
+    const taskId = activeTaskMenuId;
+    if (taskId) convertTaskToCalendarEvent(taskId);
+  });
   $('#taskDeleteAction').addEventListener('click', () => {
     const taskId = activeTaskMenuId;
     closeTaskMenu();
