@@ -1301,6 +1301,14 @@ function openTimePicker(input) {
   });
   picker.hidden = false;
   requestAnimationFrame(() => {
+    if (input.id === 'calendarTaskTime') {
+      const allDayOption = picker.querySelector('.time-option-all-day');
+      if (allDayOption) {
+        picker.scrollTop = Math.max(0, allDayOption.offsetTop);
+        return;
+      }
+    }
+
     let target = selected ? picker.querySelector(`.time-option[data-time="${selected}"]`) : null;
     if (!target) {
       const now = new Date();
