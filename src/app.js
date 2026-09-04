@@ -140,6 +140,18 @@ function dismissEmptyProjectQuickAdd() {
   return true;
 }
 
+function formatChineseLunarDay(value) {
+  const day = Number(value);
+  if (!Number.isInteger(day) || day < 1 || day > 30) return String(value || '');
+  const digits = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  if (day <= 9) return `初${digits[day - 1]}`;
+  if (day === 10) return '初十';
+  if (day < 20) return `十${digits[day - 11]}`;
+  if (day === 20) return '二十';
+  if (day < 30) return `廿${digits[day - 21]}`;
+  return '三十';
+}
+
 function formatLunarDate(date) {
   try {
     const parts = new Intl.DateTimeFormat('zh-CN-u-ca-chinese', {
@@ -147,7 +159,8 @@ function formatLunarDate(date) {
       day: 'numeric',
     }).formatToParts(date);
     const month = parts.find((part) => part.type === 'month')?.value || '';
-    const day = parts.find((part) => part.type === 'day')?.value || '';
+    const rawDay = parts.find((part) => part.type === 'day')?.value || '';
+    const day = /^\d+$/.test(rawDay) ? formatChineseLunarDay(rawDay) : rawDay;
     return month && day ? `农历${month}${day}` : '';
   } catch {
     return '';
