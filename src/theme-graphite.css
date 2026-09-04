@@ -2644,3 +2644,44 @@ html[data-theme="light"] .secondary-button,
 html[data-theme="light"] .soft-button {
   background: #ffffff;
 }
+
+
+/* Calendar light-mode date alignment and current-day polish. */
+/* Adjacent-month labels keep the same top-left anchor as normal dates. */
+.calendar-panel .calendar-day.muted .day-number,
+html[data-theme="light"] .calendar-panel .calendar-day.muted .day-number {
+  width: 26px;
+  min-width: 26px;
+  max-width: 26px;
+  align-self: flex-start;
+  padding: 0;
+  text-align: left;
+}
+
+/* In the white theme, today is indicated mainly by the date badge.
+   The full cell gets only a very light neutral wash. */
+html[data-theme="light"] .calendar-panel .calendar-day.today,
+html[data-theme="light"] .calendar-panel .calendar-day.today.focused-date {
+  background: #f7f7f7;
+}
+
+html[data-theme="light"] .calendar-panel .calendar-day.today:hover,
+html[data-theme="light"] .calendar-panel .calendar-day.today:focus-visible {
+  background: #f3f3f3;
+}
+
+/* Keep the current date badge compact and neutral. */
+html[data-theme="light"] .calendar-panel .today .day-number {
+  width: 26px;
+  min-width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  padding: 0;
+  color: #ffffff;
+  background: #242424;
+  border-radius: 6px;
+  text-align: center;
+}
