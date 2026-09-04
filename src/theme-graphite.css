@@ -3454,3 +3454,24 @@ html[data-theme="light"] .calendar-editor-body .calendar-mode-button.active[data
   border: 0 !important;
   box-shadow: none !important;
 }
+
+
+/* Refine the current-day badge: softer graphite and true cell centering. */
+html[data-theme="light"] .calendar-panel .today .day-number {
+  width: 28px;
+  min-width: 28px;
+  max-width: 28px;
+  height: 28px;
+  align-self: center;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: #ffffff;
+  background: #4a4f56;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  box-sizing: border-box;
+}
