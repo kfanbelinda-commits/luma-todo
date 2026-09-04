@@ -48,17 +48,14 @@
             </span>
             <h1>我的待办</h1>
           </div>
+          <button id="dateSummary" class="date-summary no-drag" type="button" aria-label="展开日历" aria-expanded="false" title="展开日历">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/></svg>
+            <span id="dateSummaryText">9月4日 周五 · 农历七月廿三</span>
+            <span class="date-summary-chevron" aria-hidden="true">⌄</span>
+          </button>
           <div class="top-actions no-drag">
-            <div class="date-filter" aria-label="按日期筛选待办">
-              <button id="previousTaskDate" class="date-step" type="button" aria-label="前一天">‹</button>
-              <button id="dateLabel" class="date-filter-label" type="button" title="点击在今天和全部任务之间切换">全部</button>
-              <button id="nextTaskDate" class="date-step" type="button" aria-label="后一天">›</button>
-            </div>
             <button id="pinWindowButton" class="icon-button" aria-label="置顶在其他窗口上方" aria-pressed="false" title="置顶在其他窗口上方">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v5l-2 4v2h6v7l1 1 1-1v-7h6v-2l-2-4V3M5 3h14"/></svg>
-            </button>
-            <button id="toggleCalendar" class="icon-button" aria-label="展开日历" title="展开日历">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/></svg>
             </button>
             <button id="settingsButton" class="icon-button" aria-label="设置" title="设置">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.55V21h-4v-.08A1.7 1.7 0 0 0 8.97 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1.03H3v-4h.08A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88L4.2 7l2.83-2.83.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 10 3.02V3h4v.08a1.7 1.7 0 0 0 1.03 1.55 1.7 1.7 0 0 0 1.88-.34l.06-.06L19.8 7l-.06.06a1.7 1.7 0 0 0-.34 1.88A1.7 1.7 0 0 0 20.92 10H21v4h-.08A1.7 1.7 0 0 0 19.4 15Z"/></svg>
