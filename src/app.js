@@ -353,7 +353,7 @@ function renderProjects() {
         <input class="project-quick-input" autocomplete="off" aria-label="在${escapeAttribute(project.name)}中添加待办" placeholder="在此分类中快速添加待办…" />
         <button class="project-quick-submit" type="button" aria-label="添加到${escapeAttribute(project.name)}">＋</button>
       </div>` : ''}
-      ${completed.length ? `<button class="completed-toggle">已完成 ${completed.length} ${expandedCompleted.has(project.id) ? '⌃' : '⌄'}</button><div class="completed-list ${expandedCompleted.has(project.id) ? '' : 'collapsed'}"></div>` : ''}`;
+      ${completed.length ? `<button class="completed-toggle" type="button" aria-expanded="${String(expandedCompleted.has(project.id))}" title="${expandedCompleted.has(project.id) ? '收起已完成任务' : '展开已完成任务'}"><span class="completed-toggle-check" aria-hidden="true">✓</span><span>已完成 ${completed.length}</span></button><div class="completed-list ${expandedCompleted.has(project.id) ? '' : 'collapsed'}"></div>` : ''}`;
 
     const list = group.querySelector('.task-list');
     active.forEach((task) => list.appendChild(taskElement(task)));
