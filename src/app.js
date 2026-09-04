@@ -882,19 +882,20 @@ function renderCalendar() {
       item.setAttribute('tabindex', '0');
       item.style.setProperty('--event-color', calendarEvent ? eventColorFor(task) : project.color);
       const calendarItemText = `${task.time ? `${task.time} ` : ''}${task.title}`;
-      if (!calendarEvent && (!task.completed || pendingCompletion)) {
-        item.innerHTML = `<button class="calendar-todo-check${pendingCompletion ? ' is-checked' : ''}" type="button" draggable="false" aria-label="${pendingCompletion ? '撤销完成' : '完成'} ${escapeAttribute(task.title)}"></button><span class="calendar-item-label">${escapeAttribute(calendarItemText)}</span>`;
+      if (!calendarEvent) {
+        const checked = task.completed || pendingCompletion;
+        item.innerHTML = `<button class="calendar-todo-check${checked ? ' is-checked' : ''}" type="button" draggable="false" aria-label="${checked ? '恢复' : '完成'} ${escapeAttribute(task.title)}"></button><span class="calendar-item-label">${escapeAttribute(calendarItemText)}</span>`;
       } else {
         item.innerHTML = `<span class="calendar-item-label">${escapeAttribute(calendarItemText)}</span>`;
       }
       item.title = pendingCompletion
         ? `${task.title} · 已完成 · 再点方框可撤销`
         : (task.completed
-          ? `${task.title} · 已完成`
+          ? `${task.title} · 已完成 · 点击方框恢复`
           : (calendarEvent
             ? `${task.title} · 日程${external ? ' · Google Calendar（只读）' : ''}`
             : `${task.title} · 待办 · 点击文字修改安排，点击方框完成`));
-      if (!calendarEvent && (!task.completed || pendingCompletion)) {
+      if (!calendarEvent) {
         const todoCheck = item.querySelector('.calendar-todo-check');
         todoCheck.addEventListener('pointerdown', (pointerEvent) => pointerEvent.stopPropagation());
         todoCheck.addEventListener('dblclick', (doubleClickEvent) => doubleClickEvent.stopPropagation());
