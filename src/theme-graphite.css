@@ -3076,3 +3076,49 @@ html[data-theme="light"] .todo-panel .task-scroll::-webkit-scrollbar-thumb {
 #cancelCalendarTaskButton::after {
   transform: translate(-50%, -50%) rotate(-45deg);
 }
+
+
+/* Calendar event color row: single-line label + vivid swatches. */
+.calendar-create-fields .calendar-event-color-field {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  min-width: 0;
+  width: 100%;
+}
+
+.calendar-create-fields .calendar-event-color-label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.calendar-create-fields .calendar-event-color-label > span {
+  flex: 0 0 auto;
+  min-width: 52px;
+  white-space: nowrap;
+  line-height: 20px;
+}
+
+.calendar-create-fields .calendar-event-color-label .event-color-choices {
+  min-width: 0;
+  min-height: 28px;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.calendar-create-fields .calendar-event-color-label .event-color-choice {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border-radius: 6px;
+  border-width: 1.5px;
+}
+
+html[data-theme="light"] .calendar-create-fields .calendar-event-color-label > span {
+  color: var(--luma-fg-2);
+}
