@@ -881,13 +881,13 @@ function renderCalendar() {
       item.addEventListener('click', (clickEvent) => {
         clickEvent.stopPropagation();
         if (calendarEvent) openCalendarDetail(key);
-        else if (!task.completed) editTaskSchedule(task.id);
+        else if (!task.completed) openCalendarTaskDialog(key, 'todo', task.id);
       });
       item.addEventListener('keydown', (keyEvent) => {
         if (keyEvent.key === 'Enter' || keyEvent.key === ' ') {
           keyEvent.preventDefault();
           if (calendarEvent) openCalendarDetail(key);
-          else if (!task.completed) editTaskSchedule(task.id);
+          else if (!task.completed) openCalendarTaskDialog(key, 'todo', task.id);
         }
       });
       events.appendChild(item);
@@ -905,7 +905,7 @@ function renderCalendar() {
 
     cell.setAttribute('role', 'button');
     cell.setAttribute('tabindex', '0');
-    cell.setAttribute('title', `${date.getMonth() + 1}月${date.getDate()}日 · 单击查看当天详情，双击添加待办`);
+    cell.setAttribute('title', `${date.getMonth() + 1}月${date.getDate()}日 · 单击查看当天详情，双击添加事项`);
     cell.addEventListener('dragover', (dragEvent) => {
       if (!draggedTaskId) return;
       dragEvent.preventDefault();
@@ -1085,7 +1085,12 @@ function renderCalendarDetail() {
         ${overdue ? '<span class="calendar-detail-overdue">之前</span>' : ''}
         <span class="calendar-detail-project">${escapeAttribute(project.name)}</span>
       `;
-      row.querySelector('.calendar-detail-check').addEventListener('click', () => toggleTask(task.id));
+      row.title = '点击编辑待办';
+      row.querySelector('.calendar-detail-check').addEventListener('click', (event) => {
+        event.stopPropagation();
+        toggleTask(task.id);
+      });
+      row.addEventListener('click', () => openCalendarTaskDialog(task.dueDate || calendarDetailDate, 'todo', task.id));
       todoHost.appendChild(row);
     });
   }
@@ -1173,10 +1178,11 @@ function updateCalendarItemDialogMode() {
   if (editingCalendarEventId) $('#deleteCalendarEventButton').textContent = '删除事项';
 }
 
-function openCalendarTaskDialog(dateKey, mode = 'todo', eventId = null) {
-  const editingEvent = eventId
-    ? state.tasks.find((task) => task.id === eventId && isCalendarEvent(task) && !task.googleCalendarExternal && task.syncTarget !== 'external-calendar')
+function openCalendarTaskDialog(dateKey, mode = 'todo', itemId = null) {
+  const editingItem = itemId
+    ? state.tasks.find((task) => task.id === itemId && !task.googleCalendarExternal && task.syncTarget !== 'external-calendar')
     : null;
+  const editingEvent = editingItem && isCalendarEvent(editingItem);
 
   calendarDetailDate = dateKey;
   calendarDetailViewMode = 'editor';
@@ -1187,20 +1193,24 @@ function openCalendarTaskDialog(dateKey, mode = 'todo', eventId = null) {
     calendarCursor = new Date(selected.getFullYear(), selected.getMonth(), 1);
   }
 
-  editingCalendarEventId = editingEvent?.id || null;
-  calendarCreateMode = editingEvent ? 'event' : (mode === 'event' ? 'event' : 'todo');
-  selectedEventColor = editingEvent ? eventColorFor(editingEvent) : DEFAULT_EVENT_COLOR;
+  editingCalendarEventId = editingItem?.id || null;
+  calendarCreateMode = editingItem
+    ? (editingEvent ? 'event' : 'todo')
+    : (mode === 'event' ? 'event' : 'todo');
+  selectedEventColor = editingEvent ? eventColorFor(editingItem) : DEFAULT_EVENT_COLOR;
 
-  $('#calendarTaskTitle').value = editingEvent?.title || '';
-  $('#calendarTaskDate').value = editingEvent?.dueDate || dateKey;
-  $('#calendarTaskEndDate').value = editingEvent?.endDate || editingEvent?.dueDate || dateKey;
-  $('#calendarTaskTime').value = editingEvent
-    ? (editingEvent.time || '全天')
+  $('#calendarTaskTitle').value = editingItem?.title || '';
+  $('#calendarTaskDate').value = editingItem?.dueDate || dateKey;
+  $('#calendarTaskEndDate').value = editingEvent
+    ? (editingItem.endDate || editingItem.dueDate || dateKey)
+    : dateKey;
+  $('#calendarTaskTime').value = editingItem
+    ? (editingEvent ? (editingItem.time || '全天') : (editingItem.time || ''))
     : (calendarCreateMode === 'event' ? '全天' : '');
   $('#calendarTaskEndTime').value = editingEvent
-    ? (editingEvent.time ? (editingEvent.endTime || addMinutesToTime(editingEvent.time, 30)) : '全天')
+    ? (editingItem.time ? (editingItem.endTime || addMinutesToTime(editingItem.time, 30)) : '全天')
     : (calendarCreateMode === 'event' ? '全天' : '');
-  $('#calendarTaskProject').innerHTML = projectOptions('inbox');
+  $('#calendarTaskProject').innerHTML = projectOptions(editingItem && !editingEvent ? editingItem.projectId : 'inbox');
 
   renderCalendar();
   renderCalendarDetail();
