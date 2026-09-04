@@ -38,6 +38,7 @@ let expanded = false;
 let calendarCursor = new Date();
 calendarCursor.setDate(1);
 let taskDateFilter = null;
+let calendarDetailDate = null;
 let pendingReminderTaskId = null;
 let draggedTaskId = null;
 let draggedProjectId = null;
@@ -537,12 +538,14 @@ function animateCalendarMonth(direction = 0) {
 
 function changeCalendarMonth(offset, animate = true) {
   if (!offset) return;
+  calendarDetailDate = null;
   calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() + offset, 1);
   renderCalendar();
   if (animate) animateCalendarMonth(offset);
 }
 
 function goToCurrentCalendarMonth() {
+  calendarDetailDate = null;
   const now = new Date();
   const currentIndex = calendarCursor.getFullYear() * 12 + calendarCursor.getMonth();
   const targetIndex = now.getFullYear() * 12 + now.getMonth();
@@ -555,7 +558,7 @@ function renderCalendar() {
   const year = calendarCursor.getFullYear();
   const month = calendarCursor.getMonth();
   $('#monthTitle').textContent = `${year} 年 ${month + 1} 月`;
-  const referenceDate = taskDateFilter ? fromDateKey(taskDateFilter) : new Date();
+  const referenceDate = calendarDetailDate ? fromDateKey(calendarDetailDate) : (taskDateFilter ? fromDateKey(taskDateFilter) : new Date());
   const monthLunar = $('#monthLunar');
   if (referenceDate.getFullYear() === year && referenceDate.getMonth() === month) {
     const lunar = formatLunarDate(referenceDate);
@@ -575,7 +578,7 @@ function renderCalendar() {
     const key = toDateKey(date);
     const tasks = state.tasks.filter((task) => !task.completed && task.dueDate === key).sort(taskSort);
     const cell = document.createElement('div');
-    cell.className = `calendar-day${date.getMonth() !== month ? ' muted' : ''}${key === dayOffset(0) ? ' today' : ''}${key === taskDateFilter ? ' selected-date' : ''}`;
+    cell.className = `calendar-day${date.getMonth() !== month ? ' muted' : ''}${key === dayOffset(0) ? ' today' : ''}${key === calendarDetailDate ? ' selected-date' : ''}`;
     if (tasks.length > 4) cell.classList.add('crowded');
     if (tasks.some((task) => task.id === highlightedTaskId)) cell.classList.add('focused-date');
     const dayLabel = date.getMonth() !== month ? `${date.getMonth() + 1}/${date.getDate()}` : String(date.getDate());
@@ -624,7 +627,7 @@ function renderCalendar() {
     }
     cell.setAttribute('role', 'button');
     cell.setAttribute('tabindex', '0');
-    cell.setAttribute('title', `${date.getMonth() + 1}月${date.getDate()}日 · 单击筛选，双击添加待办`);
+    cell.setAttribute('title', `${date.getMonth() + 1}月${date.getDate()}日 · 单击查看当天详情，双击添加待办`);
     cell.addEventListener('dragover', (dragEvent) => {
       if (!draggedTaskId) return;
       dragEvent.preventDefault();
@@ -642,15 +645,118 @@ function renderCalendar() {
       draggedTaskId = null;
       if (taskId) await moveTaskToDate(taskId, key);
     });
-    cell.addEventListener('click', () => setTaskDateFilter(taskDateFilter === key ? null : key));
+    cell.addEventListener('click', () => openCalendarDetail(key));
     cell.addEventListener('dblclick', () => openCalendarTaskDialog(key));
     cell.addEventListener('keydown', (event) => {
       if ((event.key === 'Enter' || event.key === ' ') && event.target === cell) {
         event.preventDefault();
-        setTaskDateFilter(key);
+        openCalendarDetail(key);
       }
     });
     host.appendChild(cell);
+  }
+}
+
+function closeCalendarDetail() {
+  calendarDetailDate = null;
+  const detail = $('#calendarDetail');
+  detail.classList.add('hidden');
+  detail.setAttribute('aria-hidden', 'true');
+  renderCalendar();
+}
+
+function openCalendarDetail(dateKey) {
+  calendarDetailDate = dateKey;
+  const selected = fromDateKey(dateKey);
+  if (selected.getFullYear() !== calendarCursor.getFullYear() || selected.getMonth() !== calendarCursor.getMonth()) {
+    calendarCursor = new Date(selected.getFullYear(), selected.getMonth(), 1);
+  }
+  renderCalendar();
+  renderCalendarDetail();
+}
+
+function renderCalendarDetail() {
+  const detail = $('#calendarDetail');
+  if (!detail || !calendarDetailDate || !expanded) {
+    detail?.classList.add('hidden');
+    detail?.setAttribute('aria-hidden', 'true');
+    return;
+  }
+
+  const selectedDate = fromDateKey(calendarDetailDate);
+  const lunar = formatLunarDate(selectedDate);
+  $('#calendarDetailTitle').textContent = `${selectedDate.getMonth() + 1}月${selectedDate.getDate()}日 周${WEEKDAYS[selectedDate.getDay()]}`;
+  $('#calendarDetailLunar').textContent = lunar;
+  detail.classList.remove('hidden');
+  detail.setAttribute('aria-hidden', 'false');
+
+  const schedules = state.tasks
+    .filter((task) => !task.completed
+      && task.dueDate === calendarDetailDate
+      && (task.time || task.syncTarget === 'calendar' || task.googleCalendarExternal || task.syncTarget === 'external-calendar'))
+    .sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
+
+  const todos = state.tasks
+    .filter((task) => !task.completed
+      && task.dueDate
+      && task.dueDate <= calendarDetailDate
+      && !task.time
+      && task.syncTarget !== 'calendar'
+      && !task.googleCalendarExternal
+      && task.syncTarget !== 'external-calendar')
+    .sort((a, b) => {
+      const dateDifference = (b.dueDate || '').localeCompare(a.dueDate || '');
+      return dateDifference || projectTaskSort(a, b);
+    });
+
+  $('#calendarScheduleCount').textContent = schedules.length ? `(${schedules.length})` : '';
+  $('#calendarTodoCount').textContent = todos.length ? `(${todos.length})` : '';
+
+  const scheduleHost = $('#calendarScheduleList');
+  scheduleHost.innerHTML = '';
+  if (!schedules.length) {
+    scheduleHost.innerHTML = '<p class="calendar-detail-empty">当天没有有时间的日程</p>';
+  } else {
+    schedules.forEach((task) => {
+      const project = projectById(task.projectId);
+      const external = Boolean(task.googleCalendarExternal || task.syncTarget === 'external-calendar');
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'calendar-detail-schedule';
+      row.style.setProperty('--detail-color', project.color);
+      row.innerHTML = `
+        <span class="calendar-detail-dot"></span>
+        <span class="calendar-detail-time">${escapeAttribute(task.time || '日程')}</span>
+        <span class="calendar-detail-task-title">${escapeAttribute(task.title)}</span>
+        <span class="calendar-detail-project">${escapeAttribute(project.name)}</span>
+      `;
+      row.title = external ? '来自 Google Calendar（只读）' : '点击修改安排';
+      if (external) row.classList.add('readonly');
+      else row.addEventListener('click', () => editTaskSchedule(task.id));
+      scheduleHost.appendChild(row);
+    });
+  }
+
+  const todoHost = $('#calendarTodoList');
+  todoHost.innerHTML = '';
+  if (!todos.length) {
+    todoHost.innerHTML = '<p class="calendar-detail-empty">没有未完成待办</p>';
+  } else {
+    todos.forEach((task) => {
+      const project = projectById(task.projectId);
+      const row = document.createElement('div');
+      row.className = 'calendar-detail-todo-row';
+      row.style.setProperty('--detail-color', project.color);
+      const overdue = task.dueDate < calendarDetailDate;
+      row.innerHTML = `
+        <button class="calendar-detail-check" type="button" aria-label="完成 ${escapeAttribute(task.title)}"></button>
+        <span class="calendar-detail-task-title">${escapeAttribute(task.title)}</span>
+        ${overdue ? '<span class="calendar-detail-overdue">之前</span>' : ''}
+        <span class="calendar-detail-project">${escapeAttribute(project.name)}</span>
+      `;
+      row.querySelector('.calendar-detail-check').addEventListener('click', () => toggleTask(task.id));
+      todoHost.appendChild(row);
+    });
   }
 }
 
@@ -833,6 +939,7 @@ function render() {
   renderHeader();
   renderProjects();
   renderCalendar();
+  renderCalendarDetail();
 }
 
 function parseQuickInput(raw) {
@@ -1135,6 +1242,7 @@ async function toggleExpanded(force) {
     await new Promise((resolve) => requestAnimationFrame(resolve));
     await window.luma?.setExpanded(nextExpanded);
     expanded = nextExpanded;
+    if (!expanded) calendarDetailDate = null;
     app.classList.toggle('expanded', expanded);
     await new Promise((resolve) => requestAnimationFrame(resolve));
   } finally {
@@ -1372,6 +1480,13 @@ function bindEvents() {
   $('#prevMonth').addEventListener('click', () => changeCalendarMonth(-1));
   $('#nextMonth').addEventListener('click', () => changeCalendarMonth(1));
   $('#todayMonth').addEventListener('click', goToCurrentCalendarMonth);
+  $('#closeCalendarDetail').addEventListener('click', closeCalendarDetail);
+  $('#addCalendarSchedule').addEventListener('click', () => {
+    if (calendarDetailDate) openCalendarTaskDialog(calendarDetailDate);
+  });
+  $('#addCalendarTodo').addEventListener('click', () => {
+    if (calendarDetailDate) openCalendarTaskDialog(calendarDetailDate);
+  });
 
   $('#calendarPanel').addEventListener('wheel', (event) => {
     if (!expanded || event.ctrlKey || event.shiftKey || document.querySelector('dialog[open]')) return;
@@ -1521,6 +1636,10 @@ function bindEvents() {
     if (event.key === 'Escape' && dismissEmptyProjectQuickAdd()) return;
     if (event.key === 'Escape' && !$('#taskMenu').classList.contains('hidden')) {
       closeTaskMenu();
+      return;
+    }
+    if (event.key === 'Escape' && calendarDetailDate && !document.querySelector('dialog[open]')) {
+      closeCalendarDetail();
       return;
     }
     if (event.key === 'Escape' && expanded && !document.querySelector('dialog[open]')) toggleExpanded(false);
