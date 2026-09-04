@@ -3122,3 +3122,19 @@ html[data-theme="light"] .todo-panel .task-scroll::-webkit-scrollbar-thumb {
 html[data-theme="light"] .calendar-create-fields .calendar-event-color-label > span {
   color: var(--luma-fg-2);
 }
+
+
+/* Keep calendar detail time ranges on one line. */
+.calendar-detail-schedule {
+  grid-template-columns: 8px 70px minmax(0, 1fr) auto;
+}
+
+.calendar-detail-schedule .calendar-detail-time {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  line-height: 1.2;
+  font-size: 10px;
+  letter-spacing: -0.01em;
+}
