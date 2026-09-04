@@ -1684,3 +1684,50 @@ html[data-theme="light"] .calendar-detail-add {
   color: rgba(58,71,92,.62);
   background: rgba(58,71,92,.025);
 }
+
+
+/* Refine date detail into a compact card positioned beside the selected cell. */
+.calendar-detail {
+  right: auto;
+  bottom: auto;
+  width: 322px;
+  max-width: calc(100% - 36px);
+  max-height: min(430px, calc(100% - 90px));
+  overflow: hidden;
+}
+.calendar-detail-header {
+  padding: 13px 15px 10px;
+}
+.calendar-detail-header h3 {
+  font-size: 17px;
+}
+.calendar-detail-section {
+  padding: 10px 14px 9px;
+}
+.calendar-detail-section:first-of-type .calendar-detail-list {
+  max-height: 110px;
+  overflow-y: auto;
+}
+.calendar-detail-todos {
+  flex: 0 1 auto;
+  max-height: 238px;
+  overflow: hidden;
+}
+.calendar-detail-todos .calendar-detail-list {
+  max-height: 170px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.calendar-detail-schedule,
+.calendar-detail-todo-row {
+  min-height: 29px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.calendar-detail-add {
+  margin-top: 6px;
+  padding: 6px;
+}
+.calendar-detail-list {
+  scrollbar-width: thin;
+}
