@@ -21,4 +21,5 @@ contextBridge.exposeInMainWorld('luma', {
   icloudStatus: () => ipcRenderer.invoke('icloud:status'),
   icloudConnect: (payload) => ipcRenderer.invoke('icloud:connect', payload),
   icloudDisconnect: () => ipcRenderer.invoke('icloud:disconnect'),
+  icloudSync: (payload) => ipcRenderer.invoke('icloud:sync', payload),
 });
