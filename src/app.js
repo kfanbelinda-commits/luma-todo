@@ -118,9 +118,6 @@ function normalizeState(input) {
 
 async function persist() {
   await window.luma?.save(state);
-  try {
-    await window.luma?.remindersBridgeAutoExport(state);
-  } catch {}
 }
 
 function projectById(id) {
@@ -2254,8 +2251,8 @@ function renderIcloudStatus(status) {
 
     connectButton.disabled = false;
     $('#icloudNote').textContent = calendarSelect.value
-      ? 'Luma 日程将同步到所选 iCloud 日历。'
-      : '请选择用于 Luma 日程的 iCloud 日历。';
+      ? 'Luma 日程和有日期的待办将同步到所选 iCloud 日历。'
+      : '请选择用于 Luma 日程和待办的 iCloud 日历。';
   } else if (status && status.demo) {
     $('#icloudNote').textContent = '演示模式不会连接真实 iCloud 账户；请用 npm run start:icloud 测试。';
     connectButton.disabled = true;
@@ -2310,7 +2307,7 @@ async function syncIcloud() {
   }
 
   button.disabled = true;
-  $('#icloudNote').textContent = '正在同步 Luma Event 到 iCloud…';
+  $('#icloudNote').textContent = '正在同步 Luma 日程与待办到 iCloud…';
   try {
     const result = await window.luma?.icloudSync({ state, calendarUrl });
     state = normalizeState(result.state);
@@ -2318,10 +2315,9 @@ async function syncIcloud() {
     render();
     const summary = result.summary || {};
     $('#icloudNote').textContent =
-      '同步完成：写入“' + (summary.calendarName || 'iCloud 日历') + '”，'
-      + '新增 ' + (summary.created || 0) + ' 项、更新 ' + (summary.updated || 0)
-      + ' 项、无需更新 ' + (summary.unchanged || 0) + ' 项。';
-    await refreshIcloudStatus();
+      '同步完成：日程 ' + (summary.syncedEvents || 0) + ' 项，待办 ' + (summary.mirroredTodos || 0)
+      + ' 项；新增 ' + (summary.created || 0) + '、更新 ' + (summary.updated || 0)
+      + '、无需更新 ' + (summary.unchanged || 0) + '。';
   } catch (error) {
     $('#icloudNote').textContent = '同步失败：' + googleErrorMessage(error);
   } finally {
