@@ -2230,8 +2230,8 @@ function renderRemindersBridgeStatus(status) {
 
   if (available) {
     $('#remindersBridgeNote').textContent = enabled
-      ? 'Luma 保存待办时会自动更新到 iCloud Drive。'
-      : '点“同步”一次后，后续修改会自动更新。';
+      ? 'Luma 保存待办时会自动更新同步文件；手机端由快捷指令写入提醒事项。'
+      : '点“同步”一次启用；之后 Luma 会自动更新同步文件。';
   } else {
     $('#remindersBridgeNote').textContent = '请选择 iCloud Drive 位置后启用待办同步。';
   }
@@ -2268,20 +2268,28 @@ async function chooseRemindersBridgeFolder() {
 
 async function exportRemindersBridge() {
   const button = $('#exportRemindersBridge');
+  const originalText = button.textContent;
   button.disabled = true;
-  $('#remindersBridgeNote').textContent = '正在生成 Apple Reminders 同步文件…';
+  button.textContent = '更新中…';
+  $('#remindersBridgeNote').textContent = '正在更新 iCloud Drive 同步文件…';
   try {
     const status = await window.luma?.remindersBridgeStatus();
     const result = await window.luma?.remindersBridgeExport({
       state,
       folder: status && status.folder ? status.folder : '',
     });
+    $('#remindersBridgeStatusText').textContent = '已启用 · 自动更新';
+    $('#chooseRemindersBridgeFolder').hidden = true;
     $('#remindersBridgeNote').textContent =
-      '已同步 ' + (result?.count || 0) + ' 个待办；后续修改会自动更新。';
-    await refreshRemindersBridgeStatus();
+      '已更新 ' + (result?.count || 0) + ' 个待办到 iCloud Drive；手机端需运行 Luma Todo Sync 快捷指令。';
+    button.textContent = '已更新 ✓';
+    setTimeout(() => {
+      if (button.textContent === '已更新 ✓') button.textContent = originalText || '同步';
+    }, 1600);
   } catch (error) {
+    button.textContent = originalText || '同步';
     $('#remindersBridgeNote').textContent =
-      '生成失败：' + googleErrorMessage(error);
+      '更新失败：' + googleErrorMessage(error);
   } finally {
     button.disabled = false;
   }
