@@ -1447,3 +1447,21 @@ html[data-theme="light"] .date-summary.expanded {
 html[data-theme="light"] .month-lunar {
   color: rgba(58,71,92,.56);
 }
+
+
+/* Final compact date control: calendar icon + date text, no chevron. */
+.date-summary {
+  max-width: 126px;
+  flex-basis: 126px;
+  gap: 6px;
+  padding: 0 9px;
+}
+.date-summary svg {
+  display: block;
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+}
+.date-summary-chevron {
+  display: none;
+}
