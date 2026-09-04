@@ -268,6 +268,15 @@
           </select>
         </div>
         <p id="icloudNote" class="settings-note">仅测试 Event ↔ iCloud Calendar 链路。密码使用 Windows 安全存储加密保存。</p>
+        <section class="account-card reminders-bridge-card">
+          <div class="reminders-bridge-logo" aria-hidden="true">✓</div>
+          <div><strong>Apple 提醒事项桥接 <span class="experimental-badge">实验</span></strong><small id="remindersBridgeStatusText">正在检查 iCloud Drive…</small></div>
+          <div class="google-actions">
+            <button id="chooseRemindersBridgeFolder" type="button" class="soft-button">选择</button>
+            <button id="exportRemindersBridge" type="button" class="soft-button">生成文件</button>
+          </div>
+        </section>
+        <p id="remindersBridgeNote" class="settings-note">Todo 会写入 iCloud Drive，供 iPhone 快捷指令导入 Apple Reminders。</p>
         <button id="exportButton" type="button" class="secondary-button settings-export">导出本地备份</button>
       </form>
     </dialog>
