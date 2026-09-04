@@ -2193,3 +2193,78 @@ html[data-theme="light"] .event-color-choice.selected {
   border-color: #fff;
   box-shadow: 0 0 0 2px rgba(79,91,113,.40), inset 0 0 0 1px rgba(255,255,255,.62);
 }
+
+
+/* Event edge-resize affordance. Events never show Todo checkboxes. */
+.day-event.calendar-event-item,
+.calendar-span-event {
+  position: relative;
+}
+.day-event.calendar-event-item::before {
+  content: none !important;
+  display: none !important;
+}
+
+.event-resize-handle {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  z-index: 4;
+  width: 7px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  opacity: 0;
+  cursor: ew-resize;
+  -webkit-app-region: no-drag;
+}
+.event-resize-start { left: 0; }
+.event-resize-end { right: 0; }
+
+.day-event.calendar-event-item:hover .event-resize-handle,
+.day-event.calendar-event-item:focus-within .event-resize-handle,
+.calendar-span-event:hover .event-resize-handle,
+.calendar-span-event:focus-within .event-resize-handle,
+.event-resizing .event-resize-handle {
+  opacity: 1;
+}
+.event-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 2px;
+  width: 2px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--event-color) 72%, rgba(255,255,255,.54));
+}
+.event-resize-end::after {
+  left: auto;
+  right: 2px;
+}
+.event-resize-handle:hover::after {
+  width: 3px;
+  background: color-mix(in srgb, var(--event-color) 84%, rgba(255,255,255,.72));
+}
+
+body.calendar-event-resizing,
+body.calendar-event-resizing * {
+  cursor: ew-resize !important;
+  user-select: none !important;
+}
+.calendar-event-resizing .calendar-day {
+  transition: none !important;
+}
+.calendar-event-resizing .calendar-span-event.event-resizing,
+.calendar-event-resizing .day-event.calendar-event-item.event-resizing {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--event-color) 60%, rgba(255,255,255,.30));
+}
+
+html[data-theme="light"] .event-resize-handle::after {
+  background: color-mix(in srgb, var(--event-color) 72%, rgba(55,65,81,.42));
+}
+html[data-theme="light"] .event-resize-handle:hover::after {
+  background: color-mix(in srgb, var(--event-color) 84%, rgba(55,65,81,.56));
+}
