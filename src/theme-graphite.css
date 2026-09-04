@@ -3044,3 +3044,35 @@ html[data-theme="light"] #calendarTaskEndTime:disabled {
 html[data-theme="light"] .todo-panel .task-scroll::-webkit-scrollbar-thumb {
   background: rgba(36,36,36,.16);
 }
+
+
+/* Geometrically centered calendar dialog close icon. */
+#cancelCalendarTaskButton {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  line-height: 1;
+  font-size: 0;
+}
+
+#cancelCalendarTaskButton::before,
+#cancelCalendarTaskButton::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 9px;
+  height: 1.25px;
+  border-radius: 999px;
+  background: currentColor;
+  transform-origin: center;
+}
+
+#cancelCalendarTaskButton::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+#cancelCalendarTaskButton::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
