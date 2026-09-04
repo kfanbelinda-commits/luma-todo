@@ -2212,6 +2212,87 @@ async function disconnectGoogle() {
   }
 }
 
+
+function renderIcloudStatus(status) {
+  const connected = Boolean(status && status.connected);
+  const calendars = Array.isArray(status && status.calendars) ? status.calendars : [];
+  const credentialPanel = $('#icloudCredentialPanel');
+
+  $('#icloudStatusText').textContent = connected
+    ? '已连接 · ' + calendars.length + ' 个日历'
+    : ((status && status.demo) ? 'Demo 中不可连接' : '未连接');
+  $('#connectIcloud').hidden = connected;
+  $('#disconnectIcloud').hidden = !connected;
+  credentialPanel.hidden = connected;
+
+  if (connected) {
+    $('#icloudEmail').value = (status && status.email) || '';
+    $('#icloudPassword').value = '';
+    const names = calendars.map((calendar) => calendar.name).filter(Boolean);
+    const preview = names.slice(0, 4).join('、');
+    const more = names.length > 4 ? ' 等 ' + names.length + ' 个' : '';
+    $('#icloudNote').textContent = preview
+      ? 'CalDAV 已连通，已发现：' + preview + more + '。下一步接 Event 双向同步。'
+      : 'CalDAV 已连通。下一步接 Event 双向同步。';
+  } else if (status && status.demo) {
+    $('#icloudNote').textContent = '演示模式不会连接真实 iCloud 账户；请用 npm run start:real 测试。';
+    $('#connectIcloud').disabled = true;
+  } else {
+    $('#icloudNote').textContent = '输入 Apple 账户邮箱和 App 专用密码，先测试并发现 iCloud 日历。';
+    $('#connectIcloud').disabled = false;
+  }
+}
+
+async function refreshIcloudStatus() {
+  try {
+    const status = await window.luma?.icloudStatus();
+    renderIcloudStatus(status);
+    return status;
+  } catch (error) {
+    renderIcloudStatus({ connected: false });
+    $('#icloudNote').textContent = '无法检查 iCloud 连接：' + googleErrorMessage(error);
+    return { connected: false };
+  }
+}
+
+async function connectIcloud() {
+  const button = $('#connectIcloud');
+  const email = $('#icloudEmail').value.trim();
+  const password = $('#icloudPassword').value.trim();
+  if (!email || !password) {
+    $('#icloudNote').textContent = '请先填写 Apple 账户邮箱和 App 专用密码。';
+    return;
+  }
+
+  button.disabled = true;
+  $('#icloudNote').textContent = '正在连接 iCloud 并发现日历…';
+  try {
+    const status = await window.luma?.icloudConnect({ email, password });
+    renderIcloudStatus(status);
+  } catch (error) {
+    $('#icloudPassword').value = '';
+    $('#icloudNote').textContent = '连接失败：' + googleErrorMessage(error);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function disconnectIcloud() {
+  const button = $('#disconnectIcloud');
+  button.disabled = true;
+  try {
+    const status = await window.luma?.icloudDisconnect();
+    renderIcloudStatus(status);
+    $('#icloudEmail').value = '';
+    $('#icloudPassword').value = '';
+    $('#icloudNote').textContent = '已断开 iCloud；Luma 本地日程不会被删除。';
+  } catch (error) {
+    $('#icloudNote').textContent = '断开失败：' + googleErrorMessage(error);
+  } finally {
+    button.disabled = false;
+  }
+}
+
 function bindEvents() {
   document.addEventListener('pointerdown', (event) => {
     // Pin owns its own WorkerW detach/topmost transition. Running the generic
@@ -2397,7 +2478,7 @@ function bindEvents() {
     $('#opacitySlider').value = state.settings.panelOpacity;
     applyPanelOpacity(state.settings.panelOpacity);
     openSettingsDialog();
-    await refreshGoogleStatus();
+    await Promise.all([refreshGoogleStatus(), refreshIcloudStatus()]);
   });
   $('#closeSettingsButton').addEventListener('click', closeSettingsDialog);
   settingsDialog.addEventListener('cancel', (event) => {
@@ -2436,6 +2517,8 @@ function bindEvents() {
   });
   $('#connectGoogle').addEventListener('click', connectOrSyncGoogle);
   $('#disconnectGoogle').addEventListener('click', disconnectGoogle);
+  $('#connectIcloud').addEventListener('click', connectIcloud);
+  $('#disconnectIcloud').addEventListener('click', disconnectIcloud);
   window.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && settingsDialog.open) {
       closeSettingsDialog();
@@ -2465,7 +2548,7 @@ async function init() {
   bindTimePickers();
   renderColorChoices();
   render();
-  await refreshGoogleStatus();
+  await Promise.all([refreshGoogleStatus(), refreshIcloudStatus()]);
 }
 
 init();
