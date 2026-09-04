@@ -37,7 +37,8 @@
       "preload.cjs",
       "index.html",
       "src/**/*",
-      "assets/**/*",
+      "assets/icon.png",
+      "assets/icon.ico",
       "package.json"
     ],
     "extraResources": [
