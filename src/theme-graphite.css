@@ -2363,6 +2363,7 @@ html[data-theme="light"] .calendar-panel.calendar-detail-open .calendar-detail {
 /* Fluent-inspired light surface system: neutral, coherent, restrained. */
 :root[data-theme="light"] {
   --luma-bg-app: #f5f5f5;
+  --luma-bg-app-rgb: 245,245,245;
   --luma-bg-raised: #fafafa;
   --luma-bg-control: #ffffff;
   --luma-bg-subtle: #f0f0f0;
@@ -2383,7 +2384,7 @@ html[data-theme="light"] .calendar-panel.calendar-detail-open .calendar-detail {
 /* One neutral application surface across Todo and Calendar. */
 html[data-theme="light"] .todo-panel,
 html[data-theme="light"] .calendar-panel {
-  background: color-mix(in srgb, var(--luma-bg-app) calc(var(--panel-opacity) * 100%), transparent);
+  background: rgba(var(--luma-bg-app-rgb), calc(var(--panel-opacity) + .03));
   border-color: rgba(255,255,255,.82);
 }
 
