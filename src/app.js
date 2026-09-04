@@ -2080,7 +2080,13 @@ async function disconnectGoogle() {
 }
 
 function bindEvents() {
-  document.addEventListener('pointerdown', () => window.luma?.activate(), { capture: true });
+  document.addEventListener('pointerdown', (event) => {
+    // Pin owns its own WorkerW detach/topmost transition. Running the generic
+    // desktop activation first can reparent the native window during the same
+    // pointer gesture and race the Pin click.
+    if (event.target.closest('#pinWindowButton')) return;
+    window.luma?.activate();
+  }, { capture: true });
   document.addEventListener('pointerdown', (event) => {
     if (!activeQuickProjectId || event.target.closest('.project-quick-add, .project-add-task')) return;
     dismissEmptyProjectQuickAdd();
