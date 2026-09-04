@@ -1419,3 +1419,31 @@ html[data-theme="light"] .date-summary.expanded {
   color: #263244;
   background: rgba(255,255,255,.78);
 }
+
+
+/* Keep the compact header date readable; full lunar date is available on hover and in Calendar. */
+.date-summary {
+  max-width: 112px;
+  flex: 0 1 112px;
+  gap: 5px;
+  padding: 0 7px 0 9px;
+  font-size: 11px;
+}
+.date-summary #dateSummaryText {
+  overflow: visible;
+  text-overflow: clip;
+}
+.date-summary svg {
+  display: none;
+}
+.month-lunar {
+  min-height: 14px;
+  margin-top: 2px;
+  color: rgba(232,236,244,.58);
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+html[data-theme="light"] .month-lunar {
+  color: rgba(58,71,92,.56);
+}
