@@ -3138,3 +3138,234 @@ html[data-theme="light"] .calendar-create-fields .calendar-event-color-label > s
   font-size: 10px;
   letter-spacing: -0.01em;
 }
+
+
+/* Unified date card: detail, create, and event edit share one anchored surface. */
+.calendar-detail {
+  width: 360px;
+  height: min(450px, calc(100% - 96px));
+  max-width: calc(100% - 36px);
+  max-height: none;
+  overflow: visible;
+}
+
+.calendar-detail-view,
+.calendar-editor-view {
+  width: 100%;
+  height: 100%;
+}
+
+.calendar-detail-view.hidden,
+.calendar-editor-view.hidden {
+  display: none !important;
+}
+
+.calendar-detail-view {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.calendar-detail-view .calendar-detail-todos {
+  flex: 1 1 auto;
+}
+
+.calendar-detail-view .calendar-detail-list {
+  min-height: 0;
+}
+
+.calendar-editor-view {
+  position: relative;
+  overflow: visible;
+  border-radius: inherit;
+}
+
+.calendar-editor-view form {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.calendar-editor-header {
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 28px minmax(0,1fr) 28px;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.calendar-editor-header h3 {
+  margin: 0;
+  text-align: center;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.calendar-detail-back {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  padding: 0;
+  color: rgba(239,242,248,.68);
+  background: transparent;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.calendar-detail-back:hover {
+  color: #fff;
+  background: rgba(255,255,255,.08);
+}
+
+.calendar-editor-body {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px 13px;
+}
+
+.calendar-editor-body > label,
+.calendar-editor-body .calendar-create-fields > label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: rgba(248,249,252,.88);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.calendar-editor-body > label > input,
+.calendar-editor-body .calendar-create-fields > label > input,
+.calendar-editor-body select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 10px;
+  outline: none;
+  padding: 0 10px;
+  color: var(--ink);
+  background: rgba(255,255,255,.055);
+  font-size: 13px;
+}
+
+.calendar-editor-body .time-field {
+  margin-top: 0;
+}
+
+.calendar-editor-body .time-text-input {
+  min-height: 38px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.calendar-editor-body .time-field::after {
+  top: 10px;
+}
+
+.calendar-editor-body .calendar-item-type-switch {
+  flex: 0 0 auto;
+  margin: 0 0 2px;
+}
+
+.calendar-editor-body .calendar-create-fields {
+  flex: 0 0 auto;
+  gap: 10px;
+}
+
+.calendar-editor-body .calendar-item-type-hint {
+  min-height: 28px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  font-size: 9.5px;
+  line-height: 1.35;
+}
+
+.calendar-editor-actions {
+  margin-top: auto;
+  min-height: 38px;
+}
+
+.calendar-editor-actions .primary-button,
+.calendar-editor-actions .danger-button {
+  min-height: 38px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.calendar-editor-body .calendar-event-color-label {
+  min-height: 25px;
+}
+
+.calendar-editor-body .calendar-event-color-label > span {
+  min-width: 50px;
+  font-size: 11px;
+}
+
+.calendar-editor-body .calendar-event-color-label .event-color-choices {
+  gap: 4px;
+  min-height: 24px;
+}
+
+.calendar-editor-body .calendar-event-color-label .event-color-choice {
+  width: 16px;
+  height: 16px;
+  flex-basis: 16px;
+  border-radius: 5px;
+}
+
+.calendar-editor-body .time-picker {
+  z-index: 120;
+  max-height: 170px;
+}
+
+html[data-theme="light"] .calendar-detail-back {
+  color: var(--luma-fg-3);
+}
+
+html[data-theme="light"] .calendar-detail-back:hover {
+  color: var(--luma-fg-1);
+  background: var(--luma-bg-subtle);
+}
+
+html[data-theme="light"] .calendar-editor-body > label,
+html[data-theme="light"] .calendar-editor-body .calendar-create-fields > label {
+  color: var(--luma-fg-2);
+}
+
+html[data-theme="light"] .calendar-editor-body > label > input,
+html[data-theme="light"] .calendar-editor-body .calendar-create-fields > label > input,
+html[data-theme="light"] .calendar-editor-body select,
+html[data-theme="light"] .calendar-editor-body .time-text-input {
+  border-color: var(--luma-stroke-1);
+  color: var(--luma-fg-1);
+  background: #fff;
+  box-shadow: none;
+}
+
+html[data-theme="light"] .calendar-editor-body > label > input:hover,
+html[data-theme="light"] .calendar-editor-body .calendar-create-fields > label > input:hover,
+html[data-theme="light"] .calendar-editor-body select:hover,
+html[data-theme="light"] .calendar-editor-body .time-text-input:hover {
+  border-color: #b3b3b3;
+}
+
+html[data-theme="light"] .calendar-editor-body > label > input:focus,
+html[data-theme="light"] .calendar-editor-body .calendar-create-fields > label > input:focus,
+html[data-theme="light"] .calendar-editor-body select:focus,
+html[data-theme="light"] .calendar-editor-body .time-text-input:focus {
+  border-color: #707070;
+  box-shadow: 0 0 0 1px #707070;
+}
