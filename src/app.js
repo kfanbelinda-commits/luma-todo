@@ -537,7 +537,7 @@ function renderProjects() {
     group.style.setProperty('--group-color', project.color);
     group.innerHTML = `
       <header class="project-header">
-        <div class="project-title" role="button" tabindex="0" draggable="true" aria-expanded="${String(!projectCollapsed)}" title="点击展开/收起，拖拽排序，双击编辑分类"><button class="project-collapse" type="button" tabindex="-1" aria-hidden="true"></button><span class="project-color-dot" aria-hidden="true"></span><span class="project-name">${escapeAttribute(project.name)}</span><span class="project-progress">${completed.length}/${relevant.length || 0}</span></div>
+        <div class="project-title" role="button" tabindex="0" draggable="true" aria-expanded="${String(!projectCollapsed)}" title="点击展开/收起，拖拽排序，双击编辑分类"><span class="project-color-dot" aria-hidden="true"></span><span class="project-name">${escapeAttribute(project.name)}</span><button class="project-collapse" type="button" tabindex="-1" aria-hidden="true"></button><span class="project-progress">${completed.length}/${relevant.length || 0}</span></div>
         <div class="project-header-actions">
           <button class="project-add-task" type="button" aria-label="在${escapeAttribute(project.name)}中添加待办" title="添加待办">＋</button>
         </div>
