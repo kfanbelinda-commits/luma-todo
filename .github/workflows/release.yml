@@ -48,13 +48,36 @@ jobs:
       - name: Build Windows installer
         run: npm run dist
 
+      - name: Create installer ZIP
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          $installer = Join-Path $env:GITHUB_WORKSPACE "dist\Luma-Todo-Setup-$version.exe"
+          $zip = Join-Path $env:GITHUB_WORKSPACE "dist\Luma-Todo-Setup-$version.zip"
+          if (-not (Test-Path $installer)) {
+            throw "Installer not found: $installer"
+          }
+          Compress-Archive -Path $installer -DestinationPath $zip -Force
+
       - name: Publish GitHub Release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           $releaseFiles = Get-ChildItem dist -File | Where-Object {
-            $_.Name -match '\.(exe|blockmap)$' -or $_.Name -eq 'latest.yml'
+            $_.Name -match '\.(exe|blockmap|zip) -or $_.Name -eq 'latest.yml'
+          } | Select-Object -ExpandProperty FullName
+          if (-not $releaseFiles) { throw "No release files were produced" }
+
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $tag = $env:GITHUB_REF_NAME
+            gh release create $tag $releaseFiles --verify-tag --generate-notes --title "Luma Todo $tag"
+          } else {
+            $version = node -p "require('./package.json').version"
+            $tag = "v$version"
+            gh release create $tag $releaseFiles --target $env:GITHUB_SHA --generate-notes --title "Luma Todo $tag"
+          }
+ -or $_.Name -eq 'latest.yml'
           } | Select-Object -ExpandProperty FullName
           if (-not $releaseFiles) { throw "No release files were produced" }
 
