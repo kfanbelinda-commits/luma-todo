@@ -1092,7 +1092,7 @@ function updateCalendarItemDialogMode() {
     $('#calendarTaskTitleText').textContent = eventMode ? '日程内容' : '待办内容';
     $('#calendarTaskSubmit').textContent = eventMode ? '保存日程' : '保存待办';
   }
-  $('#calendarTaskDateText').textContent = eventMode ? '开始日期' : '日期';
+  $('#calendarTaskDateText').textContent = eventMode ? '开始日期' : '待办日期';
   $('#calendarTaskTimeText').textContent = '时间';
 }
 
