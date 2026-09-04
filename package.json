@@ -11,10 +11,12 @@
   "author": "Luma Todo",
   "license": "MIT",
   "scripts": {
-    "start": "electron .",
+    "start": "electron . --demo",
     "check": "node --check main.cjs && node --check preload.cjs && node --check src/app.js",
     "dist": "electron-builder --win --publish never",
-    "release": "electron-builder --win --publish always"
+    "release": "electron-builder --win --publish always",
+    "start:demo": "electron . --demo",
+    "start:real": "electron ."
   },
   "devDependencies": {
     "electron": "^44.1.1",
