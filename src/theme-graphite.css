@@ -3865,3 +3865,26 @@ html[data-theme="light"] .icloud-calendar-target select:focus {
   box-shadow: 0 0 0 2px rgba(121,167,211,.12);
 }
 
+.settings-modal .reminders-bridge-card {
+  margin-top: 9px;
+}
+
+.settings-modal .reminders-bridge-logo {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  border-radius: 9px;
+  color: rgba(179,229,196,.95);
+  background: rgba(76,175,109,.12);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+html[data-theme="light"] .settings-modal .reminders-bridge-logo {
+  color: #3f7b51;
+  background: #edf7f0;
+}
+
