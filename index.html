@@ -240,43 +240,58 @@
             <label class="switch"><input id="lightModeToggle" type="checkbox" /><span></span></label>
           </section>
         </div>
-        <section class="account-card">
-          <div class="google-logo">G</div>
-          <div><strong>Google 同步</strong><small id="googleStatusText">正在检查状态…</small></div>
-          <div class="google-actions">
-            <button id="connectGoogle" type="button" class="soft-button">连接</button>
-            <button id="disconnectGoogle" type="button" class="soft-button" hidden>断开</button>
-          </div>
-        </section>
-        <p id="googleNote" class="settings-note">连接后，点击“立即同步”可同步 Luma 待办，并将 Google Calendar 原有事件下载到 Luma。</p>
-        <section class="account-card apple-account-card">
-          <div class="apple-logo" aria-hidden="true">☁</div>
-          <div><strong>iCloud 日历 <span class="experimental-badge">实验</span></strong><small id="icloudStatusText">正在检查状态…</small></div>
-          <div class="google-actions">
-            <button id="connectIcloud" type="button" class="soft-button">连接</button>
-            <button id="disconnectIcloud" type="button" class="soft-button" hidden>断开</button>
-          </div>
-        </section>
-        <div id="icloudCredentialPanel" class="icloud-credentials">
-          <input id="icloudEmail" type="email" autocomplete="username" placeholder="Apple 账户邮箱" aria-label="Apple 账户邮箱" />
-          <input id="icloudPassword" type="password" autocomplete="current-password" placeholder="App 专用密码" aria-label="iCloud App 专用密码" />
+        <div class="sync-settings">
+          <section class="sync-card google-sync-card">
+            <div class="sync-card-header">
+              <div class="google-logo">G</div>
+              <div class="sync-copy"><strong>Google 同步</strong><small id="googleStatusText">正在检查状态…</small></div>
+              <div class="sync-actions">
+                <button id="connectGoogle" type="button" class="soft-button">连接</button>
+                <button id="disconnectGoogle" type="button" class="soft-button" hidden>断开</button>
+              </div>
+            </div>
+            <p id="googleNote" class="settings-note sync-note">同步 Luma 待办与 Google Calendar。</p>
+          </section>
+
+          <section class="sync-card apple-sync-card">
+            <div class="apple-sync-heading">
+              <div class="apple-logo" aria-hidden="true">☁</div>
+              <div class="sync-copy"><strong>Apple 同步 <span class="experimental-badge">实验</span></strong><small>日程与待办</small></div>
+            </div>
+
+            <div class="apple-sync-row">
+              <div class="apple-sync-kind"><span>日程</span><small id="icloudStatusText">正在检查状态…</small></div>
+              <div class="sync-actions">
+                <button id="connectIcloud" type="button" class="soft-button">连接</button>
+                <button id="disconnectIcloud" type="button" class="soft-button" hidden>断开</button>
+              </div>
+            </div>
+
+            <div id="icloudCredentialPanel" class="icloud-credentials">
+              <input id="icloudEmail" type="email" autocomplete="username" placeholder="Apple 账户邮箱" aria-label="Apple 账户邮箱" />
+              <input id="icloudPassword" type="password" autocomplete="current-password" placeholder="App 专用密码" aria-label="iCloud App 专用密码" />
+            </div>
+
+            <div id="icloudCalendarPanel" class="icloud-calendar-target" hidden>
+              <label for="icloudCalendarSelect">同步到</label>
+              <select id="icloudCalendarSelect" aria-label="选择 iCloud 日历">
+                <option value="">选择 iCloud 日历…</option>
+              </select>
+            </div>
+            <p id="icloudNote" class="settings-note apple-sync-note">连接 iCloud Calendar。</p>
+
+            <div class="apple-sync-divider"></div>
+
+            <div class="apple-sync-row">
+              <div class="apple-sync-kind"><span>待办</span><small id="remindersBridgeStatusText">正在检查 iCloud Drive…</small></div>
+              <div class="sync-actions">
+                <button id="chooseRemindersBridgeFolder" type="button" class="soft-button">选择位置</button>
+                <button id="exportRemindersBridge" type="button" class="soft-button">同步</button>
+              </div>
+            </div>
+            <p id="remindersBridgeNote" class="settings-note apple-sync-note">通过 iCloud Drive 同步到 Apple Reminders。</p>
+          </section>
         </div>
-        <div id="icloudCalendarPanel" class="icloud-calendar-target" hidden>
-          <label for="icloudCalendarSelect">同步到</label>
-          <select id="icloudCalendarSelect" aria-label="选择 iCloud 日历">
-            <option value="">选择 iCloud 日历…</option>
-          </select>
-        </div>
-        <p id="icloudNote" class="settings-note">仅测试 Event ↔ iCloud Calendar 链路。密码使用 Windows 安全存储加密保存。</p>
-        <section class="account-card reminders-bridge-card">
-          <div class="reminders-bridge-logo" aria-hidden="true">✓</div>
-          <div><strong>Apple 提醒事项桥接 <span class="experimental-badge">实验</span></strong><small id="remindersBridgeStatusText">正在检查 iCloud Drive…</small></div>
-          <div class="google-actions">
-            <button id="chooseRemindersBridgeFolder" type="button" class="soft-button">选择</button>
-            <button id="exportRemindersBridge" type="button" class="soft-button">生成文件</button>
-          </div>
-        </section>
-        <p id="remindersBridgeNote" class="settings-note">Todo 会写入 iCloud Drive，供 iPhone 快捷指令导入 Apple Reminders。</p>
         <button id="exportButton" type="button" class="secondary-button settings-export">导出本地备份</button>
       </form>
     </dialog>
