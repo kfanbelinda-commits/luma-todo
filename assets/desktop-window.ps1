@@ -3,7 +3,7 @@ param(
     [long] $Handle,
 
     [Parameter(Mandatory = $true)]
-    [ValidateSet('Attach', 'Detach')]
+    [ValidateSet('Attach', 'Detach', 'Activate')]
     [string] $Mode
 )
 
@@ -73,6 +73,12 @@ public static class LumaDesktopWindow
 
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr hwnd, int command);
+
+    [DllImport("user32.dll")]
+    private static extern bool BringWindowToTop(IntPtr hwnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hwnd);
 
     [DllImport("user32.dll")]
     private static extern IntPtr SetThreadDpiAwarenessContext(IntPtr dpiContext);
@@ -228,16 +234,34 @@ public static class LumaDesktopWindow
         );
         return GetParent(hwnd) == IntPtr.Zero;
     }
+
+    public static bool Activate(long rawHandle)
+    {
+        IntPtr previousDpiContext = EnterPerMonitorDpiMode();
+        try
+        {
+            IntPtr hwnd = new IntPtr(rawHandle);
+            if (hwnd == IntPtr.Zero || GetParent(hwnd) != IntPtr.Zero) return false;
+            ShowWindow(hwnd, SW_RESTORE);
+            SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+            bool brought = BringWindowToTop(hwnd);
+            bool foreground = SetForegroundWindow(hwnd);
+            return brought || foreground;
+        }
+        finally { RestoreDpiMode(previousDpiContext); }
+    }
 }
 '@
 
+$before = [LumaDesktopWindow]::Bounds($Handle)
 $success = if ($Mode -eq 'Attach') {
-    $before = [LumaDesktopWindow]::Bounds($Handle)
     [LumaDesktopWindow]::Attach($Handle)
 }
-else {
-    $before = [LumaDesktopWindow]::Bounds($Handle)
+elseif ($Mode -eq 'Detach') {
     [LumaDesktopWindow]::Detach($Handle)
+}
+else {
+    [LumaDesktopWindow]::Activate($Handle)
 }
 
 if (-not $success) {
