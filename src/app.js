@@ -50,6 +50,7 @@ let taskDateFilter = null;
 let calendarDetailDate = null;
 let calendarCreateMode = 'todo';
 let editingCalendarEventId = null;
+let calendarEventResizeState = null;
 let selectedEventColor = DEFAULT_EVENT_COLOR;
 let pendingReminderTaskId = null;
 let draggedTaskId = null;
@@ -164,6 +165,98 @@ function renderEventColorChoices() {
     button.classList.toggle('selected', active);
     button.setAttribute('aria-pressed', String(active));
   });
+}
+
+function localResizableCalendarEvent(task) {
+  return Boolean(task
+    && isCalendarEvent(task)
+    && !task.googleCalendarExternal
+    && task.syncTarget !== 'external-calendar');
+}
+
+function addCalendarEventResizeHandle(host, task, edge) {
+  if (!localResizableCalendarEvent(task)) return;
+  const handle = document.createElement('button');
+  handle.type = 'button';
+  handle.className = `event-resize-handle event-resize-${edge}`;
+  handle.setAttribute('aria-label', edge === 'start' ? '拖动修改日程开始日期' : '拖动修改日程结束日期');
+  handle.title = edge === 'start' ? '拖动修改开始日期' : '拖动修改结束日期';
+  handle.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    beginCalendarEventResize(task.id, edge);
+  });
+  handle.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+  });
+  host.appendChild(handle);
+}
+
+function beginCalendarEventResize(taskId, edge) {
+  const task = state.tasks.find((item) => item.id === taskId);
+  if (!localResizableCalendarEvent(task)) return;
+  calendarEventResizeState = {
+    taskId,
+    edge,
+    originalStart: task.dueDate,
+    originalEnd: task.endDate || task.dueDate,
+    previewDate: edge === 'start' ? task.dueDate : (task.endDate || task.dueDate),
+  };
+  document.body.classList.add('calendar-event-resizing');
+  renderCalendar();
+}
+
+function calendarResizeDateAtPoint(clientX, clientY) {
+  const target = document.elementFromPoint(clientX, clientY);
+  return target?.closest('.calendar-day')?.dataset.date || '';
+}
+
+function updateCalendarEventResize(event) {
+  const resize = calendarEventResizeState;
+  if (!resize) return;
+  const dateKey = calendarResizeDateAtPoint(event.clientX, event.clientY);
+  if (!dateKey || dateKey === resize.previewDate) return;
+
+  const task = state.tasks.find((item) => item.id === resize.taskId);
+  if (!task) return;
+
+  if (resize.edge === 'start') {
+    if (dateKey > resize.originalEnd) return;
+    task.dueDate = dateKey;
+    task.endDate = resize.originalEnd;
+  } else {
+    if (dateKey < resize.originalStart) return;
+    task.dueDate = resize.originalStart;
+    task.endDate = dateKey;
+  }
+  resize.previewDate = dateKey;
+  renderCalendar();
+}
+
+async function finishCalendarEventResize(cancel = false) {
+  const resize = calendarEventResizeState;
+  if (!resize) return;
+  calendarEventResizeState = null;
+  document.body.classList.remove('calendar-event-resizing');
+
+  const task = state.tasks.find((item) => item.id === resize.taskId);
+  if (!task) {
+    renderCalendar();
+    return;
+  }
+
+  if (cancel) {
+    task.dueDate = resize.originalStart;
+    task.endDate = resize.originalEnd;
+    renderCalendar();
+    return;
+  }
+
+  task.updatedAt = Date.now();
+  await persist();
+  render();
 }
 
 function daysLate(task) {
@@ -696,9 +789,11 @@ function renderCalendar() {
       const endsSegment = key === endDate || weekdayIndex === 6;
       const segment = document.createElement('div');
       const external = Boolean(task.googleCalendarExternal || task.syncTarget === 'external-calendar');
-      segment.className = `calendar-span-event${beginsSegment ? ' span-left-round' : ''}${endsSegment ? ' span-right-round' : ''}${external ? ' readonly' : ''}`;
+      segment.className = `calendar-span-event${beginsSegment ? ' span-left-round' : ''}${endsSegment ? ' span-right-round' : ''}${external ? ' readonly' : ''}${calendarEventResizeState?.taskId === task.id ? ' event-resizing' : ''}`;
       segment.style.setProperty('--event-color', eventColorFor(task));
       segment.textContent = beginsSegment ? `${task.time ? `${task.time} ` : ''}${task.title}` : '';
+      if (key === task.dueDate) addCalendarEventResizeHandle(segment, task, 'start');
+      if (key === endDate) addCalendarEventResizeHandle(segment, task, 'end');
       segment.title = `${task.title} · ${eventRangeLabel(task)}${external ? ' · Google Calendar' : ''}`;
       segment.addEventListener('click', (clickEvent) => {
         clickEvent.stopPropagation();
@@ -713,7 +808,7 @@ function renderCalendar() {
       const project = projectById(task.projectId);
       const calendarEvent = isCalendarEvent(task);
       const external = Boolean(task.googleCalendarExternal || task.syncTarget === 'external-calendar');
-      item.className = `day-event${calendarEvent ? ' calendar-event-item' : ' calendar-todo-item'}${task.completed ? ' completed-calendar-event' : ''}${task.id === highlightedTaskId ? ' highlighted' : ''}${external ? ' google-calendar-event' : ''}`;
+      item.className = `day-event${calendarEvent ? ' calendar-event-item' : ' calendar-todo-item'}${task.completed ? ' completed-calendar-event' : ''}${task.id === highlightedTaskId ? ' highlighted' : ''}${external ? ' google-calendar-event' : ''}${calendarEventResizeState?.taskId === task.id ? ' event-resizing' : ''}`;
       item.draggable = !calendarEvent && !task.completed;
       item.setAttribute('role', 'button');
       item.setAttribute('tabindex', '0');
@@ -724,6 +819,10 @@ function renderCalendar() {
         : (calendarEvent
           ? `${task.title} · 日程${external ? ' · Google Calendar（只读）' : ''}`
           : `${task.title} · 待办 · 点击修改安排`);
+      if (calendarEvent && !external) {
+        addCalendarEventResizeHandle(item, task, 'start');
+        addCalendarEventResizeHandle(item, task, 'end');
+      }
 
       item.addEventListener('dragstart', (dragEvent) => {
         if (calendarEvent || task.completed) {
@@ -1729,6 +1828,19 @@ function bindEvents() {
   $('#nextMonth').addEventListener('click', () => changeCalendarMonth(1));
   $('#todayMonth').addEventListener('click', goToCurrentCalendarMonth);
   $('#closeCalendarDetail').addEventListener('click', closeCalendarDetail);
+
+  document.addEventListener('pointermove', (event) => {
+    if (calendarEventResizeState) updateCalendarEventResize(event);
+  });
+  document.addEventListener('pointerup', () => {
+    if (calendarEventResizeState) finishCalendarEventResize(false);
+  });
+  document.addEventListener('pointercancel', () => {
+    if (calendarEventResizeState) finishCalendarEventResize(true);
+  });
+  window.addEventListener('blur', () => {
+    if (calendarEventResizeState) finishCalendarEventResize(true);
+  });
 
   document.addEventListener('pointerdown', (event) => {
     if (!calendarDetailDate) return;
