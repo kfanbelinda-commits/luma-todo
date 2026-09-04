@@ -36,29 +36,74 @@
         </div>
         <div id="calendarGrid" class="calendar-grid"></div>
         <aside id="calendarDetail" class="calendar-detail hidden no-drag" aria-hidden="true">
-          <div class="calendar-detail-header">
-            <div>
-              <h3 id="calendarDetailTitle">9月4日 周五</h3>
-              <p id="calendarDetailLunar" class="calendar-detail-lunar"></p>
+          <div id="calendarDetailView" class="calendar-detail-view">
+            <div class="calendar-detail-header">
+              <div>
+                <h3 id="calendarDetailTitle">9月4日 周五</h3>
+                <p id="calendarDetailLunar" class="calendar-detail-lunar"></p>
+              </div>
+              <button id="closeCalendarDetail" class="calendar-detail-close" type="button" aria-label="关闭日期详情">×</button>
             </div>
-            <button id="closeCalendarDetail" class="calendar-detail-close" type="button" aria-label="关闭日期详情">×</button>
+            <section class="calendar-detail-section">
+              <div class="calendar-detail-section-title">
+                <span>当日日程</span>
+                <span id="calendarScheduleCount" class="calendar-detail-count"></span>
+              </div>
+              <div id="calendarScheduleList" class="calendar-detail-list"></div>
+            </section>
+            <section class="calendar-detail-section calendar-detail-todos">
+              <div class="calendar-detail-section-title">
+                <span>待办</span>
+                <span id="calendarTodoCount" class="calendar-detail-count"></span>
+              </div>
+              <p class="calendar-detail-hint">当天及之前未完成</p>
+              <div id="calendarTodoList" class="calendar-detail-list"></div>
+            </section>
+            <button id="addCalendarItem" class="calendar-detail-add calendar-detail-add-item" type="button">＋ 添加事项</button>
           </div>
-          <section class="calendar-detail-section">
-            <div class="calendar-detail-section-title">
-              <span>当日日程</span>
-              <span id="calendarScheduleCount" class="calendar-detail-count"></span>
-            </div>
-            <div id="calendarScheduleList" class="calendar-detail-list"></div>
-          </section>
-          <section class="calendar-detail-section calendar-detail-todos">
-            <div class="calendar-detail-section-title">
-              <span>待办</span>
-              <span id="calendarTodoCount" class="calendar-detail-count"></span>
-            </div>
-            <p class="calendar-detail-hint">当天及之前未完成</p>
-            <div id="calendarTodoList" class="calendar-detail-list"></div>
-          </section>
-          <button id="addCalendarItem" class="calendar-detail-add calendar-detail-add-item" type="button">＋ 添加事项</button>
+
+          <div id="calendarEditorView" class="calendar-editor-view hidden">
+            <form id="calendarTaskForm">
+              <div class="calendar-detail-header calendar-editor-header">
+                <button id="backCalendarDetail" class="calendar-detail-back" type="button" aria-label="返回日期详情">←</button>
+                <h3 id="calendarTaskDialogTitle">新建事项</h3>
+                <button id="cancelCalendarTaskButton" class="calendar-detail-close" type="button" aria-label="关闭">×</button>
+              </div>
+              <div class="calendar-editor-body">
+                <div class="calendar-item-type-switch" role="group" aria-label="事项类型">
+                  <button id="calendarModeTodo" class="calendar-mode-button" type="button" data-calendar-mode="todo" aria-pressed="true">待办</button>
+                  <button id="calendarModeEvent" class="calendar-mode-button" type="button" data-calendar-mode="event" aria-pressed="false">日程</button>
+                </div>
+                <label><span id="calendarTaskTitleText">事项内容</span><input id="calendarTaskTitle" maxlength="120" placeholder="输入内容" required /></label>
+                <div class="schedule-fields calendar-create-fields">
+                  <label class="calendar-start-date-field"><span id="calendarTaskDateText">待办日期</span><input id="calendarTaskDate" type="date" required /></label>
+                  <label class="calendar-time-field"><span id="calendarTaskTimeText">时间</span>
+                    <div class="time-field">
+                      <input id="calendarTaskTime" class="time-text-input" type="text" inputmode="numeric" autocomplete="off" placeholder="无时间" aria-label="事项时间" aria-haspopup="listbox" />
+                      <div class="time-picker" role="listbox" aria-label="选择开始时间" hidden></div>
+                    </div>
+                  </label>
+                  <label id="calendarTaskProjectLabel" class="calendar-project-field">所属分类<select id="calendarTaskProject" required></select></label>
+                  <label id="calendarTaskEndDateLabel" class="calendar-end-date-field" hidden>结束日期<input id="calendarTaskEndDate" type="date" required /></label>
+                  <label id="calendarTaskEndTimeLabel" class="calendar-end-time-field" hidden><span>结束时间</span>
+                    <div class="time-field">
+                      <input id="calendarTaskEndTime" class="time-text-input" type="text" inputmode="numeric" autocomplete="off" placeholder="全天" aria-label="日程结束时间" aria-haspopup="listbox" />
+                      <div class="time-picker" role="listbox" aria-label="选择结束时间" hidden></div>
+                    </div>
+                  </label>
+                  <label id="calendarEventColorLabel" class="calendar-event-color-label calendar-event-color-field" hidden>
+                    <span>日程颜色</span>
+                    <div id="calendarEventColors" class="event-color-choices" aria-label="选择日程颜色"></div>
+                  </label>
+                </div>
+                <p id="calendarItemTypeHint" class="calendar-item-type-hint">待办可以设置日期和具体时间，仍会保留在「我的待办」</p>
+                <div class="project-form-actions calendar-editor-actions">
+                  <button id="deleteCalendarEventButton" type="button" class="danger-button" hidden>删除日程</button>
+                  <button id="calendarTaskSubmit" type="submit" class="primary-button">添加事项</button>
+                </div>
+              </div>
+            </form>
+          </div>
         </aside>
       </section>
 
@@ -171,46 +216,6 @@
         <div class="project-form-actions">
           <button id="clearScheduleButton" type="button" class="secondary-button schedule-clear-button">清除安排</button>
           <button value="default" class="primary-button">保存安排</button>
-        </div>
-      </form>
-    </dialog>
-
-    <dialog id="calendarTaskDialog" class="modal calendar-task-modal">
-      <form method="dialog" id="calendarTaskForm">
-        <div class="modal-title">
-          <div><p id="calendarTaskEyebrow" class="eyebrow">月历事项</p><h3 id="calendarTaskDialogTitle">新建事项</h3></div>
-          <button id="cancelCalendarTaskButton" type="button" class="icon-button" aria-label="关闭">×</button>
-        </div>
-        <div class="calendar-item-type-switch" role="group" aria-label="事项类型">
-          <button id="calendarModeTodo" class="calendar-mode-button" type="button" data-calendar-mode="todo" aria-pressed="true">待办</button>
-          <button id="calendarModeEvent" class="calendar-mode-button" type="button" data-calendar-mode="event" aria-pressed="false">日程</button>
-        </div>
-        <label><span id="calendarTaskTitleText">事项内容</span><input id="calendarTaskTitle" maxlength="120" placeholder="输入内容" required /></label>
-        <div class="schedule-fields calendar-create-fields">
-          <label class="calendar-start-date-field"><span id="calendarTaskDateText">待办日期</span><input id="calendarTaskDate" type="date" required /></label>
-          <label class="calendar-time-field"><span id="calendarTaskTimeText">时间</span>
-            <div class="time-field">
-              <input id="calendarTaskTime" class="time-text-input" type="text" inputmode="numeric" autocomplete="off" placeholder="无时间" aria-label="事项时间" aria-haspopup="listbox" />
-              <div class="time-picker" role="listbox" aria-label="选择开始时间" hidden></div>
-            </div>
-          </label>
-          <label id="calendarTaskProjectLabel" class="calendar-project-field">所属分类<select id="calendarTaskProject" required></select></label>
-          <label id="calendarTaskEndDateLabel" class="calendar-end-date-field" hidden>结束日期<input id="calendarTaskEndDate" type="date" required /></label>
-          <label id="calendarTaskEndTimeLabel" class="calendar-end-time-field" hidden><span>结束时间</span>
-            <div class="time-field">
-              <input id="calendarTaskEndTime" class="time-text-input" type="text" inputmode="numeric" autocomplete="off" placeholder="全天" aria-label="日程结束时间" aria-haspopup="listbox" />
-              <div class="time-picker" role="listbox" aria-label="选择结束时间" hidden></div>
-            </div>
-          </label>
-          <label id="calendarEventColorLabel" class="calendar-event-color-label calendar-event-color-field" hidden>
-            <span>日程颜色</span>
-            <div id="calendarEventColors" class="event-color-choices" aria-label="选择日程颜色"></div>
-          </label>
-        </div>
-        <p id="calendarItemTypeHint" class="calendar-item-type-hint">待办可以设置日期和具体时间，仍会保留在「我的待办」</p>
-        <div class="project-form-actions">
-          <button id="deleteCalendarEventButton" type="button" class="danger-button" hidden>删除日程</button>
-          <button id="calendarTaskSubmit" value="default" class="primary-button">添加事项</button>
         </div>
       </form>
     </dialog>
