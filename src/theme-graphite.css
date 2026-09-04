@@ -1779,3 +1779,68 @@ html[data-theme="light"] .calendar-panel.calendar-detail-open .calendar-detail {
 .calendar-panel.calendar-detail-open .calendar-header {
   -webkit-app-region: no-drag;
 }
+
+
+/* Completed tasks: compact inline disclosure, no chevron or card strip. */
+.completed-toggle {
+  width: max-content;
+  min-height: 20px;
+  margin: 1px 2px 1px 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  border-radius: 5px;
+  padding: 0 4px;
+  color: rgba(232,236,244,.52);
+  background: transparent;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 20px;
+  cursor: pointer;
+}
+.completed-toggle-check {
+  width: 12px;
+  height: 12px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(232,236,244,.28);
+  border-radius: 50%;
+  color: rgba(232,236,244,.58);
+  font-size: 8px;
+  line-height: 1;
+}
+.completed-toggle:hover,
+.completed-toggle:focus-visible {
+  color: rgba(248,249,252,.84);
+  background: rgba(255,255,255,.045);
+  outline: none;
+}
+.completed-toggle:hover .completed-toggle-check,
+.completed-toggle:focus-visible .completed-toggle-check {
+  border-color: rgba(232,236,244,.42);
+  color: rgba(248,249,252,.82);
+}
+.completed-list { margin-top: 0; }
+.completed-list:not(.collapsed) { margin-bottom: 1px; }
+.completed-list .task-item {
+  min-height: 34px;
+  padding-top: 3px;
+  padding-bottom: 3px;
+  opacity: .68;
+}
+html[data-theme="light"] .completed-toggle { color: rgba(58,71,92,.52); }
+html[data-theme="light"] .completed-toggle-check {
+  border-color: rgba(58,71,92,.24);
+  color: rgba(58,71,92,.52);
+}
+html[data-theme="light"] .completed-toggle:hover,
+html[data-theme="light"] .completed-toggle:focus-visible {
+  color: rgba(38,50,68,.82);
+  background: rgba(58,71,92,.045);
+}
+html[data-theme="light"] .completed-toggle:hover .completed-toggle-check,
+html[data-theme="light"] .completed-toggle:focus-visible .completed-toggle-check {
+  border-color: rgba(58,71,92,.36);
+  color: rgba(38,50,68,.78);
+}
