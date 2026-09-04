@@ -413,11 +413,196 @@ async function discoverIcloudCalendars(credentials) {
 }
 
 function publicIcloudStatus(credentials) {
-  if (!credentials) return { connected: false, email: '', calendars: [] };
+  if (!credentials) return { connected: false, email: '', calendars: [], selectedCalendarUrl: '' };
   return {
     connected: true,
     email: credentials.email,
-    calendars: Array.isArray(credentials.calendars) ? credentials.calendars : []
+    calendars: Array.isArray(credentials.calendars) ? credentials.calendars : [],
+    selectedCalendarUrl: credentials.selectedCalendarUrl || ''
+  };
+}
+
+function icsEscapeText(value) {
+  return String(value || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/\r?\n/g, '\\n')
+    .replace(/,/g, '\\,')
+    .replace(/;/g, '\\;');
+}
+
+function icsSafeUidPart(value) {
+  return String(value || '')
+    .replace(/[^A-Za-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 120) || crypto.randomUUID();
+}
+
+function compactDateKey(dateKey) {
+  return String(dateKey || '').replaceAll('-', '');
+}
+
+function nextDateKeyLocal(dateKey) {
+  const [year, month, day] = String(dateKey).split('-').map(Number);
+  const date = new Date(year, month - 1, day, 12, 0, 0, 0);
+  date.setDate(date.getDate() + 1);
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0')
+  ].join('-');
+}
+
+function utcIcsDateTime(dateKey, time) {
+  const [year, month, day] = String(dateKey).split('-').map(Number);
+  const [hour, minute] = String(time).split(':').map(Number);
+  const date = new Date(year, month - 1, day, hour, minute, 0, 0);
+  return date.getUTCFullYear()
+    + String(date.getUTCMonth() + 1).padStart(2, '0')
+    + String(date.getUTCDate()).padStart(2, '0')
+    + 'T'
+    + String(date.getUTCHours()).padStart(2, '0')
+    + String(date.getUTCMinutes()).padStart(2, '0')
+    + '00Z';
+}
+
+function taskToIcloudIcs(task, uid) {
+  const updatedAt = Number(task.updatedAt || Date.now());
+  const stamp = new Date(updatedAt);
+  const dtstamp = stamp.getUTCFullYear()
+    + String(stamp.getUTCMonth() + 1).padStart(2, '0')
+    + String(stamp.getUTCDate()).padStart(2, '0')
+    + 'T'
+    + String(stamp.getUTCHours()).padStart(2, '0')
+    + String(stamp.getUTCMinutes()).padStart(2, '0')
+    + String(stamp.getUTCSeconds()).padStart(2, '0')
+    + 'Z';
+
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Luma Todo//iCloud Calendar//EN',
+    'CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT',
+    'UID:' + uid,
+    'DTSTAMP:' + dtstamp,
+    'LAST-MODIFIED:' + dtstamp,
+    'SUMMARY:' + icsEscapeText(task.title || '未命名日程'),
+    'X-LUMA-TODO:TRUE',
+    'X-LUMA-TASK-ID:' + icsEscapeText(task.id),
+    'X-LUMA-UPDATED-AT:' + updatedAt
+  ];
+
+  if (/^#[0-9a-f]{6}$/i.test(task.eventColor || '')) {
+    lines.push('X-LUMA-EVENT-COLOR:' + task.eventColor);
+  }
+
+  if (task.time) {
+    const endDate = task.endDate || task.dueDate;
+    const endTime = task.endTime || task.time;
+    lines.push('DTSTART:' + utcIcsDateTime(task.dueDate, task.time));
+    lines.push('DTEND:' + utcIcsDateTime(endDate, endTime));
+  } else {
+    const endDateInclusive = task.endDate || task.dueDate;
+    lines.push('DTSTART;VALUE=DATE:' + compactDateKey(task.dueDate));
+    lines.push('DTEND;VALUE=DATE:' + compactDateKey(nextDateKeyLocal(endDateInclusive)));
+  }
+
+  lines.push('END:VEVENT', 'END:VCALENDAR', '');
+  return lines.join('\r\n');
+}
+
+function ensureCalendarUrl(url) {
+  return String(url || '').endsWith('/') ? String(url) : String(url || '') + '/';
+}
+
+async function putIcloudEvent(resourceUrl, credentials, ics, etag) {
+  const headers = {
+    Authorization: icloudAuthHeader(credentials),
+    'Content-Type': 'text/calendar; charset=utf-8',
+    'User-Agent': 'Luma-Todo/1.0 CalDAV'
+  };
+  if (etag) headers['If-Match'] = etag;
+  else headers['If-None-Match'] = '*';
+
+  const response = await fetch(resourceUrl, {
+    method: 'PUT',
+    redirect: 'follow',
+    headers,
+    body: ics
+  });
+
+  const text = await response.text();
+  if (!response.ok) {
+    if (response.status === 412) {
+      throw new Error('iCloud 日程已在其他设备发生变化，请先不要覆盖；下一步会加入反向同步处理冲突');
+    }
+    const requestId = response.headers.get('x-apple-request-uuid')
+      || response.headers.get('x-apple-jingle-correlation-key')
+      || '';
+    const suffix = requestId ? ' · Apple Request ID: ' + requestId : '';
+    throw new Error('写入 iCloud 日历失败（HTTP ' + response.status + '）' + suffix + (text ? '' : ''));
+  }
+
+  return response.headers.get('etag') || etag || '';
+}
+
+async function syncIcloudEvents(state, calendarUrl) {
+  const credentials = loadIcloudCredentials();
+  if (!credentials) throw new Error('iCloud 尚未连接');
+
+  const calendars = Array.isArray(credentials.calendars) ? credentials.calendars : [];
+  const calendar = calendars.find((item) => item.url === calendarUrl);
+  if (!calendar) throw new Error('请先选择一个 iCloud 日历');
+
+  const normalizedCalendarUrl = ensureCalendarUrl(calendar.url);
+  state.tasks ??= [];
+  let created = 0;
+  let updated = 0;
+  let unchanged = 0;
+
+  for (const task of state.tasks) {
+    if (!task || task.itemType !== 'event' || task.syncTarget !== 'calendar' || !task.dueDate) continue;
+    if (task.googleCalendarExternal || task.syncTarget === 'external-calendar') continue;
+
+    if (task.icloudCalendarUrl && task.icloudCalendarUrl !== calendar.url) {
+      unchanged += 1;
+      continue;
+    }
+
+    const lastSyncAt = Number(task.lastIcloudSyncAt || 0);
+    if (task.icloudHref && lastSyncAt && Number(task.updatedAt || 0) <= lastSyncAt) {
+      unchanged += 1;
+      continue;
+    }
+
+    const isNew = !task.icloudHref;
+    const uid = task.icloudUid || ('luma-' + icsSafeUidPart(task.id) + '@luma-todo');
+    const resourceUrl = task.icloudHref || (normalizedCalendarUrl + encodeURIComponent(uid) + '.ics');
+    const ics = taskToIcloudIcs(task, uid);
+    const etag = await putIcloudEvent(resourceUrl, credentials, ics, task.icloudEtag || '');
+
+    task.icloudUid = uid;
+    task.icloudHref = resourceUrl;
+    task.icloudEtag = etag;
+    task.icloudCalendarUrl = calendar.url;
+    task.icloudCalendarName = calendar.name;
+    task.lastIcloudSyncAt = Date.now();
+
+    if (isNew) created += 1;
+    else updated += 1;
+  }
+
+  credentials.selectedCalendarUrl = calendar.url;
+  saveIcloudCredentials(credentials);
+
+  return {
+    state,
+    summary: {
+      created,
+      updated,
+      unchanged,
+      calendarName: calendar.name
+    }
   };
 }
 
@@ -1616,7 +1801,12 @@ ipcMain.handle('icloud:connect', async (_event, payload) => {
 
 ipcMain.handle('icloud:disconnect', () => {
   clearIcloudCredentials();
-  return { connected: false, email: '', calendars: [] };
+  return { connected: false, email: '', calendars: [], selectedCalendarUrl: '' };
+});
+
+ipcMain.handle('icloud:sync', (_event, payload) => {
+  if (DEMO_MODE) return { state: payload?.state, summary: { created: 0, updated: 0, unchanged: 0, calendarName: '' } };
+  return syncIcloudEvents(payload?.state || {}, String(payload?.calendarUrl || ''));
 });
 
 ipcMain.handle('settings:auto-start', (_event, enabled) => {
