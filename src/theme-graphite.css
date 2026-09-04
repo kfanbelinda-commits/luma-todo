@@ -2833,3 +2833,11 @@ html[data-theme="light"] .calendar-span-event.google-calendar-event:hover {
   margin-top: -4px;
   white-space: nowrap;
 }
+
+
+/* Calendar form hidden fields must stay fully hidden after grid placement. */
+#calendarTaskProjectLabel[hidden],
+#calendarTaskEndDateLabel[hidden],
+#calendarEventColorLabel[hidden] {
+  display: none !important;
+}
