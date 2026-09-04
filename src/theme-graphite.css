@@ -2042,3 +2042,7 @@ html[data-theme="light"] .day-event.calendar-todo-item.completed-calendar-event 
 html[data-theme="light"] .day-event.calendar-todo-item.completed-calendar-event::before {
   color: rgba(255,255,255,.94);
 }
+
+
+.calendar-day.muted .day-spans { opacity: .46; }
+html[data-theme="light"] .calendar-day.muted .day-spans { opacity: .42; }
