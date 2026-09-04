@@ -118,6 +118,9 @@ function normalizeState(input) {
 
 async function persist() {
   await window.luma?.save(state);
+  try {
+    await window.luma?.remindersBridgeAutoExport(state);
+  } catch {}
 }
 
 function projectById(id) {
