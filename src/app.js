@@ -877,6 +877,7 @@ function renderCalendar() {
       const pendingCompletion = !calendarEvent && isTaskPendingCompletion(task.id);
       const visuallyCompleted = task.completed || pendingCompletion;
       item.className = `day-event${calendarEvent ? ' calendar-event-item' : ' calendar-todo-item'}${visuallyCompleted ? ' completed-calendar-event' : ''}${pendingCompletion ? ' pending-completion' : ''}${task.id === highlightedTaskId ? ' highlighted' : ''}${external ? ' google-calendar-event' : ''}${calendarEventResizeState?.taskId === task.id ? ' event-resizing' : ''}`;
+      item.dataset.taskId = task.id;
       item.draggable = !calendarEvent && !visuallyCompleted;
       item.setAttribute('role', 'button');
       item.setAttribute('tabindex', '0');
@@ -902,7 +903,7 @@ function renderCalendar() {
         todoCheck.addEventListener('click', async (checkEvent) => {
           checkEvent.preventDefault();
           checkEvent.stopPropagation();
-          await toggleTask(task.id);
+          await toggleTask(task.id, { preserveCalendar: true });
         });
       }
       if (calendarEvent && !external) {
@@ -1688,7 +1689,47 @@ function cancelPendingTaskCompletion(id) {
   pendingTaskCompletions.delete(id);
 }
 
-async function finalizeTaskCompletion(id) {
+function syncCalendarTodoCompletionUi(id) {
+  const task = state.tasks.find((item) => item.id === id);
+  if (!task) return;
+
+  const pendingCompletion = isTaskPendingCompletion(id);
+  const visuallyCompleted = task.completed || pendingCompletion;
+
+  document.querySelectorAll('.calendar-todo-item').forEach((item) => {
+    if (item.dataset.taskId !== id) return;
+
+    item.classList.toggle('completed-calendar-event', visuallyCompleted);
+    item.classList.toggle('pending-completion', pendingCompletion);
+    item.draggable = !visuallyCompleted;
+
+    const check = item.querySelector('.calendar-todo-check');
+    if (check) {
+      check.classList.toggle('is-checked', visuallyCompleted);
+      check.setAttribute('aria-label', `${visuallyCompleted ? '恢复' : '完成'} ${task.title}`);
+    }
+
+    item.title = pendingCompletion
+      ? `${task.title} · 已完成 · 再点方框可撤销`
+      : (task.completed
+        ? `${task.title} · 已完成 · 点击方框恢复`
+        : `${task.title} · 待办 · 点击文字修改安排，点击方框完成`);
+  });
+}
+
+function renderTaskCompletionChange(id, preserveCalendar = false) {
+  if (!preserveCalendar) {
+    render();
+    return;
+  }
+
+  renderHeader();
+  renderProjects();
+  syncCalendarTodoCompletionUi(id);
+  renderCalendarDetail();
+}
+
+async function finalizeTaskCompletion(id, { preserveCalendar = false } = {}) {
   if (!pendingTaskCompletions.has(id)) return;
   pendingTaskCompletions.delete(id);
 
@@ -1699,17 +1740,17 @@ async function finalizeTaskCompletion(id) {
   task.completedDate = dayOffset(0);
   task.updatedAt = Date.now();
   await persist();
-  render();
+  renderTaskCompletionChange(id, preserveCalendar);
 }
 
-async function toggleTask(id) {
+async function toggleTask(id, { preserveCalendar = false } = {}) {
   const task = state.tasks.find((item) => item.id === id);
   if (!task || task.googleCalendarExternal || task.syncTarget === 'external-calendar') return;
 
   // A second click during the grace period is the undo action.
   if (isTaskPendingCompletion(id)) {
     cancelPendingTaskCompletion(id);
-    render();
+    renderTaskCompletionChange(id, preserveCalendar);
     return;
   }
 
@@ -1719,16 +1760,16 @@ async function toggleTask(id) {
     task.completedDate = null;
     task.updatedAt = Date.now();
     await persist();
-    render();
+    renderTaskCompletionChange(id, preserveCalendar);
     return;
   }
 
   // Show completion feedback immediately, but do not persist/move the task yet.
   const timer = setTimeout(() => {
-    finalizeTaskCompletion(id).catch((error) => console.error('无法完成待办', error));
+    finalizeTaskCompletion(id, { preserveCalendar }).catch((error) => console.error('无法完成待办', error));
   }, COMPLETION_GRACE_MS);
   pendingTaskCompletions.set(id, timer);
-  render();
+  renderTaskCompletionChange(id, preserveCalendar);
 }
 
 async function updateTaskTitle(id, title) {
