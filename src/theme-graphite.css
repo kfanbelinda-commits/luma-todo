@@ -3726,3 +3726,91 @@ html[data-theme="light"] .calendar-detail-check.is-checked {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Experimental iCloud CalDAV connection. */
+.settings-modal form {
+  max-height: calc(100vh - 26px);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.settings-modal .apple-account-card {
+  margin-top: 9px;
+}
+
+.settings-modal .apple-logo {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  border-radius: 9px;
+  color: rgba(245,247,251,.9);
+  background: rgba(116,170,226,.13);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.experimental-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 4px;
+  border-radius: 999px;
+  color: rgba(198,220,244,.82);
+  background: rgba(116,170,226,.11);
+  font-size: 8px;
+  font-weight: 650;
+  vertical-align: 1px;
+}
+
+.icloud-credentials {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.icloud-credentials[hidden] {
+  display: none;
+}
+
+.icloud-credentials input {
+  width: 100%;
+  min-width: 0;
+  height: 31px;
+  padding: 0 8px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  outline: none;
+  color: var(--ink);
+  background: rgba(255,255,255,.045);
+  font-size: 10px;
+  box-sizing: border-box;
+}
+
+.icloud-credentials input:focus {
+  border-color: rgba(116,170,226,.46);
+  box-shadow: 0 0 0 2px rgba(116,170,226,.10);
+}
+
+html[data-theme="light"] .settings-modal .apple-logo {
+  color: #42698f;
+  background: #eef5fb;
+}
+
+html[data-theme="light"] .experimental-badge {
+  color: #4a6f93;
+  background: #edf4fa;
+}
+
+html[data-theme="light"] .icloud-credentials input {
+  color: var(--luma-fg-1);
+  border-color: var(--luma-stroke-1);
+  background: #fff;
+}
+
+html[data-theme="light"] .icloud-credentials input:focus {
+  border-color: #79a7d3;
+  box-shadow: 0 0 0 2px rgba(121,167,211,.12);
+}
+
