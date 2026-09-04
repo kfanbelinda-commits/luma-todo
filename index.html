@@ -176,21 +176,22 @@
     <dialog id="calendarTaskDialog" class="modal calendar-task-modal">
       <form method="dialog" id="calendarTaskForm">
         <div class="modal-title">
-          <div><p class="eyebrow">月历待办</p><h3>新建待办</h3></div>
+          <div><p id="calendarTaskEyebrow" class="eyebrow">月历待办</p><h3 id="calendarTaskDialogTitle">新建待办</h3></div>
           <button id="cancelCalendarTaskButton" type="button" class="icon-button" aria-label="关闭">×</button>
         </div>
-        <label>待办内容<input id="calendarTaskTitle" maxlength="120" placeholder="输入待办内容" required /></label>
-        <div class="schedule-fields">
-          <label>日期<input id="calendarTaskDate" type="date" required /></label>
-          <label>时间
+        <label><span id="calendarTaskTitleText">待办内容</span><input id="calendarTaskTitle" maxlength="120" placeholder="输入内容" required /></label>
+        <div class="schedule-fields calendar-create-fields">
+          <label><span id="calendarTaskDateText">日期</span><input id="calendarTaskDate" type="date" required /></label>
+          <label id="calendarTaskEndDateLabel" hidden>结束日期<input id="calendarTaskEndDate" type="date" required /></label>
+          <label><span id="calendarTaskTimeText">时间</span>
             <div class="time-field">
-              <input id="calendarTaskTime" class="time-text-input" type="text" inputmode="numeric" autocomplete="off" placeholder="--:--" aria-label="任务时间" aria-haspopup="listbox" />
-              <div class="time-picker" role="listbox" aria-label="选择任务时间" hidden></div>
+              <input id="calendarTaskTime" class="time-text-input" type="text" inputmode="numeric" autocomplete="off" placeholder="--:--" aria-label="时间" aria-haspopup="listbox" />
+              <div class="time-picker" role="listbox" aria-label="选择时间" hidden></div>
             </div>
           </label>
         </div>
-        <label>所属分类<select id="calendarTaskProject" required></select></label>
-        <button value="default" class="primary-button">添加待办</button>
+        <label id="calendarTaskProjectLabel">所属分类<select id="calendarTaskProject" required></select></label>
+        <button id="calendarTaskSubmit" value="default" class="primary-button">添加待办</button>
       </form>
     </dialog>
 
