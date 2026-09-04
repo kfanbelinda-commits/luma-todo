@@ -1334,3 +1334,88 @@ html[data-theme="light"] .calendar-day.muted:hover,
 html[data-theme="light"] .calendar-day.muted:focus-visible {
   background: rgba(58,71,92,.045);
 }
+
+
+/* Header date summary doubles as the single calendar entry point. */
+.topbar {
+  gap: 8px;
+}
+.brand {
+  flex: 0 0 auto;
+}
+.date-summary {
+  min-width: 0;
+  max-width: 170px;
+  height: 29px;
+  flex: 1 1 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-left: auto;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 8px;
+  padding: 0 8px;
+  color: rgba(239,242,248,.72);
+  background: rgba(255,255,255,.035);
+  font: inherit;
+  font-size: 10.5px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+.date-summary svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.date-summary #dateSummaryText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.date-summary-chevron {
+  flex: 0 0 auto;
+  margin-top: -2px;
+  color: rgba(239,242,248,.46);
+  font-size: 12px;
+  transition: transform 160ms ease;
+}
+.date-summary:hover,
+.date-summary:focus-visible,
+.date-summary.expanded {
+  border-color: rgba(255,255,255,.16);
+  color: rgba(255,255,255,.94);
+  background: rgba(255,255,255,.075);
+  outline: none;
+}
+.date-summary.expanded .date-summary-chevron {
+  transform: rotate(180deg);
+}
+.date-summary.filtered-date {
+  color: rgba(255,255,255,.90);
+}
+.top-actions {
+  flex: 0 0 auto;
+}
+html[data-theme="light"] .date-summary {
+  border-color: rgba(57,70,92,.13);
+  color: #5d6879;
+  background: rgba(255,255,255,.42);
+}
+html[data-theme="light"] .date-summary-chevron {
+  color: rgba(58,71,92,.42);
+}
+html[data-theme="light"] .date-summary:hover,
+html[data-theme="light"] .date-summary:focus-visible,
+html[data-theme="light"] .date-summary.expanded {
+  border-color: rgba(57,70,92,.19);
+  color: #263244;
+  background: rgba(255,255,255,.78);
+}
