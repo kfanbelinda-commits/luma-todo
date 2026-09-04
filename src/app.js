@@ -1535,13 +1535,15 @@ function bindEvents() {
   $('#todayMonth').addEventListener('click', goToCurrentCalendarMonth);
   $('#closeCalendarDetail').addEventListener('click', closeCalendarDetail);
 
-  $('#calendarPanel').addEventListener('pointerdown', (event) => {
+  document.addEventListener('pointerdown', (event) => {
     if (!calendarDetailDate) return;
     if (event.target.closest('#calendarDetail')) return;
     if (event.target.closest('.calendar-day')) return;
     if (event.target.closest('.month-controls')) return;
+    if (event.target.closest('#dateSummary')) return;
+    if (!event.target.closest('#calendarPanel')) return;
     closeCalendarDetail();
-  });
+  }, { capture: true });
   $('#addCalendarSchedule').addEventListener('click', () => {
     if (calendarDetailDate) openCalendarTaskDialog(calendarDetailDate);
   });
