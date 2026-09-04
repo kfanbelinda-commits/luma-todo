@@ -399,16 +399,6 @@ function setTaskDateFilter(dateKey) {
   renderCalendar();
 }
 
-function stepTaskDateFilter(offset) {
-  const date = taskDateFilter ? fromDateKey(taskDateFilter) : fromDateKey(dayOffset(0));
-  date.setDate(date.getDate() + offset);
-  setTaskDateFilter(toDateKey(date));
-}
-
-function toggleTodayOrAll() {
-  setTaskDateFilter(taskDateFilter ? null : dayOffset(0));
-}
-
 async function toggleAlwaysOnTop() {
   const button = $('#pinWindowButton');
   button.disabled = true;
@@ -695,41 +685,6 @@ function renderProjects() {
 function formatShortDate(key) {
   const date = fromDateKey(key);
   return `${date.getMonth() + 1}/${date.getDate()}`;
-}
-
-function renderUpcoming() {
-  const upcoming = state.tasks
-    .filter((task) => !isCalendarEvent(task) && !task.completed && task.dueDate > dayOffset(0))
-    .sort((a, b) => `${a.dueDate}${a.time}`.localeCompare(`${b.dueDate}${b.time}`))
-    .slice(0, 3);
-  const host = $('#upcomingList');
-  host.innerHTML = '';
-  if (!upcoming.length) {
-    host.innerHTML = '<p class="empty-note">未来还没有安排，留一点呼吸的空间。</p>';
-    return;
-  }
-  upcoming.forEach((task) => {
-    const date = fromDateKey(task.dueDate);
-    const project = projectById(task.projectId);
-    const row = document.createElement('div');
-    row.className = 'upcoming-item';
-    row.style.setProperty('--upcoming-project-color', project.color);
-    row.setAttribute('role', 'button');
-    row.setAttribute('tabindex', '0');
-    row.setAttribute('title', '在月历中查看');
-    row.innerHTML = `
-      <div class="upcoming-date"><strong>${date.getDate()}</strong><span>${date.getMonth() + 1} 月</span></div>
-      <div><div class="upcoming-title">${escapeAttribute(task.title)}</div><div class="upcoming-project">${project.name}</div></div>
-      <span class="upcoming-time">${task.time || '待办'}</span>`;
-    row.addEventListener('click', () => openTaskInCalendar(task));
-    row.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        openTaskInCalendar(task);
-      }
-    });
-    host.appendChild(row);
-  });
 }
 
 async function openTaskInCalendar(task) {
