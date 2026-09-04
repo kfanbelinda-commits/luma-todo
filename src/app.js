@@ -5,6 +5,15 @@ const COLORS = [
   '#df8278', '#f3bd55', '#4fb58f', '#5d8de0', '#a878ad', '#b5a99b',
 ];
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
+const DEFAULT_EVENT_COLOR = '#91a9c7';
+const EVENT_COLORS = [
+  { value: DEFAULT_EVENT_COLOR, label: '默认' },
+  { value: '#79a7d3', label: '蓝' },
+  { value: '#7fb39a', label: '绿' },
+  { value: '#d0a86e', label: '琥珀' },
+  { value: '#c9858d', label: '红' },
+  { value: '#9a8ac2', label: '紫' },
+];
 
 const $ = (selector) => document.querySelector(selector);
 const pad = (value) => String(value).padStart(2, '0');
@@ -41,6 +50,7 @@ let taskDateFilter = null;
 let calendarDetailDate = null;
 let calendarCreateMode = 'todo';
 let editingCalendarEventId = null;
+let selectedEventColor = DEFAULT_EVENT_COLOR;
 let pendingReminderTaskId = null;
 let draggedTaskId = null;
 let draggedProjectId = null;
@@ -85,7 +95,10 @@ function normalizeState(input) {
     task.itemType = (task.itemType === 'event' || task.googleCalendarExternal) ? 'event' : 'todo';
     task.projectId ??= 'inbox';
     task.syncTarget ??= task.time ? 'calendar' : 'tasks';
-    if (task.itemType === 'event') task.endDate = task.endDate || task.dueDate || '';
+    if (task.itemType === 'event') {
+      task.endDate = task.endDate || task.dueDate || '';
+      task.eventColor = /^#[0-9a-f]{6}$/i.test(task.eventColor || '') ? task.eventColor : DEFAULT_EVENT_COLOR;
+    }
     task.updatedAt ??= task.createdAt || Date.now();
   });
   return input;
@@ -121,6 +134,18 @@ function eventRangeLabel(task) {
   const endDate = task.endDate || task.dueDate;
   if (!task.dueDate || endDate === task.dueDate) return task.time || '全天';
   return `${formatShortDate(task.dueDate)}–${formatShortDate(endDate)}`;
+}
+
+function eventColorFor(task) {
+  return /^#[0-9a-f]{6}$/i.test(task?.eventColor || '') ? task.eventColor : DEFAULT_EVENT_COLOR;
+}
+
+function renderEventColorChoices() {
+  document.querySelectorAll('#calendarEventColors [data-event-color]').forEach((button) => {
+    const active = button.dataset.eventColor === selectedEventColor;
+    button.classList.toggle('selected', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
 }
 
 function daysLate(task) {
@@ -654,6 +679,7 @@ function renderCalendar() {
       const segment = document.createElement('div');
       const external = Boolean(task.googleCalendarExternal || task.syncTarget === 'external-calendar');
       segment.className = `calendar-span-event${beginsSegment ? ' span-left-round' : ''}${endsSegment ? ' span-right-round' : ''}${external ? ' readonly' : ''}`;
+      segment.style.setProperty('--event-color', eventColorFor(task));
       segment.textContent = beginsSegment ? `${task.time ? `${task.time} ` : ''}${task.title}` : '';
       segment.title = `${task.title} · ${eventRangeLabel(task)}${external ? ' · Google Calendar' : ''}`;
       segment.addEventListener('click', (clickEvent) => {
@@ -673,7 +699,7 @@ function renderCalendar() {
       item.draggable = !calendarEvent && !task.completed;
       item.setAttribute('role', 'button');
       item.setAttribute('tabindex', '0');
-      item.style.setProperty('--event-color', project.color);
+      item.style.setProperty('--event-color', calendarEvent ? eventColorFor(task) : project.color);
       item.textContent = `${task.time ? `${task.time} ` : ''}${task.title}`;
       item.title = task.completed
         ? `${task.title} · 已完成`
@@ -860,6 +886,7 @@ function renderCalendarDetail() {
       const row = document.createElement('button');
       row.type = 'button';
       row.className = 'calendar-detail-schedule event-detail-row';
+      row.style.setProperty('--detail-color', eventColorFor(task));
       row.innerHTML = `
         <span class="calendar-detail-dot"></span>
         <span class="calendar-detail-time">${escapeAttribute(eventRangeLabel(task))}</span>
@@ -912,6 +939,7 @@ function openCalendarTaskDialog(dateKey, mode = 'todo', eventId = null) {
     ? state.tasks.find((task) => task.id === eventId && isCalendarEvent(task) && !task.googleCalendarExternal && task.syncTarget !== 'external-calendar')
     : null;
   editingCalendarEventId = editingEvent?.id || null;
+  selectedEventColor = editingEvent ? eventColorFor(editingEvent) : DEFAULT_EVENT_COLOR;
 
   $('#calendarTaskTitle').value = editingEvent?.title || '';
   $('#calendarTaskDate').value = editingEvent?.dueDate || dateKey;
@@ -925,6 +953,8 @@ function openCalendarTaskDialog(dateKey, mode = 'todo', eventId = null) {
   $('#calendarTaskTimeText').textContent = eventMode ? '开始时间' : '时间';
   $('#calendarTaskEndDateLabel').hidden = !eventMode;
   $('#calendarTaskProjectLabel').hidden = eventMode;
+  $('#calendarEventColorLabel').hidden = !eventMode;
+  renderEventColorChoices();
   $('#deleteCalendarEventButton').hidden = !editingEvent;
   $('#calendarTaskSubmit').textContent = editingEvent ? '保存日程' : (eventMode ? '添加日程' : '添加待办');
   $('#calendarTaskDialog').showModal();
@@ -955,6 +985,7 @@ async function createCalendarTask(event) {
       task.dueDate = dueDate;
       task.endDate = endDate;
       task.time = timeResult.value;
+      task.eventColor = selectedEventColor;
       task.itemType = 'event';
       task.completed = false;
       task.syncTarget = 'calendar';
@@ -974,6 +1005,7 @@ async function createCalendarTask(event) {
     dueDate,
     endDate,
     time: timeResult.value,
+    eventColor: eventMode ? selectedEventColor : '',
     itemType: eventMode ? 'event' : 'todo',
     completed: false,
     createdAt: Date.now(),
@@ -1734,6 +1766,12 @@ function bindEvents() {
   $('#cancelScheduleButton').addEventListener('click', () => $('#scheduleDialog').close());
   $('#clearScheduleButton').addEventListener('click', clearTaskSchedule);
   $('#scheduleForm').addEventListener('submit', saveTaskSchedule);
+  document.querySelectorAll('#calendarEventColors [data-event-color]').forEach((button) => {
+    button.addEventListener('click', () => {
+      selectedEventColor = button.dataset.eventColor || DEFAULT_EVENT_COLOR;
+      renderEventColorChoices();
+    });
+  });
   $('#cancelCalendarTaskButton').addEventListener('click', () => { editingCalendarEventId = null; $('#calendarTaskDialog').close(); });
   $('#deleteCalendarEventButton').addEventListener('click', deleteEditingCalendarEvent);
   $('#calendarTaskForm').addEventListener('submit', createCalendarTask);
