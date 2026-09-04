@@ -35,6 +35,32 @@
           <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
         </div>
         <div id="calendarGrid" class="calendar-grid"></div>
+        <aside id="calendarDetail" class="calendar-detail hidden no-drag" aria-hidden="true">
+          <div class="calendar-detail-header">
+            <div>
+              <h3 id="calendarDetailTitle">9月4日 周五</h3>
+              <p id="calendarDetailLunar" class="calendar-detail-lunar"></p>
+            </div>
+            <button id="closeCalendarDetail" class="calendar-detail-close" type="button" aria-label="关闭日期详情">×</button>
+          </div>
+          <section class="calendar-detail-section">
+            <div class="calendar-detail-section-title">
+              <span>当日日程</span>
+              <span id="calendarScheduleCount" class="calendar-detail-count"></span>
+            </div>
+            <div id="calendarScheduleList" class="calendar-detail-list"></div>
+            <button id="addCalendarSchedule" class="calendar-detail-add" type="button">＋ 添加日程</button>
+          </section>
+          <section class="calendar-detail-section calendar-detail-todos">
+            <div class="calendar-detail-section-title">
+              <span>待办</span>
+              <span id="calendarTodoCount" class="calendar-detail-count"></span>
+            </div>
+            <p class="calendar-detail-hint">当天及之前未完成</p>
+            <div id="calendarTodoList" class="calendar-detail-list"></div>
+            <button id="addCalendarTodo" class="calendar-detail-add" type="button">＋ 添加待办</button>
+          </section>
+        </aside>
       </section>
 
       <section class="todo-panel panel">
