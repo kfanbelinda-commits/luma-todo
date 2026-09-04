@@ -3814,3 +3814,54 @@ html[data-theme="light"] .icloud-credentials input:focus {
   box-shadow: 0 0 0 2px rgba(121,167,211,.12);
 }
 
+.icloud-calendar-target {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.icloud-calendar-target[hidden] {
+  display: none;
+}
+
+.icloud-calendar-target label {
+  margin: 0;
+  color: rgba(239,242,248,.66);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.icloud-calendar-target select {
+  min-width: 0;
+  height: 31px;
+  padding: 0 28px 0 8px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  outline: none;
+  color: var(--ink);
+  background: rgba(255,255,255,.045);
+  font-size: 10px;
+}
+
+.icloud-calendar-target select:focus {
+  border-color: rgba(116,170,226,.46);
+  box-shadow: 0 0 0 2px rgba(116,170,226,.10);
+}
+
+html[data-theme="light"] .icloud-calendar-target label {
+  color: var(--luma-fg-3);
+}
+
+html[data-theme="light"] .icloud-calendar-target select {
+  color: var(--luma-fg-1);
+  border-color: var(--luma-stroke-1);
+  background: #fff;
+}
+
+html[data-theme="light"] .icloud-calendar-target select:focus {
+  border-color: #79a7d3;
+  box-shadow: 0 0 0 2px rgba(121,167,211,.12);
+}
+
