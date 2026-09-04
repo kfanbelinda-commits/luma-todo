@@ -593,9 +593,11 @@ function taskToIcloudIcs(task, uid) {
     'UID:' + uid,
     'DTSTAMP:' + dtstamp,
     'LAST-MODIFIED:' + dtstamp,
-    'SUMMARY:' + icsEscapeText(task.title || '未命名日程'),
+    'SUMMARY:' + icsEscapeText(task.itemType === 'event' ? (task.title || '未命名日程') : ((task.completed ? '✓ ' : '□ ') + (task.title || '未命名待办'))),
     'X-LUMA-TODO:TRUE',
     'X-LUMA-TASK-ID:' + icsEscapeText(task.id),
+    'X-LUMA-ITEM-TYPE:' + (task.itemType === 'event' ? 'event' : 'todo'),
+    'X-LUMA-COMPLETED:' + (task.completed ? 'true' : 'false'),
     'X-LUMA-UPDATED-AT:' + updatedAt
   ];
 
@@ -604,8 +606,14 @@ function taskToIcloudIcs(task, uid) {
   }
 
   if (task.time) {
-    const endDate = task.endDate || task.dueDate;
-    const endTime = task.endTime || task.time;
+    const endDate = task.itemType === 'event' ? (task.endDate || task.dueDate) : task.dueDate;
+    const endTime = task.itemType === 'event'
+      ? (task.endTime || task.time)
+      : (() => {
+          const [hour, minute] = String(task.time).split(':').map(Number);
+          const end = new Date(2000, 0, 1, hour, minute + 30, 0, 0);
+          return String(end.getHours()).padStart(2, '0') + ':' + String(end.getMinutes()).padStart(2, '0');
+        })();
     lines.push('DTSTART:' + utcIcsDateTime(task.dueDate, task.time));
     lines.push('DTEND:' + utcIcsDateTime(endDate, endTime));
   } else {
@@ -668,8 +676,9 @@ async function syncIcloudEvents(state, calendarUrl) {
   let unchanged = 0;
 
   for (const task of state.tasks) {
-    if (!task || task.itemType !== 'event' || task.syncTarget !== 'calendar' || !task.dueDate) continue;
+    if (!task || !task.dueDate) continue;
     if (task.googleCalendarExternal || task.syncTarget === 'external-calendar') continue;
+    if (task.itemType !== 'event' && task.itemType !== 'todo') continue;
 
     if (task.icloudCalendarUrl && task.icloudCalendarUrl !== calendar.url) {
       unchanged += 1;
@@ -708,7 +717,9 @@ async function syncIcloudEvents(state, calendarUrl) {
       created,
       updated,
       unchanged,
-      calendarName: calendar.name
+      calendarName: calendar.name,
+      mirroredTodos: state.tasks.filter((task) => task && task.itemType === 'todo' && task.dueDate && !task.googleCalendarExternal).length,
+      syncedEvents: state.tasks.filter((task) => task && task.itemType === 'event' && task.dueDate && !task.googleCalendarExternal).length
     }
   };
 }
