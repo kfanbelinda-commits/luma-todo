@@ -25,4 +25,5 @@ contextBridge.exposeInMainWorld('luma', {
   remindersBridgeStatus: () => ipcRenderer.invoke('reminders-bridge:status'),
   remindersBridgeChooseFolder: () => ipcRenderer.invoke('reminders-bridge:choose-folder'),
   remindersBridgeExport: (payload) => ipcRenderer.invoke('reminders-bridge:export', payload),
+  remindersBridgeAutoExport: (state) => ipcRenderer.invoke('reminders-bridge:auto-export', state),
 });
