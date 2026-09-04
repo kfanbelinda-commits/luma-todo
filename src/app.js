@@ -2315,9 +2315,9 @@ async function syncIcloud() {
     render();
     const summary = result.summary || {};
     $('#icloudNote').textContent =
-      '同步完成：日程 ' + (summary.syncedEvents || 0) + ' 项，待办 ' + (summary.mirroredTodos || 0)
-      + ' 项；新增 ' + (summary.created || 0) + '、更新 ' + (summary.updated || 0)
-      + '、无需更新 ' + (summary.unchanged || 0) + '。';
+      '同步完成：从 iCloud 下载 ' + (summary.downloaded || 0) + ' 项、删除 ' + (summary.deleted || 0)
+      + ' 项；上传新增 ' + (summary.created || 0) + '、更新 ' + (summary.updated || 0)
+      + '。当前日程 ' + (summary.syncedEvents || 0) + ' 项，待办镜像 ' + (summary.mirroredTodos || 0) + ' 项。';
   } catch (error) {
     $('#icloudNote').textContent = '同步失败：' + googleErrorMessage(error);
   } finally {
