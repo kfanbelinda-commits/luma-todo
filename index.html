@@ -261,6 +261,12 @@
           <input id="icloudEmail" type="email" autocomplete="username" placeholder="Apple 账户邮箱" aria-label="Apple 账户邮箱" />
           <input id="icloudPassword" type="password" autocomplete="current-password" placeholder="App 专用密码" aria-label="iCloud App 专用密码" />
         </div>
+        <div id="icloudCalendarPanel" class="icloud-calendar-target" hidden>
+          <label for="icloudCalendarSelect">同步到</label>
+          <select id="icloudCalendarSelect" aria-label="选择 iCloud 日历">
+            <option value="">选择 iCloud 日历…</option>
+          </select>
+        </div>
         <p id="icloudNote" class="settings-note">仅测试 Event ↔ iCloud Calendar 链路。密码使用 Windows 安全存储加密保存。</p>
         <button id="exportButton" type="button" class="secondary-button settings-export">导出本地备份</button>
       </form>
