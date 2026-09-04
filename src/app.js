@@ -1392,8 +1392,12 @@ function openTimePicker(input) {
   closeTimePickers(picker);
 
   const isCalendarStart = input.id === 'calendarTaskTime';
+  const isCalendarEnd = input.id === 'calendarTaskEndTime';
+  const calendarEventTime = calendarCreateMode === 'event' && (isCalendarStart || isCalendarEnd);
   const allowAllDay = isCalendarStart && calendarCreateMode === 'event';
+  const noneOption = picker.querySelector('.time-option-none');
   const allDayOption = picker.querySelector('.time-option-all-day');
+  if (noneOption) noneOption.hidden = calendarEventTime;
   if (allDayOption) allDayOption.hidden = !allowAllDay;
 
   const rawValue = String(input.value || '').trim();
@@ -1711,6 +1715,7 @@ async function convertTaskToCalendarEvent(taskId) {
   task.itemType = 'event';
   task.dueDate = task.dueDate || dayOffset(0);
   task.endDate = task.dueDate;
+  task.endTime = task.time ? addMinutesToTime(task.time, 30) : '';
   task.eventColor = DEFAULT_EVENT_COLOR;
   task.syncTarget = 'calendar';
   task.updatedAt = Date.now();
