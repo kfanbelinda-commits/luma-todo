@@ -1094,12 +1094,6 @@ function updateCalendarItemDialogMode() {
   }
   $('#calendarTaskDateText').textContent = eventMode ? '开始日期' : '待办日期';
   $('#calendarTaskTimeText').textContent = '时间';
-  const hint = $('#calendarItemTypeHint');
-  if (hint) {
-    hint.textContent = eventMode
-      ? '日程 · 结束日期会在下方显示，时间位置保持不变'
-      : '无时间为待办 · 选择全天或具体时间可创建日程';
-  }
 }
 
 function openCalendarTaskDialog(dateKey, mode = 'auto', eventId = null) {
