@@ -2358,3 +2358,227 @@ html[data-theme="light"] .calendar-panel .calendar-detail-section + .calendar-de
 html[data-theme="light"] .calendar-panel.calendar-detail-open .calendar-detail {
   box-shadow: 0 20px 48px rgba(50,50,48,.16), 0 5px 18px rgba(50,50,48,.08), inset 0 1px 0 rgba(255,255,255,.92);
 }
+
+
+/* Fluent-inspired light surface system: neutral, coherent, restrained. */
+:root[data-theme="light"] {
+  --luma-bg-app: #f5f5f5;
+  --luma-bg-raised: #fafafa;
+  --luma-bg-control: #ffffff;
+  --luma-bg-subtle: #f0f0f0;
+  --luma-fg-1: #242424;
+  --luma-fg-2: #424242;
+  --luma-fg-3: #616161;
+  --luma-fg-disabled: #a6a6a6;
+  --luma-stroke-1: #d1d1d1;
+  --luma-stroke-2: #e0e0e0;
+  --luma-stroke-3: #ebebeb;
+  --ink: var(--luma-fg-1);
+  --muted: var(--luma-fg-3);
+  --line: var(--luma-stroke-2);
+  --control-deep: rgba(0,0,0,.045);
+  --control-deep-hover: rgba(0,0,0,.075);
+}
+
+/* One neutral application surface across Todo and Calendar. */
+html[data-theme="light"] .todo-panel,
+html[data-theme="light"] .calendar-panel {
+  background: color-mix(in srgb, var(--luma-bg-app) calc(var(--panel-opacity) * 100%), transparent);
+  border-color: rgba(255,255,255,.82);
+}
+
+/* Text hierarchy: neutral grays, no blue cast. */
+html[data-theme="light"] h1,
+html[data-theme="light"] h2,
+html[data-theme="light"] h3,
+html[data-theme="light"] .project-title,
+html[data-theme="light"] .task-title,
+html[data-theme="light"] .upcoming-title,
+html[data-theme="light"] .schedule-task-title,
+html[data-theme="light"] .calendar-detail-task-title {
+  color: var(--luma-fg-1);
+}
+html[data-theme="light"] .eyebrow,
+html[data-theme="light"] .input-hint,
+html[data-theme="light"] .project-progress,
+html[data-theme="light"] .task-meta,
+html[data-theme="light"] .task-date-label,
+html[data-theme="light"] .completed-toggle,
+html[data-theme="light"] .upcoming-project,
+html[data-theme="light"] .empty-note,
+html[data-theme="light"] .calendar-footer,
+html[data-theme="light"] .month-lunar,
+html[data-theme="light"] .settings-section small,
+html[data-theme="light"] .account-card small,
+html[data-theme="light"] .settings-note {
+  color: var(--luma-fg-3);
+}
+
+/* Neutral controls and cards. */
+html[data-theme="light"] .quick-input-wrap,
+html[data-theme="light"] .summary-card,
+html[data-theme="light"] .date-summary,
+html[data-theme="light"] .date-filter,
+html[data-theme="light"] .icon-button,
+html[data-theme="light"] .task-time,
+html[data-theme="light"] .edit-project-button,
+html[data-theme="light"] .secondary-button,
+html[data-theme="light"] .soft-button {
+  border-color: var(--luma-stroke-2);
+  color: var(--luma-fg-2);
+  background: rgba(255,255,255,.72);
+  box-shadow: none;
+}
+html[data-theme="light"] .quick-input-wrap {
+  background: rgba(255,255,255,.82);
+}
+html[data-theme="light"] .quick-input-wrap:hover,
+html[data-theme="light"] .summary-card:hover,
+html[data-theme="light"] .date-summary:hover,
+html[data-theme="light"] .date-summary:focus-visible,
+html[data-theme="light"] .date-summary.expanded,
+html[data-theme="light"] .icon-button:hover,
+html[data-theme="light"] .secondary-button:hover,
+html[data-theme="light"] .soft-button:hover {
+  color: var(--luma-fg-1);
+  background: #fff;
+}
+
+/* Calendar grid stays on the application base with very quiet separators. */
+html[data-theme="light"] .calendar-panel .calendar-grid,
+html[data-theme="light"] .calendar-panel .calendar-day {
+  border-color: var(--luma-stroke-3);
+}
+html[data-theme="light"] .calendar-panel .weekdays,
+html[data-theme="light"] .calendar-panel .day-number {
+  color: var(--luma-fg-2);
+}
+html[data-theme="light"] .calendar-panel .calendar-day:hover,
+html[data-theme="light"] .calendar-panel .calendar-day:focus-visible {
+  background: rgba(255,255,255,.64);
+  box-shadow: inset 0 0 0 1px var(--luma-stroke-3);
+}
+html[data-theme="light"] .calendar-panel .calendar-day.focused-date {
+  background: rgba(255,255,255,.42);
+}
+html[data-theme="light"] .calendar-panel .calendar-day.muted {
+  background: rgba(0,0,0,.018);
+}
+html[data-theme="light"] .calendar-panel .calendar-day.muted .day-number {
+  color: var(--luma-fg-disabled);
+}
+
+/* Raised surfaces use a single Fluent-like neutral family. */
+html[data-theme="light"] .modal,
+html[data-theme="light"] .popover,
+html[data-theme="light"] .task-menu,
+html[data-theme="light"] .time-picker,
+html[data-theme="light"] .calendar-detail,
+html[data-theme="light"] .settings-modal {
+  border-color: var(--luma-stroke-2);
+  color: var(--luma-fg-1);
+  background: var(--luma-bg-raised);
+}
+
+/* Modal dialogs are blocking surfaces: lighter than the app with controlled elevation. */
+html[data-theme="light"] .modal,
+html[data-theme="light"] .calendar-task-modal {
+  box-shadow:
+    0 24px 56px rgba(0,0,0,.14),
+    0 8px 20px rgba(0,0,0,.08);
+}
+html[data-theme="light"] .modal::backdrop {
+  background: rgba(0,0,0,.12);
+}
+html[data-theme="light"] .modal label {
+  color: var(--luma-fg-2);
+}
+html[data-theme="light"] .modal .eyebrow,
+html[data-theme="light"] .calendar-item-type-hint {
+  color: var(--luma-fg-3);
+}
+
+/* Inputs are the brightest surface inside a raised dialog. */
+html[data-theme="light"] .modal label > input,
+html[data-theme="light"] .calendar-task-modal select,
+html[data-theme="light"] .time-text-input,
+html[data-theme="light"] .project-quick-input {
+  border-color: var(--luma-stroke-1);
+  color: var(--luma-fg-1);
+  background: var(--luma-bg-control);
+  box-shadow: none;
+}
+html[data-theme="light"] .modal label > input:hover,
+html[data-theme="light"] .calendar-task-modal select:hover,
+html[data-theme="light"] .time-text-input:hover,
+html[data-theme="light"] .project-quick-input:hover {
+  border-color: #b3b3b3;
+}
+html[data-theme="light"] .modal label > input:focus,
+html[data-theme="light"] .calendar-task-modal select:focus,
+html[data-theme="light"] .time-text-input:focus,
+html[data-theme="light"] .project-quick-input:focus {
+  border-color: #707070;
+  box-shadow: 0 0 0 1px #707070;
+}
+
+/* Menus and detail cards: low-contrast elevation, same hue family. */
+html[data-theme="light"] .task-menu,
+html[data-theme="light"] .time-picker,
+html[data-theme="light"] .calendar-detail {
+  box-shadow:
+    0 12px 28px rgba(0,0,0,.10),
+    0 3px 8px rgba(0,0,0,.05);
+}
+html[data-theme="light"] .time-option,
+html[data-theme="light"] .task-menu-header button,
+html[data-theme="light"] .task-menu-action,
+html[data-theme="light"] .task-menu-link,
+html[data-theme="light"] .task-project-choice {
+  color: var(--luma-fg-2);
+}
+html[data-theme="light"] .time-option:hover,
+html[data-theme="light"] .time-option:focus-visible,
+html[data-theme="light"] .task-menu-action:hover,
+html[data-theme="light"] .task-menu-link:hover,
+html[data-theme="light"] .task-project-choice:hover,
+html[data-theme="light"] .calendar-detail-close:hover,
+html[data-theme="light"] .calendar-detail-schedule:not(.readonly):hover,
+html[data-theme="light"] .calendar-detail-todo-row:hover {
+  color: var(--luma-fg-1);
+  background: var(--luma-bg-subtle);
+}
+
+/* Keep large secondary actions neutral. */
+html[data-theme="light"] .new-project-button {
+  border-color: var(--luma-stroke-1);
+  color: var(--luma-fg-1);
+  background: rgba(255,255,255,.48);
+}
+html[data-theme="light"] .new-project-button:hover {
+  border-color: #bdbdbd;
+  color: var(--luma-fg-1);
+  background: rgba(255,255,255,.84);
+}
+
+/* Todo rows use neutral hover only; project colors remain semantic accents. */
+html[data-theme="light"] .task-item {
+  border-color: var(--luma-stroke-3);
+}
+html[data-theme="light"] .task-item:hover,
+html[data-theme="light"] .task-item:focus-within,
+html[data-theme="light"] .task-item.menu-open {
+  border-color: var(--luma-stroke-3);
+  background: rgba(0,0,0,.025);
+}
+
+/* Selected/current surfaces stay neutral; category and Event colors are untouched. */
+html[data-theme="light"] .calendar-panel.calendar-detail-open .calendar-day.selected-date {
+  background: #fff;
+  box-shadow: inset 0 0 0 2px rgba(36,36,36,.24), 0 4px 14px rgba(0,0,0,.08);
+}
+html[data-theme="light"] .calendar-panel.calendar-detail-open .calendar-detail {
+  box-shadow:
+    0 18px 42px rgba(0,0,0,.13),
+    0 5px 14px rgba(0,0,0,.06);
+}
