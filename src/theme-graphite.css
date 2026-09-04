@@ -3476,3 +3476,75 @@ html[data-theme="light"] .calendar-panel .today .day-number {
   text-align: center;
   box-sizing: border-box;
 }
+
+
+/* Apple-like project headers: neutral labels with a clear color marker. */
+.project-title {
+  gap: 6px;
+  cursor: pointer;
+}
+
+.project-title:active {
+  cursor: pointer;
+}
+
+.project-collapse {
+  width: 10px;
+  flex: 0 0 10px;
+  opacity: .38;
+  color: currentColor;
+}
+
+.project-collapse::before {
+  width: 5px;
+  height: 5px;
+  left: 1px;
+  border-right-width: 1.5px;
+  border-bottom-width: 1.5px;
+}
+
+.project-color-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--group-color);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--group-color) 42%, transparent);
+}
+
+.project-name {
+  color: inherit;
+}
+
+.project-progress {
+  opacity: .62;
+}
+
+.project-header:hover .project-collapse,
+.project-title:focus-visible .project-collapse {
+  opacity: .62;
+}
+
+html[data-theme="light"] .project-title {
+  color: var(--luma-fg-1);
+}
+
+html[data-theme="light"] .project-collapse {
+  color: var(--luma-fg-3);
+}
+
+html[data-theme="light"] .project-progress {
+  color: var(--luma-fg-3);
+  opacity: .76;
+}
+
+html[data-theme="light"] .project-add-task {
+  color: var(--luma-fg-3);
+}
+
+html[data-theme="light"] .project-add-task:hover,
+html[data-theme="light"] .project-add-task:focus-visible {
+  color: var(--group-color);
+  border-color: color-mix(in srgb, var(--group-color) 28%, transparent);
+  background: color-mix(in srgb, var(--group-color) 8%, transparent);
+}
