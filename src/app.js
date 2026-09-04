@@ -580,21 +580,25 @@ function renderCalendar() {
     const date = new Date(start);
     date.setDate(start.getDate() + index);
     const key = toDateKey(date);
-    const datedTasks = state.tasks.filter((task) => task.dueDate === key);
-    const activeTasks = datedTasks.filter((task) => !task.completed).sort(taskSort);
-    const completedTasks = datedTasks.filter((task) => task.completed).sort(taskSort);
+    const activeTasks = state.tasks
+      .filter((task) => !task.completed && task.dueDate === key)
+      .sort(taskSort);
+    const completedTasks = state.tasks
+      .filter((task) => task.completed && (task.completedDate || task.dueDate) === key)
+      .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+    const calendarTasks = [...activeTasks, ...completedTasks];
     const hasCompleted = completedTasks.length > 0;
     const activeLimit = hasCompleted ? 2 : 3;
     const visibleActive = activeTasks.slice(0, activeLimit);
     const remainingSlots = Math.max(0, 3 - visibleActive.length);
     const visibleCompleted = completedTasks.slice(0, remainingSlots);
     const visibleTasks = [...visibleActive, ...visibleCompleted];
-    const hiddenCount = Math.max(0, datedTasks.length - visibleTasks.length);
+    const hiddenCount = Math.max(0, calendarTasks.length - visibleTasks.length);
     const cell = document.createElement('div');
     cell.dataset.date = key;
     cell.className = `calendar-day${date.getMonth() !== month ? ' muted' : ''}${key === dayOffset(0) ? ' today' : ''}${key === calendarDetailDate ? ' selected-date' : ''}`;
-    if (datedTasks.length > 4) cell.classList.add('crowded');
-    if (datedTasks.some((task) => task.id === highlightedTaskId)) cell.classList.add('focused-date');
+    if (calendarTasks.length > 4) cell.classList.add('crowded');
+    if (calendarTasks.some((task) => task.id === highlightedTaskId)) cell.classList.add('focused-date');
     const dayLabel = date.getMonth() !== month ? `${date.getMonth() + 1}/${date.getDate()}` : String(date.getDate());
     cell.innerHTML = `<span class="day-number">${dayLabel}</span><div class="day-events"></div>`;
     const events = cell.querySelector('.day-events');
