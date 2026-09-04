@@ -3369,3 +3369,88 @@ html[data-theme="light"] .calendar-editor-body .time-text-input:focus {
   border-color: #707070;
   box-shadow: 0 0 0 1px #707070;
 }
+
+
+/* Calendar editor visual cleanup: fewer horizontal boundaries. */
+/* The editor header is separated by whitespace, not a rule. */
+.calendar-editor-header {
+  min-height: 44px;
+  padding: 11px 14px 7px;
+  border-bottom: 0 !important;
+}
+
+/* Keep the segmented control as one soft tray. */
+.calendar-editor-body .calendar-item-type-switch {
+  margin: 1px 0 7px;
+  padding: 3px;
+  gap: 2px;
+  border: 0;
+  border-radius: 11px;
+  background: rgba(255,255,255,.045);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.055);
+}
+
+.calendar-editor-body .calendar-mode-button {
+  min-height: 33px;
+  border: 0 !important;
+  border-radius: 8px;
+  box-shadow: none !important;
+}
+
+.calendar-editor-body .calendar-mode-button.active[data-calendar-mode="todo"] {
+  color: #bfe5cf;
+  background: rgba(118,199,168,.13);
+}
+
+.calendar-editor-body .calendar-mode-button.active[data-calendar-mode="event"] {
+  color: #c5d9f2;
+  background: rgba(121,167,211,.14);
+}
+
+/* Let spacing, rather than stacked rules, separate the body fields. */
+.calendar-editor-body {
+  gap: 11px;
+  padding: 9px 14px 13px;
+}
+
+.calendar-editor-body .calendar-create-fields {
+  gap: 11px;
+}
+
+.calendar-editor-body .calendar-item-type-hint {
+  margin-top: 3px;
+  color: rgba(232,236,244,.46);
+}
+
+/* Light mode: neutral Fluent-like tray, active state carried by fill only. */
+html[data-theme="light"] .calendar-editor-body .calendar-item-type-switch {
+  border: 0;
+  background: #f3f4f4;
+  box-shadow: inset 0 0 0 1px rgba(32,41,56,.05);
+}
+
+html[data-theme="light"] .calendar-editor-body .calendar-mode-button {
+  color: #5f6368;
+  background: transparent;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="light"] .calendar-editor-body .calendar-mode-button:hover {
+  color: #242424;
+  background: rgba(255,255,255,.56);
+}
+
+html[data-theme="light"] .calendar-editor-body .calendar-mode-button.active[data-calendar-mode="todo"] {
+  color: #315640;
+  background: #e7f1ea;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="light"] .calendar-editor-body .calendar-mode-button.active[data-calendar-mode="event"] {
+  color: #3f6389;
+  background: #eaf2f8;
+  border: 0 !important;
+  box-shadow: none !important;
+}
