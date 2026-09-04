@@ -1844,3 +1844,43 @@ html[data-theme="light"] .completed-toggle:focus-visible .completed-toggle-check
   border-color: rgba(58,71,92,.36);
   color: rgba(38,50,68,.78);
 }
+
+
+/* Keep completed dated tasks visible in the month view as lightweight history. */
+.day-event.completed-calendar-event {
+  order: 20;
+  border-color: transparent;
+  color: rgba(232,236,244,.50);
+  background: transparent;
+  opacity: .78;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  text-decoration-color: rgba(232,236,244,.38);
+  cursor: default;
+}
+.day-event.completed-calendar-event::before {
+  content: '✓';
+  margin-right: 4px;
+  color: color-mix(in srgb, var(--event-color) 70%, rgba(232,236,244,.48));
+  text-decoration: none;
+}
+.day-event.completed-calendar-event:hover,
+.day-event.completed-calendar-event:focus-visible {
+  filter: none;
+  background: rgba(255,255,255,.025);
+}
+.calendar-day.muted .day-event.completed-calendar-event {
+  opacity: .46;
+}
+html[data-theme="light"] .day-event.completed-calendar-event {
+  color: rgba(58,71,92,.48);
+  text-decoration-color: rgba(58,71,92,.34);
+  background: transparent;
+}
+html[data-theme="light"] .day-event.completed-calendar-event::before {
+  color: color-mix(in srgb, var(--event-color) 62%, rgba(58,71,92,.44));
+}
+html[data-theme="light"] .day-event.completed-calendar-event:hover,
+html[data-theme="light"] .day-event.completed-calendar-event:focus-visible {
+  background: rgba(58,71,92,.025);
+}
