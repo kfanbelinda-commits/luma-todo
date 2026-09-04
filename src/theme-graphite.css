@@ -3548,3 +3548,48 @@ html[data-theme="light"] .project-add-task:focus-visible {
   border-color: color-mix(in srgb, var(--group-color) 28%, transparent);
   background: color-mix(in srgb, var(--group-color) 8%, transparent);
 }
+
+
+/* Calendar Todo checkbox is a real control, not a decorative pseudo-element. */
+.day-event.calendar-todo-item::before {
+  content: none !important;
+  display: none !important;
+}
+
+.calendar-todo-check {
+  width: 9px;
+  min-width: 9px;
+  height: 9px;
+  flex: 0 0 9px;
+  padding: 0;
+  border: 1.4px solid var(--event-color);
+  border-radius: 2.5px;
+  background: color-mix(in srgb, var(--event-color) 7%, transparent);
+  box-sizing: border-box;
+  cursor: pointer;
+  outline: none;
+}
+
+.calendar-todo-check:hover,
+.calendar-todo-check:focus-visible {
+  background: color-mix(in srgb, var(--event-color) 20%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--event-color) 18%, transparent);
+}
+
+.calendar-item-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-theme="light"] .calendar-todo-check {
+  border-color: color-mix(in srgb, var(--event-color) 78%, #5f5f5f 22%);
+  background: rgba(255,255,255,.55);
+}
+
+html[data-theme="light"] .calendar-todo-check:hover,
+html[data-theme="light"] .calendar-todo-check:focus-visible {
+  background: color-mix(in srgb, var(--event-color) 14%, #ffffff 86%);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--event-color) 18%, transparent);
+}
