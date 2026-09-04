@@ -7,13 +7,17 @@ const { execFile } = require('child_process');
 
 const DEMO_MODE = !app.isPackaged && process.argv.includes('--demo');
 const DEMO_RESET_MODE = DEMO_MODE && process.argv.includes('--demo-reset');
+const ICLOUD_TEST_MODE = !app.isPackaged && process.argv.includes('--icloud-test');
 
-// Keep real and demo data completely separate.
+// Keep production, demo, and iCloud experiments completely separate.
 if (process.platform === 'win32') {
-  const appDataName = DEMO_MODE ? 'luma-todo-demo' : 'luma-todo';
+  const appDataName = ICLOUD_TEST_MODE
+    ? 'luma-todo-icloud-test'
+    : (DEMO_MODE ? 'luma-todo-demo' : 'luma-todo');
   app.setPath('userData', path.join(app.getPath('home'), 'AppData', 'Roaming', appDataName));
-} else if (DEMO_MODE) {
-  app.setPath('userData', `${app.getPath('userData')}-demo`);
+} else if (DEMO_MODE || ICLOUD_TEST_MODE) {
+  const suffix = ICLOUD_TEST_MODE ? '-icloud-test' : '-demo';
+  app.setPath('userData', `${app.getPath('userData')}${suffix}`);
 }
 
 const COMPACT = { width: 410, height: 550 };
