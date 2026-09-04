@@ -2984,3 +2984,63 @@ html[data-theme="light"] #calendarTaskEndTime:disabled {
   background: #f7f7f7;
   opacity: 1;
 }
+
+
+/* Stable calendar editor size + stable Todo scrollbar gutter. */
+/* Todo and Event use exactly the same dialog box size, so switching type never
+   moves the dialog or changes its outer geometry. */
+.calendar-task-modal {
+  width: 390px;
+  height: 594px;
+  min-height: 594px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  box-sizing: border-box;
+}
+
+.calendar-task-modal > form {
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  grid-template-rows: auto auto auto 1fr auto auto;
+  align-content: stretch;
+}
+
+/* "月历事项" repeated the meaning already conveyed by "新建事项/编辑日程". */
+#calendarTaskEyebrow {
+  display: none;
+}
+
+/* Keep the form body occupying the same vertical area in both modes.
+   Event gets more fields inside that area; Todo simply has more breathing room. */
+.calendar-task-modal .calendar-create-fields {
+  align-self: start;
+}
+
+.calendar-task-modal .project-form-actions {
+  align-self: end;
+}
+
+/* Reserve scrollbar width before completed items are expanded.
+   The thumb may appear/disappear, but task rows no longer shift horizontally. */
+.todo-panel .task-scroll {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  box-sizing: border-box;
+}
+
+/* Chromium/WebView fallback: keep a quiet scrollbar track when the platform
+   does not fully honor scrollbar-gutter. */
+.todo-panel .task-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.todo-panel .task-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.todo-panel .task-scroll::-webkit-scrollbar-thumb {
+  border-radius: 6px;
+  background: rgba(128,128,128,.20);
+}
+html[data-theme="light"] .todo-panel .task-scroll::-webkit-scrollbar-thumb {
+  background: rgba(36,36,36,.16);
+}
