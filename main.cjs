@@ -97,9 +97,30 @@ async function activateMainWindow() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   isExplicitlyHidden = false;
   cancelDesktopAttach();
-  if (isDesktopHosted) await setDesktopHosted(false);
+
+  const wasDesktopHosted = isDesktopHosted;
+  if (wasDesktopHosted) await setDesktopHosted(false);
   if (!mainWindow || mainWindow.isDestroyed()) return;
+
   if (mainWindow.isMinimized()) mainWindow.restore();
+
+  // Detaching a WS_CHILD window from WorkerW can leave it behind the current
+  // foreground app in Windows' Z-order even though the click came from Luma.
+  // Give only desktop-host activations a short topmost pulse, then restore the
+  // real Pin state. This does not change the user's persistent Pin preference.
+  if (wasDesktopHosted && !isPinnedAlwaysOnTop) {
+    mainWindow.setAlwaysOnTop(true);
+    mainWindow.show();
+    mainWindow.moveTop();
+    mainWindow.focus();
+    setTimeout(() => {
+      if (!mainWindow || mainWindow.isDestroyed() || isPinnedAlwaysOnTop) return;
+      mainWindow.setAlwaysOnTop(false);
+      if (mainWindow.isFocused()) mainWindow.moveTop();
+    }, 120);
+    return;
+  }
+
   mainWindow.setAlwaysOnTop(isPinnedAlwaysOnTop);
   mainWindow.show();
   mainWindow.moveTop();
