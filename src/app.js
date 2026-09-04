@@ -166,12 +166,13 @@ function renderHeader() {
 
   const displayDate = taskDateFilter ? fromDateKey(taskDateFilter) : new Date();
   const lunar = formatLunarDate(displayDate);
-  dateSummaryText.textContent = `${displayDate.getMonth() + 1}月${displayDate.getDate()}日 周${WEEKDAYS[displayDate.getDay()]}${lunar ? ` · ${lunar}` : ''}`;
+  const dateText = `${displayDate.getMonth() + 1}月${displayDate.getDate()}日 周${WEEKDAYS[displayDate.getDay()]}`;
+  dateSummaryText.textContent = dateText;
   dateSummary.classList.toggle('filtered-date', Boolean(taskDateFilter));
   dateSummary.classList.toggle('expanded', expanded);
   dateSummary.setAttribute('aria-expanded', String(expanded));
-  dateSummary.title = expanded ? '收起日历' : '展开日历';
-  dateSummary.setAttribute('aria-label', dateSummary.title);
+  dateSummary.title = `${displayDate.getFullYear()}年${dateText}${lunar ? ` · ${lunar}` : ''}`;
+  dateSummary.setAttribute('aria-label', expanded ? '收起日历' : '展开日历');
 }
 
 function setTaskDateFilter(dateKey) {
@@ -541,6 +542,14 @@ function renderCalendar() {
   const year = calendarCursor.getFullYear();
   const month = calendarCursor.getMonth();
   $('#monthTitle').textContent = `${year} 年 ${month + 1} 月`;
+  const referenceDate = taskDateFilter ? fromDateKey(taskDateFilter) : new Date();
+  const monthLunar = $('#monthLunar');
+  if (referenceDate.getFullYear() === year && referenceDate.getMonth() === month) {
+    const lunar = formatLunarDate(referenceDate);
+    monthLunar.textContent = `${referenceDate.getMonth() + 1}月${referenceDate.getDate()}日 周${WEEKDAYS[referenceDate.getDay()]}${lunar ? ` · ${lunar}` : ''}`;
+  } else {
+    monthLunar.textContent = '';
+  }
   const first = new Date(year, month, 1);
   const mondayIndex = (first.getDay() + 6) % 7;
   const start = new Date(year, month, 1 - mondayIndex);
@@ -1118,8 +1127,11 @@ async function toggleExpanded(force) {
   } finally {
     app.classList.remove('calendar-transition');
     calendarPanel.setAttribute('aria-hidden', String(!expanded));
-    toggleButton.title = expanded ? '收起日历' : '展开日历';
-    toggleButton.setAttribute('aria-label', toggleButton.title);
+    const displayDate = taskDateFilter ? fromDateKey(taskDateFilter) : new Date();
+    const lunar = formatLunarDate(displayDate);
+    const dateText = `${displayDate.getMonth() + 1}月${displayDate.getDate()}日 周${WEEKDAYS[displayDate.getDay()]}`;
+    toggleButton.title = `${displayDate.getFullYear()}年${dateText}${lunar ? ` · ${lunar}` : ''}`;
+    toggleButton.setAttribute('aria-label', expanded ? '收起日历' : '展开日历');
     toggleButton.setAttribute('aria-expanded', String(expanded));
     toggleButton.classList.toggle('expanded', expanded);
     toggleButton.disabled = false;
