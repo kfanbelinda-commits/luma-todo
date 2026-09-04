@@ -249,6 +249,19 @@
           </div>
         </section>
         <p id="googleNote" class="settings-note">连接后，点击“立即同步”可同步 Luma 待办，并将 Google Calendar 原有事件下载到 Luma。</p>
+        <section class="account-card apple-account-card">
+          <div class="apple-logo" aria-hidden="true">☁</div>
+          <div><strong>iCloud 日历 <span class="experimental-badge">实验</span></strong><small id="icloudStatusText">正在检查状态…</small></div>
+          <div class="google-actions">
+            <button id="connectIcloud" type="button" class="soft-button">连接</button>
+            <button id="disconnectIcloud" type="button" class="soft-button" hidden>断开</button>
+          </div>
+        </section>
+        <div id="icloudCredentialPanel" class="icloud-credentials">
+          <input id="icloudEmail" type="email" autocomplete="username" placeholder="Apple 账户邮箱" aria-label="Apple 账户邮箱" />
+          <input id="icloudPassword" type="password" autocomplete="current-password" placeholder="App 专用密码" aria-label="iCloud App 专用密码" />
+        </div>
+        <p id="icloudNote" class="settings-note">仅测试 Event ↔ iCloud Calendar 链路。密码使用 Windows 安全存储加密保存。</p>
         <button id="exportButton" type="button" class="secondary-button settings-export">导出本地备份</button>
       </form>
     </dialog>
