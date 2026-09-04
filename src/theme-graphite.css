@@ -2778,3 +2778,58 @@ html[data-theme="light"] .calendar-span-event.google-calendar-event:hover {
   border-color: color-mix(in srgb, var(--event-color) 42%, #ffffff 58%);
   background: color-mix(in srgb, var(--event-color) 26%, #ffffff 74%);
 }
+
+
+/* Final calendar form geometry: two stable rows in both Todo and Event modes. */
+.calendar-create-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: auto auto;
+  align-items: start;
+}
+
+.calendar-start-date-field {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.calendar-time-field {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.calendar-project-field {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.calendar-end-date-field {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.calendar-event-color-field {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.calendar-create-fields .calendar-event-color-field {
+  min-width: 0;
+}
+
+.calendar-create-fields .calendar-event-color-field .event-color-choices {
+  min-height: 44px;
+  gap: 5px;
+  flex-wrap: nowrap;
+}
+
+.calendar-create-fields .calendar-event-color-field .event-color-choice {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border-radius: 6px;
+}
+
+.calendar-create-fields + .calendar-item-type-hint {
+  margin-top: -4px;
+  white-space: nowrap;
+}
