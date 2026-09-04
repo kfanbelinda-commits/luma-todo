@@ -3888,3 +3888,198 @@ html[data-theme="light"] .settings-modal .reminders-bridge-logo {
   background: #edf7f0;
 }
 
+/* Compact sync settings: one Google row + one Apple group. */
+.settings-modal {
+  width: 348px;
+}
+
+.settings-modal form {
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  scrollbar-gutter: auto;
+}
+
+.sync-settings {
+  margin-top: 10px;
+}
+
+.sync-card {
+  border: 1px solid rgba(255,255,255,.075);
+  border-radius: 10px;
+  background: rgba(255,255,255,.032);
+}
+
+.sync-card + .sync-card {
+  margin-top: 8px;
+}
+
+.sync-card-header,
+.apple-sync-heading {
+  display: grid;
+  grid-template-columns: 30px minmax(0,1fr) auto;
+  align-items: center;
+  column-gap: 9px;
+}
+
+.google-sync-card {
+  padding: 8px 9px 7px;
+}
+
+.sync-copy,
+.apple-sync-kind {
+  min-width: 0;
+}
+
+.sync-copy strong,
+.apple-sync-kind > span {
+  display: block;
+  overflow: hidden;
+  color: rgba(248,249,252,.93);
+  font-size: 12.5px;
+  font-weight: 680;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sync-copy small,
+.apple-sync-kind small {
+  display: block;
+  margin-top: 1px;
+  overflow: hidden;
+  color: rgba(232,236,244,.57);
+  font-size: 9.5px;
+  line-height: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sync-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.settings-modal .sync-actions .soft-button {
+  min-width: 0;
+  min-height: 27px;
+  padding: 0 8px;
+  border-radius: 8px;
+  font-size: 10px;
+  line-height: 25px;
+  white-space: nowrap;
+}
+
+.sync-note,
+.apple-sync-note {
+  margin: 5px 0 0 39px !important;
+  padding: 0 !important;
+  color: rgba(232,236,244,.49) !important;
+  font-size: 9px !important;
+  line-height: 13px !important;
+}
+
+.apple-sync-card {
+  padding: 0 9px 7px;
+}
+
+.apple-sync-heading {
+  min-height: 47px;
+  border-bottom: 1px solid rgba(255,255,255,.055);
+}
+
+.apple-sync-heading .apple-logo {
+  width: 30px;
+  height: 30px;
+}
+
+.apple-sync-row {
+  min-height: 43px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-left: 39px;
+}
+
+.apple-sync-kind {
+  flex: 1 1 auto;
+}
+
+.apple-sync-kind > span {
+  font-size: 11.5px;
+  line-height: 15px;
+}
+
+.apple-sync-divider {
+  height: 1px;
+  margin-left: 39px;
+  background: rgba(255,255,255,.05);
+}
+
+.icloud-credentials {
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin: -1px 0 6px 39px;
+}
+
+.icloud-credentials input {
+  height: 29px;
+  border-radius: 7px;
+  font-size: 9.5px;
+}
+
+.icloud-calendar-target {
+  grid-template-columns: 42px minmax(0,1fr);
+  gap: 5px;
+  margin: -1px 0 5px 39px;
+}
+
+.icloud-calendar-target label {
+  font-size: 9px;
+}
+
+.icloud-calendar-target select {
+  height: 29px;
+  border-radius: 7px;
+  font-size: 9.5px;
+}
+
+.settings-modal .experimental-badge {
+  margin-left: 3px;
+  padding: 1px 4px;
+  font-size: 7px;
+  vertical-align: 1px;
+}
+
+.settings-modal .settings-export {
+  margin-top: 8px;
+}
+
+/* Light mode: white cards, shallow separators, no gray slabs. */
+html[data-theme="light"] .sync-card {
+  border-color: rgba(32,41,56,.09);
+  background: #ffffff;
+}
+
+html[data-theme="light"] .apple-sync-heading {
+  border-color: rgba(32,41,56,.07);
+}
+
+html[data-theme="light"] .apple-sync-divider {
+  background: rgba(32,41,56,.065);
+}
+
+html[data-theme="light"] .sync-copy strong,
+html[data-theme="light"] .apple-sync-kind > span {
+  color: #242424;
+}
+
+html[data-theme="light"] .sync-copy small,
+html[data-theme="light"] .apple-sync-kind small,
+html[data-theme="light"] .sync-note,
+html[data-theme="light"] .apple-sync-note {
+  color: #777 !important;
+}
+
