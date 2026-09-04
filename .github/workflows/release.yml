@@ -59,7 +59,7 @@ jobs:
           }
           Compress-Archive -Path $installer -DestinationPath $zip -Force
 
-      - name: Publish GitHub Release
+      - name: Publish or refresh GitHub Release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -71,9 +71,22 @@ jobs:
 
           if ($env:GITHUB_REF_TYPE -eq 'tag') {
             $tag = $env:GITHUB_REF_NAME
-            gh release create $tag $releaseFiles --verify-tag --generate-notes --title "Luma Todo $tag"
           } else {
             $version = node -p "require('./package.json').version"
             $tag = "v$version"
+          }
+
+          gh release view $tag *> $null
+          $releaseExists = $LASTEXITCODE -eq 0
+
+          if ($releaseExists) {
+            if ($env:GITHUB_REF_TYPE -ne 'tag') {
+              gh api --method PATCH "/repos/$env:GITHUB_REPOSITORY/git/refs/tags/$tag" -f sha="$env:GITHUB_SHA" -F force=true
+            }
+            gh release upload $tag $releaseFiles --clobber
+            gh release edit $tag --title "Luma Todo $tag"
+          } elseif ($env:GITHUB_REF_TYPE -eq 'tag') {
+            gh release create $tag $releaseFiles --verify-tag --generate-notes --title "Luma Todo $tag"
+          } else {
             gh release create $tag $releaseFiles --target $env:GITHUB_SHA --generate-notes --title "Luma Todo $tag"
           }
