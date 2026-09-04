@@ -4,11 +4,11 @@
 ![Luma Todo](./assets/Lumatodo.png)
 
 
-## 下载 当前版本：v0.4.2
+## 下载 当前版本：v0.4.4
 
 **[下载最新版 Luma Todo](https://github.com/kfanbelinda-commits/luma-todo/releases/latest)**
 
-下载 Luma-Todo-Setup-0.4.2.exe 即可安装，其他 Assets 无需手动下载。
+推荐下载 `Luma-Todo-Setup-0.4.4.zip`，解压后运行其中的 `Luma-Todo-Setup-0.4.4.exe`；也可以直接下载 `.exe` 安装。其他 Assets 无需手动下载。
 
 
 
@@ -17,6 +17,9 @@
 ## 功能
 
 - 桌面待办与月历
+- 顶部显示公历日期与星期，月历中显示完整农历日期
+- 点击月历日期可查看当天日程，以及当天和之前仍未完成的待办；右侧待办列表保持不变
+- 日期详情以轻量浮层显示，支持点击空白区域、再次点击日期、Esc 或 × 关闭
 - 分类管理与任务拖拽
 - 中文日期、时间识别
 - 今日任务与逾期顺延
