@@ -875,12 +875,27 @@ function renderCalendar() {
       item.setAttribute('role', 'button');
       item.setAttribute('tabindex', '0');
       item.style.setProperty('--event-color', calendarEvent ? eventColorFor(task) : project.color);
-      item.textContent = `${task.time ? `${task.time} ` : ''}${task.title}`;
+      const calendarItemText = `${task.time ? `${task.time} ` : ''}${task.title}`;
+      if (!calendarEvent && !task.completed) {
+        item.innerHTML = `<button class="calendar-todo-check" type="button" draggable="false" aria-label="完成 ${escapeAttribute(task.title)}"></button><span class="calendar-item-label">${escapeAttribute(calendarItemText)}</span>`;
+      } else {
+        item.innerHTML = `<span class="calendar-item-label">${escapeAttribute(calendarItemText)}</span>`;
+      }
       item.title = task.completed
         ? `${task.title} · 已完成`
         : (calendarEvent
           ? `${task.title} · 日程${external ? ' · Google Calendar（只读）' : ''}`
-          : `${task.title} · 待办 · 点击修改安排`);
+          : `${task.title} · 待办 · 点击文字修改安排，点击方框完成`);
+      if (!calendarEvent && !task.completed) {
+        const todoCheck = item.querySelector('.calendar-todo-check');
+        todoCheck.addEventListener('pointerdown', (pointerEvent) => pointerEvent.stopPropagation());
+        todoCheck.addEventListener('dblclick', (doubleClickEvent) => doubleClickEvent.stopPropagation());
+        todoCheck.addEventListener('click', async (checkEvent) => {
+          checkEvent.preventDefault();
+          checkEvent.stopPropagation();
+          await toggleTask(task.id);
+        });
+      }
       if (calendarEvent && !external) {
         addCalendarEventResizeHandle(item, task, 'start');
         addCalendarEventResizeHandle(item, task, 'end');
