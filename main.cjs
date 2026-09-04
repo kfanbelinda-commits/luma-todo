@@ -46,6 +46,110 @@ function dataPath() {
   return path.join(app.getPath('userData'), 'luma-data.json');
 }
 
+function remindersBridgeConfigPath() {
+  return path.join(app.getPath('userData'), 'reminders-bridge.json');
+}
+
+function loadRemindersBridgeConfig() {
+  try {
+    return JSON.parse(fs.readFileSync(remindersBridgeConfigPath(), 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+function saveRemindersBridgeConfig(config) {
+  const target = remindersBridgeConfigPath();
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, JSON.stringify(config, null, 2), 'utf8');
+}
+
+function candidateIcloudDrivePaths() {
+  const candidates = [];
+  const home = app.getPath('home');
+  if (process.platform === 'win32') {
+    candidates.push(
+      path.join(home, 'iCloudDrive'),
+      path.join(process.env.USERPROFILE || home, 'iCloudDrive')
+    );
+  } else {
+    candidates.push(
+      path.join(home, 'Library', 'Mobile Documents', 'com~apple~CloudDocs')
+    );
+  }
+  return [...new Set(candidates.filter(Boolean))];
+}
+
+function detectIcloudDrivePath() {
+  const config = loadRemindersBridgeConfig();
+  if (config.folder && fs.existsSync(config.folder)) return config.folder;
+  return candidateIcloudDrivePaths().find((candidate) => fs.existsSync(candidate)) || '';
+}
+
+function remindersBridgeOutputPath(folder) {
+  return path.join(folder, 'Luma Todo', 'luma-reminders.json');
+}
+
+function buildRemindersBridgePayload(state) {
+  const projects = new Map((state.projects || []).map((project) => [project.id, project]));
+  const todos = (state.tasks || [])
+    .filter((task) => task && task.itemType !== 'event' && !task.googleCalendarExternal && task.syncTarget !== 'external-calendar')
+    .map((task) => {
+      const project = projects.get(task.projectId);
+      return {
+        id: String(task.id),
+        marker: 'LUMA:' + String(task.id),
+        title: String(task.title || ''),
+        projectId: String(task.projectId || 'inbox'),
+        projectName: String(project?.name || '未分类'),
+        dueDate: String(task.dueDate || ''),
+        time: String(task.time || ''),
+        completed: Boolean(task.completed),
+        completedDate: String(task.completedDate || ''),
+        updatedAt: Number(task.updatedAt || task.createdAt || Date.now()),
+      };
+    });
+
+  return {
+    schema: 'luma-reminders-bridge',
+    version: 1,
+    generatedAt: new Date().toISOString(),
+    source: 'Luma Todo',
+    todos,
+  };
+}
+
+function exportRemindersBridge(state, folder = '') {
+  const targetFolder = folder || detectIcloudDrivePath();
+  if (!targetFolder) {
+    throw new Error('未找到 iCloud Drive，请先选择 iCloud Drive 文件夹');
+  }
+  if (!fs.existsSync(targetFolder)) {
+    throw new Error('所选 iCloud Drive 文件夹不存在');
+  }
+
+  const output = remindersBridgeOutputPath(targetFolder);
+  fs.mkdirSync(path.dirname(output), { recursive: true });
+  const temp = output + '.tmp';
+  const payload = buildRemindersBridgePayload(state);
+  fs.writeFileSync(temp, JSON.stringify(payload, null, 2), 'utf8');
+  fs.renameSync(temp, output);
+
+  saveRemindersBridgeConfig({
+    folder: targetFolder,
+    lastExportAt: Date.now(),
+    lastOutputPath: output,
+  });
+
+  return {
+    ok: true,
+    folder: targetFolder,
+    outputPath: output,
+    count: payload.todos.length,
+    generatedAt: payload.generatedAt,
+  };
+}
+
 function ensureDemoData() {
   if (!DEMO_MODE) return;
   const target = dataPath();
@@ -1708,6 +1812,50 @@ ipcMain.handle('data:save', (_event, payload) => {
   fs.writeFileSync(temp, JSON.stringify(payload, null, 2), 'utf8');
   fs.renameSync(temp, target);
   return true;
+});
+
+ipcMain.handle('reminders-bridge:status', () => {
+  const config = loadRemindersBridgeConfig();
+  const folder = detectIcloudDrivePath();
+  return {
+    available: Boolean(folder),
+    folder,
+    outputPath: folder ? remindersBridgeOutputPath(folder) : '',
+    lastExportAt: Number(config.lastExportAt || 0),
+  };
+});
+
+ipcMain.handle('reminders-bridge:choose-folder', async () => {
+  nativeModalDepth += 1;
+  cancelDesktopAttach();
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: '选择 iCloud Drive 文件夹',
+      properties: ['openDirectory'],
+      defaultPath: detectIcloudDrivePath() || app.getPath('home'),
+    });
+    if (result.canceled || !result.filePaths?.[0]) {
+      return { canceled: true, ...loadRemindersBridgeConfig() };
+    }
+    const folder = result.filePaths[0];
+    const config = loadRemindersBridgeConfig();
+    saveRemindersBridgeConfig({ ...config, folder });
+    return {
+      canceled: false,
+      folder,
+      outputPath: remindersBridgeOutputPath(folder),
+    };
+  } finally {
+    nativeModalDepth = Math.max(0, nativeModalDepth - 1);
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused()) scheduleDesktopAttach();
+  }
+});
+
+ipcMain.handle('reminders-bridge:export', (_event, payload) => {
+  if (DEMO_MODE) {
+    throw new Error('演示模式不会导出真实 Todo 到 iCloud Drive');
+  }
+  return exportRemindersBridge(payload?.state || {}, String(payload?.folder || ''));
 });
 
 ipcMain.handle('data:export', async (_event, payload) => {
