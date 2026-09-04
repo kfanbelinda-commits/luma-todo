@@ -580,27 +580,42 @@ function renderCalendar() {
     const date = new Date(start);
     date.setDate(start.getDate() + index);
     const key = toDateKey(date);
-    const tasks = state.tasks.filter((task) => !task.completed && task.dueDate === key).sort(taskSort);
+    const datedTasks = state.tasks.filter((task) => task.dueDate === key);
+    const activeTasks = datedTasks.filter((task) => !task.completed).sort(taskSort);
+    const completedTasks = datedTasks.filter((task) => task.completed).sort(taskSort);
+    const hasCompleted = completedTasks.length > 0;
+    const activeLimit = hasCompleted ? 2 : 3;
+    const visibleActive = activeTasks.slice(0, activeLimit);
+    const remainingSlots = Math.max(0, 3 - visibleActive.length);
+    const visibleCompleted = completedTasks.slice(0, remainingSlots);
+    const visibleTasks = [...visibleActive, ...visibleCompleted];
+    const hiddenCount = Math.max(0, datedTasks.length - visibleTasks.length);
     const cell = document.createElement('div');
     cell.dataset.date = key;
     cell.className = `calendar-day${date.getMonth() !== month ? ' muted' : ''}${key === dayOffset(0) ? ' today' : ''}${key === calendarDetailDate ? ' selected-date' : ''}`;
-    if (tasks.length > 4) cell.classList.add('crowded');
-    if (tasks.some((task) => task.id === highlightedTaskId)) cell.classList.add('focused-date');
+    if (datedTasks.length > 4) cell.classList.add('crowded');
+    if (datedTasks.some((task) => task.id === highlightedTaskId)) cell.classList.add('focused-date');
     const dayLabel = date.getMonth() !== month ? `${date.getMonth() + 1}/${date.getDate()}` : String(date.getDate());
     cell.innerHTML = `<span class="day-number">${dayLabel}</span><div class="day-events"></div>`;
     const events = cell.querySelector('.day-events');
-    tasks.slice(0, 3).forEach((task) => {
+    visibleTasks.forEach((task) => {
       const event = document.createElement('div');
       const project = projectById(task.projectId);
       const externalCalendar = Boolean(task.googleCalendarExternal || task.syncTarget === 'external-calendar');
-      event.className = `day-event${task.id === highlightedTaskId ? ' highlighted' : ''}${externalCalendar ? ' google-calendar-event' : ''}`;
-      event.draggable = !externalCalendar;
+      event.className = `day-event${task.completed ? ' completed-calendar-event' : ''}${task.id === highlightedTaskId ? ' highlighted' : ''}${externalCalendar ? ' google-calendar-event' : ''}`;
+      event.draggable = !externalCalendar && !task.completed;
       event.setAttribute('role', 'button');
       event.setAttribute('tabindex', '0');
       event.style.setProperty('--event-color', project.color);
       event.textContent = `${task.time ? `${task.time} ` : ''}${task.title}`;
-      event.title = externalCalendar ? `${task.title} · 来自 Google Calendar（只读）` : `${task.title} · 点击修改安排`;
+      event.title = task.completed
+        ? `${task.title} · 已完成`
+        : (externalCalendar ? `${task.title} · 来自 Google Calendar（只读）` : `${task.title} · 点击修改安排`);
       event.addEventListener('dragstart', (dragEvent) => {
+        if (task.completed || externalCalendar) {
+          dragEvent.preventDefault();
+          return;
+        }
         draggedTaskId = task.id;
         event.classList.add('dragging');
         dragEvent.dataTransfer.effectAllowed = 'move';
@@ -613,21 +628,25 @@ function renderCalendar() {
       });
       event.addEventListener('click', (clickEvent) => {
         clickEvent.stopPropagation();
-        if (!externalCalendar) editTaskSchedule(task.id);
+        if (!externalCalendar && !task.completed) editTaskSchedule(task.id);
       });
       event.addEventListener('keydown', (keyEvent) => {
         if (keyEvent.key === 'Enter' || keyEvent.key === ' ') {
           keyEvent.preventDefault();
-          if (!externalCalendar) editTaskSchedule(task.id);
+          if (!externalCalendar && !task.completed) editTaskSchedule(task.id);
         }
       });
       events.appendChild(event);
     });
-    if (tasks.length > 3) {
+    if (hiddenCount > 0) {
       const overflow = document.createElement('div');
       overflow.className = 'day-overflow';
-      overflow.textContent = `+${tasks.length - 3}`;
-      overflow.title = `还有 ${tasks.length - 3} 项待办，点击日期查看`;
+      const hiddenCompleted = Math.max(0, completedTasks.length - visibleCompleted.length);
+      const hiddenActive = Math.max(0, activeTasks.length - visibleActive.length);
+      overflow.textContent = hiddenActive > 0 && hiddenCompleted === 0
+        ? `+${hiddenActive}`
+        : (hiddenActive === 0 && hiddenCompleted > 0 ? `+${hiddenCompleted} 已完成` : `+${hiddenCount}`);
+      overflow.title = `还有 ${hiddenCount} 项未显示，点击日期查看`;
       events.appendChild(overflow);
     }
     cell.setAttribute('role', 'button');
