@@ -785,6 +785,14 @@ function goToCurrentCalendarMonth() {
   animateCalendarMonth(Math.sign(targetIndex - currentIndex));
 }
 
+function calendarCellLineCapacity(host) {
+  const gridHeight = Number(host?.clientHeight || 0);
+  if (!gridHeight) return 3;
+  const rowHeight = gridHeight / 6;
+  // Reserve space for the day number/padding; each visible calendar row is ~18px.
+  return Math.max(1, Math.floor((rowHeight - 34) / 18));
+}
+
 function renderCalendar() {
   const year = calendarCursor.getFullYear();
   const month = calendarCursor.getMonth();
@@ -833,15 +841,28 @@ function renderCalendar() {
       .filter((task) => !isCalendarEvent(task) && task.completed && (task.dueDate || task.completedDate) === key)
       .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
 
-    const visibleSpans = spanningEvents.slice(0, 1);
-    const slots = Math.max(0, 3 - visibleSpans.length);
+    const lineCapacity = calendarCellLineCapacity(host);
+    const visibleSpans = spanningEvents.slice(0, Math.min(1, lineCapacity));
     const frontItems = [...singleEvents, ...activeTodos];
-    const visibleFront = frontItems.slice(0, slots);
-    const visibleCompleted = completedTodos.slice(0, Math.max(0, slots - visibleFront.length));
-    const visibleItems = [...visibleFront, ...visibleCompleted];
+    const itemCapacity = Math.max(0, lineCapacity - visibleSpans.length);
+
+    let visibleFront = frontItems.slice(0, itemCapacity);
+    let visibleCompleted = completedTodos.slice(0, Math.max(0, itemCapacity - visibleFront.length));
+    let visibleItems = [...visibleFront, ...visibleCompleted];
+
     const totalCount = spanningEvents.length + singleEvents.length + activeTodos.length + completedTodos.length;
-    const visibleCount = visibleSpans.length + visibleItems.length;
-    const hiddenCount = Math.max(0, totalCount - visibleCount);
+    let visibleCount = visibleSpans.length + visibleItems.length;
+    let hiddenCount = Math.max(0, totalCount - visibleCount);
+
+    // Only reserve an overflow row when the cell truly cannot fit everything.
+    if (hiddenCount > 0 && itemCapacity > 1) {
+      const contentCapacity = itemCapacity - 1;
+      visibleFront = frontItems.slice(0, contentCapacity);
+      visibleCompleted = completedTodos.slice(0, Math.max(0, contentCapacity - visibleFront.length));
+      visibleItems = [...visibleFront, ...visibleCompleted];
+      visibleCount = visibleSpans.length + visibleItems.length;
+      hiddenCount = Math.max(0, totalCount - visibleCount);
+    }
     const allCalendarItems = [...spanningEvents, ...singleEvents, ...activeTodos, ...completedTodos];
 
     const cell = document.createElement('div');
