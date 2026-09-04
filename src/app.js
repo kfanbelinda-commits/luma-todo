@@ -387,18 +387,6 @@ function renderHeader() {
   dateSummary.setAttribute('aria-label', expanded ? '收起日历' : '展开日历');
 }
 
-function setTaskDateFilter(dateKey) {
-  taskDateFilter = dateKey || null;
-  if (taskDateFilter) {
-    const selectedDate = fromDateKey(taskDateFilter);
-    calendarCursor = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
-  }
-  activeQuickProjectId = null;
-  renderHeader();
-  renderProjects();
-  renderCalendar();
-}
-
 async function toggleAlwaysOnTop() {
   const button = $('#pinWindowButton');
   button.disabled = true;
@@ -685,18 +673,6 @@ function renderProjects() {
 function formatShortDate(key) {
   const date = fromDateKey(key);
   return `${date.getMonth() + 1}/${date.getDate()}`;
-}
-
-async function openTaskInCalendar(task) {
-  if (!task?.dueDate) return;
-  highlightedTaskId = task.id;
-  taskDateFilter = task.dueDate;
-  calendarCursor = fromDateKey(task.dueDate);
-  calendarCursor.setDate(1);
-  renderHeader();
-  renderProjects();
-  renderCalendar();
-  await toggleExpanded(true);
 }
 
 function animateCalendarMonth(direction = 0) {
