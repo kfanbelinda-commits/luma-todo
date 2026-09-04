@@ -4086,3 +4086,20 @@ html[data-theme="light"] .apple-sync-note {
   color: #707070 !important;
 }
 
+/* Completed Todo rows keep the same readable rhythm as active rows when space allows. */
+.completed-toggle {
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: calc(100% - 30px);
+  white-space: nowrap;
+}
+.completed-toggle > span {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.completed-list .task-item {
+  min-height: 38px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
