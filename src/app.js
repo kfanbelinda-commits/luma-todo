@@ -536,6 +536,10 @@ function animateCalendarMonth(direction = 0) {
   }, 220);
 }
 
+window.addEventListener('resize', () => {
+  if (calendarDetailDate) requestAnimationFrame(positionCalendarDetail);
+});
+
 function changeCalendarMonth(offset, animate = true) {
   if (!offset) return;
   calendarDetailDate = null;
@@ -578,6 +582,7 @@ function renderCalendar() {
     const key = toDateKey(date);
     const tasks = state.tasks.filter((task) => !task.completed && task.dueDate === key).sort(taskSort);
     const cell = document.createElement('div');
+    cell.dataset.date = key;
     cell.className = `calendar-day${date.getMonth() !== month ? ' muted' : ''}${key === dayOffset(0) ? ' today' : ''}${key === calendarDetailDate ? ' selected-date' : ''}`;
     if (tasks.length > 4) cell.classList.add('crowded');
     if (tasks.some((task) => task.id === highlightedTaskId)) cell.classList.add('focused-date');
@@ -665,6 +670,41 @@ function closeCalendarDetail() {
   renderCalendar();
 }
 
+function positionCalendarDetail() {
+  const detail = $('#calendarDetail');
+  const panel = $('#calendarPanel');
+  const selectedCell = calendarDetailDate
+    ? panel?.querySelector(`.calendar-day[data-date="${calendarDetailDate}"]`)
+    : null;
+  if (!detail || !panel || !selectedCell || detail.classList.contains('hidden')) return;
+
+  const panelRect = panel.getBoundingClientRect();
+  const cellRect = selectedCell.getBoundingClientRect();
+  const detailRect = detail.getBoundingClientRect();
+  const gap = 10;
+  const inset = 18;
+  const width = detailRect.width;
+  const height = detailRect.height;
+
+  const spaceRight = panelRect.right - cellRect.right - inset;
+  const spaceLeft = cellRect.left - panelRect.left - inset;
+  let left;
+  if (spaceRight >= width + gap || spaceRight >= spaceLeft) {
+    left = cellRect.right - panelRect.left + gap;
+  } else {
+    left = cellRect.left - panelRect.left - width - gap;
+  }
+  left = Math.max(inset, Math.min(left, panelRect.width - width - inset));
+
+  const preferredTop = cellRect.top - panelRect.top - 8;
+  const minTop = 72;
+  const maxTop = Math.max(minTop, panelRect.height - height - inset);
+  const top = Math.max(minTop, Math.min(preferredTop, maxTop));
+
+  detail.style.left = `${Math.round(left)}px`;
+  detail.style.top = `${Math.round(top)}px`;
+}
+
 function openCalendarDetail(dateKey) {
   calendarDetailDate = dateKey;
   const selected = fromDateKey(dateKey);
@@ -673,6 +713,7 @@ function openCalendarDetail(dateKey) {
   }
   renderCalendar();
   renderCalendarDetail();
+  requestAnimationFrame(positionCalendarDetail);
 }
 
 function renderCalendarDetail() {
@@ -689,6 +730,7 @@ function renderCalendarDetail() {
   $('#calendarDetailLunar').textContent = lunar;
   detail.classList.remove('hidden');
   detail.setAttribute('aria-hidden', 'false');
+  requestAnimationFrame(positionCalendarDetail);
 
   const schedules = state.tasks
     .filter((task) => !task.completed
