@@ -135,7 +135,10 @@ function exportRemindersBridge(state, folder = '') {
   fs.writeFileSync(temp, JSON.stringify(payload, null, 2), 'utf8');
   fs.renameSync(temp, output);
 
+  const existingConfig = loadRemindersBridgeConfig();
   saveRemindersBridgeConfig({
+    ...existingConfig,
+    enabled: true,
     folder: targetFolder,
     lastExportAt: Date.now(),
     lastOutputPath: output,
@@ -1819,6 +1822,7 @@ ipcMain.handle('reminders-bridge:status', () => {
   const folder = detectIcloudDrivePath();
   return {
     available: Boolean(folder),
+    enabled: Boolean(config.enabled),
     folder,
     outputPath: folder ? remindersBridgeOutputPath(folder) : '',
     lastExportAt: Number(config.lastExportAt || 0),
@@ -1856,6 +1860,18 @@ ipcMain.handle('reminders-bridge:export', (_event, payload) => {
     throw new Error('演示模式不会导出真实 Todo 到 iCloud Drive');
   }
   return exportRemindersBridge(payload?.state || {}, String(payload?.folder || ''));
+});
+
+ipcMain.handle('reminders-bridge:auto-export', (_event, state) => {
+  if (DEMO_MODE) return { skipped: true };
+  const config = loadRemindersBridgeConfig();
+  if (!config.enabled) return { skipped: true };
+  try {
+    return exportRemindersBridge(state || {}, String(config.folder || ''));
+  } catch (error) {
+    console.warn('[Luma Todo] Reminders bridge auto export failed:', error.message);
+    return { skipped: true, error: error.message };
+  }
 });
 
 ipcMain.handle('data:export', async (_event, payload) => {
