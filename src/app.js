@@ -140,26 +140,38 @@ function dismissEmptyProjectQuickAdd() {
   return true;
 }
 
+function formatLunarDate(date) {
+  try {
+    const parts = new Intl.DateTimeFormat('zh-CN-u-ca-chinese', {
+      month: 'long',
+      day: 'numeric',
+    }).formatToParts(date);
+    const month = parts.find((part) => part.type === 'month')?.value || '';
+    const day = parts.find((part) => part.type === 'day')?.value || '';
+    return month && day ? `农历${month}${day}` : '';
+  } catch {
+    return '';
+  }
+}
+
 function renderHeader() {
-  const label = $('#dateLabel');
+  const dateSummary = $('#dateSummary');
+  const dateSummaryText = $('#dateSummaryText');
   const pinButton = $('#pinWindowButton');
   const pinned = Boolean(state.settings.alwaysOnTop);
   pinButton.classList.toggle('active', pinned);
   pinButton.setAttribute('aria-pressed', String(pinned));
   pinButton.title = pinned ? '取消置顶' : '置顶在其他窗口上方';
   pinButton.setAttribute('aria-label', pinButton.title);
-  if (!taskDateFilter) {
-    label.textContent = '全部';
-    label.setAttribute('aria-pressed', 'false');
-    return;
-  }
-  const date = fromDateKey(taskDateFilter);
-  const today = dayOffset(0);
-  const tomorrow = dayOffset(1);
-  const yesterday = dayOffset(-1);
-  const relative = taskDateFilter === today ? '今天' : taskDateFilter === tomorrow ? '明天' : taskDateFilter === yesterday ? '昨天' : '';
-  label.textContent = relative || `${date.getMonth() + 1} 月 ${date.getDate()} 日 · 周${WEEKDAYS[date.getDay()]}`;
-  label.setAttribute('aria-pressed', 'true');
+
+  const displayDate = taskDateFilter ? fromDateKey(taskDateFilter) : new Date();
+  const lunar = formatLunarDate(displayDate);
+  dateSummaryText.textContent = `${displayDate.getMonth() + 1}月${displayDate.getDate()}日 周${WEEKDAYS[displayDate.getDay()]}${lunar ? ` · ${lunar}` : ''}`;
+  dateSummary.classList.toggle('filtered-date', Boolean(taskDateFilter));
+  dateSummary.classList.toggle('expanded', expanded);
+  dateSummary.setAttribute('aria-expanded', String(expanded));
+  dateSummary.title = expanded ? '收起日历' : '展开日历';
+  dateSummary.setAttribute('aria-label', dateSummary.title);
 }
 
 function setTaskDateFilter(dateKey) {
@@ -608,7 +620,7 @@ function renderCalendar() {
       draggedTaskId = null;
       if (taskId) await moveTaskToDate(taskId, key);
     });
-    cell.addEventListener('click', () => setTaskDateFilter(key));
+    cell.addEventListener('click', () => setTaskDateFilter(taskDateFilter === key ? null : key));
     cell.addEventListener('dblclick', () => openCalendarTaskDialog(key));
     cell.addEventListener('keydown', (event) => {
       if ((event.key === 'Enter' || event.key === ' ') && event.target === cell) {
@@ -1086,7 +1098,7 @@ async function toggleExpanded(force) {
 
   const app = $('#app');
   const calendarPanel = $('#calendarPanel');
-  const toggleButton = $('#toggleCalendar');
+  const toggleButton = $('#dateSummary');
   const todoWidth = document.querySelector('.todo-panel').getBoundingClientRect().width;
 
   calendarTransitioning = true;
@@ -1108,6 +1120,8 @@ async function toggleExpanded(force) {
     calendarPanel.setAttribute('aria-hidden', String(!expanded));
     toggleButton.title = expanded ? '收起日历' : '展开日历';
     toggleButton.setAttribute('aria-label', toggleButton.title);
+    toggleButton.setAttribute('aria-expanded', String(expanded));
+    toggleButton.classList.toggle('expanded', expanded);
     toggleButton.disabled = false;
     toggleButton.removeAttribute('aria-busy');
     calendarTransitioning = false;
@@ -1327,11 +1341,8 @@ function bindEvents() {
   });
   $('#addTask').addEventListener('click', addTask);
   $('#quickInput').addEventListener('keydown', (event) => { if (event.key === 'Enter') addTask(); });
-  $('#previousTaskDate').addEventListener('click', () => stepTaskDateFilter(-1));
-  $('#nextTaskDate').addEventListener('click', () => stepTaskDateFilter(1));
-  $('#dateLabel').addEventListener('click', toggleTodayOrAll);
+  $('#dateSummary').addEventListener('click', () => toggleExpanded());
   $('#pinWindowButton').addEventListener('click', toggleAlwaysOnTop);
-  $('#toggleCalendar').addEventListener('click', () => toggleExpanded());
   $('#hideButton').addEventListener('click', () => window.luma?.hide());
   $('#prevMonth').addEventListener('click', () => changeCalendarMonth(-1));
   $('#nextMonth').addEventListener('click', () => changeCalendarMonth(1));
