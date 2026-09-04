@@ -774,6 +774,7 @@ async function syncIcloudEvents(state, calendarUrl) {
         task.endTime = linkedRemote.endTime;
         task.eventColor = linkedRemote.eventColor;
         task.updatedAt = syncTime;
+        task.lastIcloudSyncAt = syncTime;
         downloaded += 1;
       }
       task.lastIcloudEtag = linkedRemote.etag;
