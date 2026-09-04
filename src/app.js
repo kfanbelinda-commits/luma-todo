@@ -102,7 +102,8 @@ function normalizeState(input) {
   input.tasks.forEach((task) => {
     task.completed = Boolean(task.completed);
     task.googleCalendarExternal = Boolean(task.googleCalendarExternal || task.syncTarget === 'external-calendar');
-    task.itemType = (task.itemType === 'event' || task.googleCalendarExternal) ? 'event' : 'todo';
+    task.icloudExternal = Boolean(task.icloudExternal);
+    task.itemType = (task.itemType === 'event' || task.googleCalendarExternal || task.icloudExternal) ? 'event' : 'todo';
     task.projectId ??= 'inbox';
     task.syncTarget ??= task.itemType === 'event' ? 'calendar' : 'tasks';
 
@@ -1103,7 +1104,8 @@ function renderCalendarDetail() {
     scheduleHost.innerHTML = '<p class="calendar-detail-empty">当天没有日程</p>';
   } else {
     schedules.forEach((task) => {
-      const external = Boolean(task.googleCalendarExternal || task.syncTarget === 'external-calendar');
+      const googleExternal = Boolean(task.googleCalendarExternal || task.syncTarget === 'external-calendar');
+      const appleExternal = Boolean(task.icloudExternal);
       const row = document.createElement('button');
       row.type = 'button';
       row.className = 'calendar-detail-schedule event-detail-row';
@@ -1112,11 +1114,11 @@ function renderCalendarDetail() {
         <span class="calendar-detail-dot"></span>
         <span class="calendar-detail-time">${escapeAttribute(eventRangeLabel(task))}</span>
         <span class="calendar-detail-task-title">${escapeAttribute(task.title)}</span>
-        <span class="calendar-detail-project">${escapeAttribute(external ? (task.googleCalendarName || 'Google Calendar') : '日程')}</span>
+        <span class="calendar-detail-project">${escapeAttribute(googleExternal ? (task.googleCalendarName || 'Google Calendar') : (appleExternal ? (task.icloudCalendarName || 'Apple 日历') : '日程'))}</span>
       `;
-      row.title = external ? '来自 Google Calendar（只读）' : '点击编辑日程';
-      row.classList.toggle('readonly', external);
-      if (!external) row.addEventListener('click', () => openCalendarTaskDialog(task.dueDate, 'event', task.id));
+      row.title = googleExternal ? '来自 Google Calendar（只读）' : (appleExternal ? '来自 Apple 日历 · 点击编辑' : '点击编辑日程');
+      row.classList.toggle('readonly', googleExternal);
+      if (!googleExternal) row.addEventListener('click', () => openCalendarTaskDialog(task.dueDate, 'event', task.id));
       scheduleHost.appendChild(row);
     });
   }
@@ -1225,8 +1227,11 @@ function updateCalendarItemDialogMode() {
 
   $('#calendarTaskDateText').textContent = eventMode ? '开始日期' : '待办日期';
   $('#calendarTaskTimeText').textContent = eventMode ? '开始时间' : '时间';
+  const editingItem = editingCalendarEventId ? state.tasks.find((task) => task.id === editingCalendarEventId) : null;
   $('#calendarItemTypeHint').textContent = eventMode
-    ? '日程可设为全天，也可以设置开始和结束时间，并支持跨日期'
+    ? (editingItem?.icloudExternal
+      ? '来自 Apple 日历；保存后点击 Apple「同步」即可同步回 iPhone'
+      : '日程可设为全天，也可以设置开始和结束时间，并支持跨日期')
     : '待办可以设置日期和具体时间，仍会保留在「我的待办」';
   $('#deleteCalendarEventButton').hidden = !editingCalendarEventId;
   if (editingCalendarEventId) $('#deleteCalendarEventButton').textContent = '删除事项';
@@ -1345,7 +1350,7 @@ async function createCalendarTask(event) {
         task.endTime = allDay ? '' : endTime;
         task.eventColor = selectedEventColor;
         task.itemType = 'event';
-        task.projectId = 'inbox';
+        task.projectId = task.icloudExternal ? 'apple-calendar' : 'inbox';
         task.syncTarget = 'calendar';
       } else {
         task.endDate = '';
