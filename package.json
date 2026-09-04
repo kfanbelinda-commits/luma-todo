@@ -1,6 +1,6 @@
 {
   "name": "luma-todo",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A calm, desktop-first todo widget for Windows.",
   "homepage": "https://github.com/kfanbelinda-commits/luma-todo",
   "repository": {
@@ -11,13 +11,14 @@
   "author": "Luma Todo",
   "license": "MIT",
   "scripts": {
-    "start": "electron . --demo",
+    "start": "electron .",
     "check": "node --check main.cjs && node --check preload.cjs && node --check src/app.js",
     "dist": "electron-builder --win --publish never",
     "release": "electron-builder --win --publish always",
     "start:demo": "electron . --demo",
     "start:real": "electron .",
-    "start:demo:reset": "electron . --demo --demo-reset"
+    "start:demo:reset": "electron . --demo --demo-reset",
+    "start:icloud": "electron . --icloud-test"
   },
   "devDependencies": {
     "electron": "^44.1.1",

@@ -102,7 +102,8 @@ function normalizeState(input) {
   input.tasks.forEach((task) => {
     task.completed = Boolean(task.completed);
     task.googleCalendarExternal = Boolean(task.googleCalendarExternal || task.syncTarget === 'external-calendar');
-    task.itemType = (task.itemType === 'event' || task.googleCalendarExternal) ? 'event' : 'todo';
+    task.icloudExternal = Boolean(task.icloudExternal);
+    task.itemType = (task.itemType === 'event' || task.googleCalendarExternal || task.icloudExternal) ? 'event' : 'todo';
     task.projectId ??= 'inbox';
     task.syncTarget ??= task.itemType === 'event' ? 'calendar' : 'tasks';
 
@@ -124,9 +125,14 @@ function projectById(id) {
   return state.projects.find((project) => project.id === id) || state.projects[0];
 }
 
+function isSystemCalendarProject(projectOrId) {
+  const id = typeof projectOrId === 'string' ? projectOrId : projectOrId?.id;
+  return id === 'google-calendar' || id === 'apple-calendar';
+}
+
 function projectOptions(selectedId = 'inbox') {
   return [...state.projects]
-    .filter((project) => project.id !== 'google-calendar')
+    .filter((project) => !isSystemCalendarProject(project))
     .sort((a, b) => a.order - b.order)
     .map((project) => `<option value="${escapeAttribute(project.id)}"${project.id === selectedId ? ' selected' : ''}>${escapeAttribute(project.name)}</option>`)
     .join('');
@@ -530,8 +536,8 @@ function renderProjects() {
   const orderedProjects = [...state.projects].sort((a, b) => a.order - b.order);
 
   for (const project of orderedProjects) {
-    const googleCalendarProject = project.id === 'google-calendar';
-    if (googleCalendarProject) continue;
+    const systemCalendarProject = isSystemCalendarProject(project);
+    if (systemCalendarProject) continue;
     const relevant = state.tasks.filter((task) => !isCalendarEvent(task) && task.projectId === project.id && (!taskDateFilter || task.dueDate === taskDateFilter));
     const active = relevant.filter((task) => !task.completed).sort(projectTaskSort);
     const completed = relevant.filter((task) => task.completed);
@@ -595,7 +601,7 @@ function renderProjects() {
       toggleProjectCollapsed();
     });
     collapseButton.addEventListener('dblclick', (event) => event.stopPropagation());
-    projectTitle.draggable = !googleCalendarProject;
+    projectTitle.draggable = !systemCalendarProject;
     projectTitle.addEventListener('dragstart', (event) => {
       projectWasDragged = true;
       draggedProjectId = project.id;
@@ -617,7 +623,7 @@ function renderProjects() {
         toggleProjectCollapsed();
       }, 180);
     });
-    if (!googleCalendarProject) projectTitle.addEventListener('dblclick', (event) => {
+    if (!systemCalendarProject) projectTitle.addEventListener('dblclick', (event) => {
       if (event.target.closest('.project-collapse')) return;
       clearTimeout(projectTitleClickTimer);
       projectTitleClickTimer = null;
@@ -663,9 +669,9 @@ function renderProjects() {
       draggedProjectId = null;
     });
     const projectAddButton = group.querySelector('.project-add-task');
-    projectAddButton.hidden = googleCalendarProject;
+    projectAddButton.hidden = systemCalendarProject;
     projectAddButton.addEventListener('click', async () => {
-      if (googleCalendarProject) return;
+      if (systemCalendarProject) return;
       if (collapsedProjects.delete(project.id)) {
         state.settings.collapsedProjectIds = [...collapsedProjects];
         await persist();
@@ -759,6 +765,7 @@ function animateCalendarMonth(direction = 0) {
 
 window.addEventListener('resize', () => {
   if (calendarDetailDate) requestAnimationFrame(positionCalendarDetail);
+  requestAnimationFrame(fitAllCalendarCells);
 });
 
 function changeCalendarMonth(offset, animate = true) {
@@ -777,6 +784,59 @@ function goToCurrentCalendarMonth() {
   calendarCursor = new Date(now.getFullYear(), now.getMonth(), 1);
   renderCalendar();
   animateCalendarMonth(Math.sign(targetIndex - currentIndex));
+}
+
+function fitCalendarCellContent(cell) {
+  if (!cell) return;
+  const events = cell.querySelector('.day-events');
+  if (!events) return;
+
+  const items = [...events.querySelectorAll('.day-event')];
+  items.forEach((item) => { item.hidden = false; });
+  events.querySelector('.day-overflow')?.remove();
+
+  let hiddenCount = Number(cell.dataset.hiddenCalendarCount || 0);
+  let overflow = null;
+  const ensureOverflow = () => {
+    if (!overflow) {
+      overflow = document.createElement('div');
+      overflow.className = 'day-overflow';
+      overflow.addEventListener('click', (event) => {
+        event.stopPropagation();
+        openCalendarDetail(cell.dataset.date);
+      });
+      events.appendChild(overflow);
+    }
+    overflow.textContent = `+${hiddenCount}`;
+    overflow.title = `还有 ${hiddenCount} 项未显示，点击日期查看`;
+  };
+
+  if (hiddenCount > 0) ensureOverflow();
+
+  // Measure only after layout exists. Hide items from the end until the actual
+  // rendered cell fits; do not reserve a fixed number of rows in advance.
+  let index = items.length - 1;
+  while (events.scrollHeight > events.clientHeight + 1 && index >= 0) {
+    items[index].hidden = true;
+    hiddenCount += 1;
+    ensureOverflow();
+    index -= 1;
+  }
+
+  // Adding the overflow indicator itself can consume the last line.
+  while (overflow && events.scrollHeight > events.clientHeight + 1 && index >= 0) {
+    items[index].hidden = true;
+    hiddenCount += 1;
+    overflow.textContent = `+${hiddenCount}`;
+    overflow.title = `还有 ${hiddenCount} 项未显示，点击日期查看`;
+    index -= 1;
+  }
+
+  if (overflow && hiddenCount <= 0) overflow.remove();
+}
+
+function fitAllCalendarCells() {
+  document.querySelectorAll('.calendar-day').forEach((cell) => fitCalendarCellContent(cell));
 }
 
 function renderCalendar() {
@@ -828,19 +888,14 @@ function renderCalendar() {
       .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
 
     const visibleSpans = spanningEvents.slice(0, 1);
-    const slots = Math.max(0, 3 - visibleSpans.length);
-    const frontItems = [...singleEvents, ...activeTodos];
-    const frontLimit = completedTodos.length && slots > 0 ? Math.max(0, slots - 1) : slots;
-    const visibleFront = frontItems.slice(0, frontLimit);
-    const visibleCompleted = completedTodos.slice(0, Math.max(0, slots - visibleFront.length));
-    const visibleItems = [...visibleFront, ...visibleCompleted];
-    const totalCount = spanningEvents.length + singleEvents.length + activeTodos.length + completedTodos.length;
-    const visibleCount = visibleSpans.length + visibleItems.length;
-    const hiddenCount = Math.max(0, totalCount - visibleCount);
+    const visibleItems = [...singleEvents, ...activeTodos, ...completedTodos];
+    const totalCount = spanningEvents.length + visibleItems.length;
+    const hiddenCount = Math.max(0, spanningEvents.length - visibleSpans.length);
     const allCalendarItems = [...spanningEvents, ...singleEvents, ...activeTodos, ...completedTodos];
 
     const cell = document.createElement('div');
     cell.dataset.date = key;
+    cell.dataset.hiddenCalendarCount = String(hiddenCount);
     cell.className = `calendar-day${date.getMonth() !== month ? ' muted' : ''}${key === dayOffset(0) ? ' today' : ''}${key === calendarDetailDate ? ' selected-date' : ''}`;
     if (totalCount > 4) cell.classList.add('crowded');
     if (allCalendarItems.some((task) => task.id === highlightedTaskId)) cell.classList.add('focused-date');
@@ -941,16 +996,6 @@ function renderCalendar() {
       events.appendChild(item);
     });
 
-    if (hiddenCount > 0) {
-      const overflow = document.createElement('div');
-      overflow.className = 'day-overflow';
-      const hiddenCompleted = Math.max(0, completedTodos.length - visibleCompleted.length);
-      const hiddenNonCompleted = Math.max(0, hiddenCount - hiddenCompleted);
-      overflow.textContent = hiddenNonCompleted === 0 && hiddenCompleted > 0 ? `+${hiddenCompleted} 已完成` : `+${hiddenCount}`;
-      overflow.title = `还有 ${hiddenCount} 项未显示，点击日期查看`;
-      events.appendChild(overflow);
-    }
-
     cell.setAttribute('role', 'button');
     cell.setAttribute('tabindex', '0');
     cell.setAttribute('title', `${date.getMonth() + 1}月${date.getDate()}日 · 单击查看当天详情，双击添加事项`);
@@ -984,6 +1029,8 @@ function renderCalendar() {
     });
     host.appendChild(cell);
   }
+
+  requestAnimationFrame(fitAllCalendarCells);
 }
 
 function setCalendarDetailView(mode) {
@@ -1098,7 +1145,8 @@ function renderCalendarDetail() {
     scheduleHost.innerHTML = '<p class="calendar-detail-empty">当天没有日程</p>';
   } else {
     schedules.forEach((task) => {
-      const external = Boolean(task.googleCalendarExternal || task.syncTarget === 'external-calendar');
+      const googleExternal = Boolean(task.googleCalendarExternal || task.syncTarget === 'external-calendar');
+      const appleExternal = Boolean(task.icloudExternal);
       const row = document.createElement('button');
       row.type = 'button';
       row.className = 'calendar-detail-schedule event-detail-row';
@@ -1107,11 +1155,11 @@ function renderCalendarDetail() {
         <span class="calendar-detail-dot"></span>
         <span class="calendar-detail-time">${escapeAttribute(eventRangeLabel(task))}</span>
         <span class="calendar-detail-task-title">${escapeAttribute(task.title)}</span>
-        <span class="calendar-detail-project">${escapeAttribute(external ? (task.googleCalendarName || 'Google Calendar') : '日程')}</span>
+        <span class="calendar-detail-project">${escapeAttribute(googleExternal ? (task.googleCalendarName || 'Google Calendar') : (appleExternal ? (task.icloudCalendarName || 'Apple 日历') : '日程'))}</span>
       `;
-      row.title = external ? '来自 Google Calendar（只读）' : '点击编辑日程';
-      row.classList.toggle('readonly', external);
-      if (!external) row.addEventListener('click', () => openCalendarTaskDialog(task.dueDate, 'event', task.id));
+      row.title = googleExternal ? '来自 Google Calendar（只读）' : (appleExternal ? '来自 Apple 日历 · 点击编辑' : '点击编辑日程');
+      row.classList.toggle('readonly', googleExternal);
+      if (!googleExternal) row.addEventListener('click', () => openCalendarTaskDialog(task.dueDate, 'event', task.id));
       scheduleHost.appendChild(row);
     });
   }
@@ -1220,8 +1268,11 @@ function updateCalendarItemDialogMode() {
 
   $('#calendarTaskDateText').textContent = eventMode ? '开始日期' : '待办日期';
   $('#calendarTaskTimeText').textContent = eventMode ? '开始时间' : '时间';
+  const editingItem = editingCalendarEventId ? state.tasks.find((task) => task.id === editingCalendarEventId) : null;
   $('#calendarItemTypeHint').textContent = eventMode
-    ? '日程可设为全天，也可以设置开始和结束时间，并支持跨日期'
+    ? (editingItem?.icloudExternal
+      ? '来自 Apple 日历；保存后点击 Apple「同步」即可同步回 iPhone'
+      : '日程可设为全天，也可以设置开始和结束时间，并支持跨日期')
     : '待办可以设置日期和具体时间，仍会保留在「我的待办」';
   $('#deleteCalendarEventButton').hidden = !editingCalendarEventId;
   if (editingCalendarEventId) $('#deleteCalendarEventButton').textContent = '删除事项';
@@ -1340,7 +1391,7 @@ async function createCalendarTask(event) {
         task.endTime = allDay ? '' : endTime;
         task.eventColor = selectedEventColor;
         task.itemType = 'event';
-        task.projectId = 'inbox';
+        task.projectId = task.icloudExternal ? 'apple-calendar' : 'inbox';
         task.syncTarget = 'calendar';
       } else {
         task.endDate = '';
@@ -1783,7 +1834,7 @@ async function updateTaskTitle(id, title) {
 
 async function moveTaskToProject(id, projectId) {
   const task = state.tasks.find((item) => item.id === id);
-  if (!task || projectId === 'google-calendar' || task.googleCalendarExternal || task.syncTarget === 'external-calendar') return;
+  if (!task || isSystemCalendarProject(projectId) || task.googleCalendarExternal || task.syncTarget === 'external-calendar') return;
   task.projectId = projectId;
   task.updatedAt = Date.now();
   const targetOrders = state.tasks
@@ -2118,7 +2169,7 @@ function renderGoogleStatus(status) {
   const connected = Boolean(status?.connected);
   state.settings.googleConnected = connected;
   $('#googleStatusText').textContent = connected ? '已连接 · Tasks 与 Calendar' : '未连接';
-  $('#connectGoogle').textContent = status?.requiresCalendarReauth ? '重新授权' : (connected ? '立即同步' : '连接');
+  $('#connectGoogle').textContent = status?.requiresCalendarReauth ? '重新授权' : (connected ? '同步' : '连接');
   $('#disconnectGoogle').hidden = !connected;
   if (!status?.credentialsAvailable) {
     $('#googleNote').textContent = '项目目录中没有找到 credentials.json。';
@@ -2207,6 +2258,144 @@ async function disconnectGoogle() {
     $('#googleNote').textContent = '已断开 Google；本地待办不会被删除。';
   } catch (error) {
     $('#googleNote').textContent = `断开失败：${googleErrorMessage(error)}`;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+
+function renderIcloudStatus(status) {
+  const connected = Boolean(status && status.connected);
+  const calendars = Array.isArray(status && status.calendars) ? status.calendars : [];
+  const credentialPanel = $('#icloudCredentialPanel');
+  const calendarPanel = $('#icloudCalendarPanel');
+  const calendarSelect = $('#icloudCalendarSelect');
+  const connectButton = $('#connectIcloud');
+
+  $('#icloudStatusText').textContent = connected
+    ? '已连接 · ' + calendars.length + ' 个日历'
+    : ((status && status.demo) ? 'Demo 中不可连接' : '未连接');
+
+  connectButton.hidden = false;
+  connectButton.textContent = connected ? '同步' : '连接';
+  $('#disconnectIcloud').hidden = !connected;
+  credentialPanel.hidden = connected;
+  calendarPanel.hidden = !connected;
+
+  if (connected) {
+    $('#icloudEmail').value = (status && status.email) || '';
+    $('#icloudPassword').value = '';
+
+    const currentValue = calendarSelect.value;
+    calendarSelect.innerHTML = '<option value="">选择 iCloud 日历…</option>';
+    calendars.forEach((calendar) => {
+      const option = document.createElement('option');
+      option.value = calendar.url;
+      option.textContent = calendar.name || '未命名日历';
+      calendarSelect.appendChild(option);
+    });
+
+    const preferred = (status && status.selectedCalendarUrl) || currentValue || '';
+    if (preferred && calendars.some((calendar) => calendar.url === preferred)) {
+      calendarSelect.value = preferred;
+    }
+
+    connectButton.disabled = false;
+    $('#icloudNote').textContent = calendarSelect.value
+      ? 'Luma 日程和有日期的待办将同步到所选 iCloud 日历。'
+      : '请选择用于 Luma 日程和待办的 iCloud 日历。';
+  } else if (status && status.demo) {
+    $('#icloudNote').textContent = '演示模式不会连接真实 iCloud 账户；请用 npm run start:icloud 测试。';
+    connectButton.disabled = true;
+    calendarSelect.innerHTML = '<option value="">选择 iCloud 日历…</option>';
+  } else {
+    $('#icloudNote').textContent = '使用 Apple 账户邮箱和 App 专用密码连接。';
+    connectButton.disabled = false;
+    calendarSelect.innerHTML = '<option value="">选择 iCloud 日历…</option>';
+  }
+}
+
+async function refreshIcloudStatus() {
+  try {
+    const status = await window.luma?.icloudStatus();
+    renderIcloudStatus(status);
+    return status;
+  } catch (error) {
+    renderIcloudStatus({ connected: false });
+    $('#icloudNote').textContent = '无法检查 iCloud 连接：' + googleErrorMessage(error);
+    return { connected: false };
+  }
+}
+
+async function connectIcloud() {
+  const button = $('#connectIcloud');
+  const email = $('#icloudEmail').value.trim();
+  const password = $('#icloudPassword').value.trim();
+  if (!email || !password) {
+    $('#icloudNote').textContent = '请先填写 Apple 账户邮箱和 App 专用密码。';
+    return;
+  }
+
+  button.disabled = true;
+  $('#icloudNote').textContent = '正在连接 iCloud 并发现日历…';
+  try {
+    const status = await window.luma?.icloudConnect({ email, password });
+    renderIcloudStatus(status);
+  } catch (error) {
+    $('#icloudPassword').value = '';
+    $('#icloudNote').textContent = '连接失败：' + googleErrorMessage(error);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function syncIcloud() {
+  const button = $('#connectIcloud');
+  const calendarUrl = $('#icloudCalendarSelect').value;
+  if (!calendarUrl) {
+    $('#icloudNote').textContent = '请先选择要写入的 iCloud 日历。';
+    return;
+  }
+
+  button.disabled = true;
+  $('#icloudNote').textContent = '正在同步 Luma 日程与待办到 iCloud…';
+  try {
+    const result = await window.luma?.icloudSync({ state, calendarUrl });
+    state = normalizeState(result.state);
+    await persist();
+    render();
+    const summary = result.summary || {};
+    $('#icloudNote').textContent =
+      '同步完成：从 iCloud 下载 ' + (summary.downloaded || 0) + ' 项、删除 ' + (summary.deleted || 0)
+      + ' 项；上传新增 ' + (summary.created || 0) + '、更新 ' + (summary.updated || 0)
+      + '。当前日程 ' + (summary.syncedEvents || 0) + ' 项，待办镜像 ' + (summary.mirroredTodos || 0) + ' 项。';
+  } catch (error) {
+    $('#icloudNote').textContent = '同步失败：' + googleErrorMessage(error);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function connectOrSyncIcloud() {
+  const status = await window.luma?.icloudStatus();
+  if (status && status.connected) {
+    await syncIcloud();
+    return;
+  }
+  await connectIcloud();
+}
+
+async function disconnectIcloud() {
+  const button = $('#disconnectIcloud');
+  button.disabled = true;
+  try {
+    const status = await window.luma?.icloudDisconnect();
+    renderIcloudStatus(status);
+    $('#icloudEmail').value = '';
+    $('#icloudPassword').value = '';
+    $('#icloudNote').textContent = '已断开 iCloud；Luma 本地日程不会被删除。';
+  } catch (error) {
+    $('#icloudNote').textContent = '断开失败：' + googleErrorMessage(error);
   } finally {
     button.disabled = false;
   }
@@ -2397,7 +2586,7 @@ function bindEvents() {
     $('#opacitySlider').value = state.settings.panelOpacity;
     applyPanelOpacity(state.settings.panelOpacity);
     openSettingsDialog();
-    await refreshGoogleStatus();
+    await Promise.all([refreshGoogleStatus(), refreshIcloudStatus()]);
   });
   $('#closeSettingsButton').addEventListener('click', closeSettingsDialog);
   settingsDialog.addEventListener('cancel', (event) => {
@@ -2436,6 +2625,8 @@ function bindEvents() {
   });
   $('#connectGoogle').addEventListener('click', connectOrSyncGoogle);
   $('#disconnectGoogle').addEventListener('click', disconnectGoogle);
+  $('#connectIcloud').addEventListener('click', connectOrSyncIcloud);
+  $('#disconnectIcloud').addEventListener('click', disconnectIcloud);
   window.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && settingsDialog.open) {
       closeSettingsDialog();
@@ -2465,7 +2656,7 @@ async function init() {
   bindTimePickers();
   renderColorChoices();
   render();
-  await refreshGoogleStatus();
+  await Promise.all([refreshGoogleStatus(), refreshIcloudStatus()]);
 }
 
 init();

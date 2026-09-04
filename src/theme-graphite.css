@@ -1185,12 +1185,12 @@ html[data-theme="light"] .task-item.menu-open .task-more {
   padding: 14px 15px 13px;
 }
 .settings-modal .modal-title { min-height: 35px; align-items: flex-start; }
-.settings-modal .modal-title h3 { font-size: 17px; line-height: 20px; }
+.settings-modal .modal-title h3 { font-size: 18px; line-height: 22px; font-weight: 720; }
 .settings-modal .modal-title .eyebrow {
   margin-top: 2px;
-  color: rgba(232,236,244,.56);
-  font-size: 10px;
-  line-height: 14px;
+  color: rgba(232,236,244,.62);
+  font-size: 11px;
+  line-height: 15px;
   letter-spacing: .04em;
 }
 .settings-close-button {
@@ -1223,9 +1223,9 @@ html[data-theme="light"] .task-item.menu-open .task-more {
 }
 .settings-modal .settings-section:last-child { border-bottom: 0; }
 .settings-modal .settings-section strong,
-.settings-modal .account-card strong { font-size: 13px; line-height: 17px; }
+.settings-modal .account-card strong { font-size: 13.5px; line-height: 18px; font-weight: 680; }
 .settings-modal .settings-section small,
-.settings-modal .account-card small { margin-top: 1px; font-size: 10px; line-height: 14px; }
+.settings-modal .account-card small { margin-top: 2px; font-size: 11px; line-height: 15px; }
 .settings-modal .opacity-control { min-width: 122px; grid-template-columns: 34px 1fr; gap: 6px; }
 .settings-modal .account-card {
   min-height: 56px;
@@ -3726,3 +3726,380 @@ html[data-theme="light"] .calendar-detail-check.is-checked {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Experimental iCloud CalDAV connection. */
+.settings-modal form {
+  max-height: calc(100vh - 26px);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.settings-modal .apple-account-card {
+  margin-top: 9px;
+}
+
+.settings-modal .apple-logo {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  border-radius: 9px;
+  color: rgba(245,247,251,.9);
+  background: rgba(116,170,226,.13);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.experimental-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 4px;
+  border-radius: 999px;
+  color: rgba(198,220,244,.82);
+  background: rgba(116,170,226,.11);
+  font-size: 8px;
+  font-weight: 650;
+  vertical-align: 1px;
+}
+
+.icloud-credentials {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.icloud-credentials[hidden] {
+  display: none;
+}
+
+.icloud-credentials input {
+  width: 100%;
+  min-width: 0;
+  height: 31px;
+  padding: 0 8px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  outline: none;
+  color: var(--ink);
+  background: rgba(255,255,255,.045);
+  font-size: 10px;
+  box-sizing: border-box;
+}
+
+.icloud-credentials input:focus {
+  border-color: rgba(116,170,226,.46);
+  box-shadow: 0 0 0 2px rgba(116,170,226,.10);
+}
+
+html[data-theme="light"] .settings-modal .apple-logo {
+  color: #42698f;
+  background: #eef5fb;
+}
+
+html[data-theme="light"] .experimental-badge {
+  color: #4a6f93;
+  background: #edf4fa;
+}
+
+html[data-theme="light"] .icloud-credentials input {
+  color: var(--luma-fg-1);
+  border-color: var(--luma-stroke-1);
+  background: #fff;
+}
+
+html[data-theme="light"] .icloud-credentials input:focus {
+  border-color: #79a7d3;
+  box-shadow: 0 0 0 2px rgba(121,167,211,.12);
+}
+
+.icloud-calendar-target {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.icloud-calendar-target[hidden] {
+  display: none;
+}
+
+.icloud-calendar-target label {
+  margin: 0;
+  color: rgba(239,242,248,.66);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.icloud-calendar-target select {
+  min-width: 0;
+  height: 31px;
+  padding: 0 28px 0 8px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  outline: none;
+  color: var(--ink);
+  background: rgba(255,255,255,.045);
+  font-size: 10px;
+}
+
+.icloud-calendar-target select:focus {
+  border-color: rgba(116,170,226,.46);
+  box-shadow: 0 0 0 2px rgba(116,170,226,.10);
+}
+
+html[data-theme="light"] .icloud-calendar-target label {
+  color: var(--luma-fg-3);
+}
+
+html[data-theme="light"] .icloud-calendar-target select {
+  color: var(--luma-fg-1);
+  border-color: var(--luma-stroke-1);
+  background: #fff;
+}
+
+html[data-theme="light"] .icloud-calendar-target select:focus {
+  border-color: #79a7d3;
+  box-shadow: 0 0 0 2px rgba(121,167,211,.12);
+}
+
+.settings-modal .reminders-bridge-card {
+  margin-top: 9px;
+}
+
+.settings-modal .reminders-bridge-logo {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  border-radius: 9px;
+  color: rgba(179,229,196,.95);
+  background: rgba(76,175,109,.12);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+html[data-theme="light"] .settings-modal .reminders-bridge-logo {
+  color: #3f7b51;
+  background: #edf7f0;
+}
+
+/* Compact sync settings: one Google row + one Apple group. */
+.settings-modal {
+  width: 348px;
+}
+
+.settings-modal form {
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  scrollbar-gutter: auto;
+}
+
+.sync-settings {
+  margin-top: 10px;
+}
+
+.sync-card {
+  border: 1px solid rgba(255,255,255,.075);
+  border-radius: 10px;
+  background: rgba(255,255,255,.032);
+}
+
+.sync-card + .sync-card {
+  margin-top: 8px;
+}
+
+.sync-card-header,
+.apple-sync-heading {
+  display: grid;
+  grid-template-columns: 30px minmax(0,1fr) auto;
+  align-items: center;
+  column-gap: 9px;
+}
+
+.google-sync-card {
+  padding: 8px 9px 7px;
+}
+
+.sync-copy,
+.apple-sync-kind {
+  min-width: 0;
+}
+
+.sync-copy strong,
+.apple-sync-kind > span {
+  display: block;
+  overflow: hidden;
+  color: rgba(248,249,252,.95);
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sync-copy small,
+.apple-sync-kind small {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  color: rgba(232,236,244,.64);
+  font-size: 11px;
+  line-height: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sync-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.settings-modal .sync-actions .soft-button {
+  min-width: 0;
+  min-height: 29px;
+  padding: 0 9px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 620;
+  line-height: 27px;
+  white-space: nowrap;
+}
+
+.sync-note,
+.apple-sync-note {
+  margin: 6px 0 0 39px !important;
+  padding: 0 !important;
+  color: rgba(232,236,244,.58) !important;
+  font-size: 10.5px !important;
+  line-height: 15px !important;
+}
+
+.apple-sync-card {
+  padding: 0 9px 7px;
+}
+
+.apple-sync-heading {
+  min-height: 50px;
+  border-bottom: 1px solid rgba(255,255,255,.055);
+}
+
+.apple-sync-heading .apple-logo {
+  width: 30px;
+  height: 30px;
+}
+
+.apple-sync-row {
+  min-height: 47px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-left: 39px;
+}
+
+.apple-sync-kind {
+  flex: 1 1 auto;
+}
+
+.apple-sync-kind > span {
+  font-size: 12.5px;
+  line-height: 17px;
+}
+
+.apple-sync-divider {
+  height: 1px;
+  margin-left: 39px;
+  background: rgba(255,255,255,.05);
+}
+
+.icloud-credentials {
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin: -1px 0 6px 39px;
+}
+
+.icloud-credentials input {
+  height: 31px;
+  border-radius: 7px;
+  font-size: 11px;
+}
+
+.icloud-calendar-target {
+  grid-template-columns: 42px minmax(0,1fr);
+  gap: 5px;
+  margin: -1px 0 5px 39px;
+}
+
+.icloud-calendar-target label {
+  font-size: 10.5px;
+}
+
+.icloud-calendar-target select {
+  height: 31px;
+  border-radius: 7px;
+  font-size: 11px;
+}
+
+.settings-modal .experimental-badge {
+  margin-left: 4px;
+  padding: 1px 5px;
+  font-size: 8px;
+  vertical-align: 1px;
+}
+
+.settings-modal .settings-export {
+  margin-top: 8px;
+}
+
+/* Light mode: white cards, shallow separators, no gray slabs. */
+html[data-theme="light"] .sync-card {
+  border-color: rgba(32,41,56,.09);
+  background: #ffffff;
+}
+
+html[data-theme="light"] .apple-sync-heading {
+  border-color: rgba(32,41,56,.07);
+}
+
+html[data-theme="light"] .apple-sync-divider {
+  background: rgba(32,41,56,.065);
+}
+
+html[data-theme="light"] .sync-copy strong,
+html[data-theme="light"] .apple-sync-kind > span {
+  color: #242424;
+}
+
+html[data-theme="light"] .sync-copy small,
+html[data-theme="light"] .apple-sync-kind small {
+  color: #666 !important;
+}
+html[data-theme="light"] .sync-note,
+html[data-theme="light"] .apple-sync-note {
+  color: #707070 !important;
+}
+
+/* Completed Todo rows keep the same readable rhythm as active rows when space allows. */
+.completed-toggle {
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: calc(100% - 30px);
+  white-space: nowrap;
+}
+.completed-toggle > span {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.completed-list .task-item {
+  min-height: 38px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+

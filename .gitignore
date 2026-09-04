@@ -5,6 +5,7 @@ dist/
 *.log
 credentials.json
 google-token.enc
+icloud-calendar.enc
 **/luma-data.json
 **/luma-window-state.json
 **/Backups/

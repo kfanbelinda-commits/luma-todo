@@ -18,4 +18,8 @@ contextBridge.exposeInMainWorld('luma', {
   googleDisconnect: () => ipcRenderer.invoke('google:disconnect'),
   googleSync: (payload) => ipcRenderer.invoke('google:sync', payload),
   googleDeleteTask: (task) => ipcRenderer.invoke('google:delete-task', task),
+  icloudStatus: () => ipcRenderer.invoke('icloud:status'),
+  icloudConnect: (payload) => ipcRenderer.invoke('icloud:connect', payload),
+  icloudDisconnect: () => ipcRenderer.invoke('icloud:disconnect'),
+  icloudSync: (payload) => ipcRenderer.invoke('icloud:sync', payload),
 });
