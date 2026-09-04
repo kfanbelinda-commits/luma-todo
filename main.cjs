@@ -102,6 +102,32 @@ function setDesktopHosted(enabled) {
   return desktopHostTransition;
 }
 
+function activateNativeWindow() {
+  if (process.platform !== 'win32' || !mainWindow || mainWindow.isDestroyed()) return Promise.resolve(false);
+  return new Promise((resolve) => {
+    execFile(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', desktopWindowHelperPath(),
+        '-Handle', windowHandleArgument(),
+        '-Mode', 'Activate',
+      ],
+      { windowsHide: true },
+      (error) => {
+        if (error) {
+          console.warn(`[Luma Todo] Native foreground activation failed: ${error.message}`);
+          resolve(false);
+          return;
+        }
+        resolve(true);
+      },
+    );
+  });
+}
+
 function cancelDesktopAttach() {
   desktopAttachRequestId += 1;
   if (!desktopAttachTimer) return;
@@ -114,32 +140,36 @@ async function activateMainWindow() {
   isExplicitlyHidden = false;
   cancelDesktopAttach();
 
-  const wasDesktopHosted = isDesktopHosted;
-  if (wasDesktopHosted) await setDesktopHosted(false);
+  // Always queue a detach. If a blur-triggered WorkerW attach is still running,
+  // this waits for it and immediately detaches again instead of losing the click.
+  await setDesktopHosted(false);
   if (!mainWindow || mainWindow.isDestroyed()) return;
 
   if (mainWindow.isMinimized()) mainWindow.restore();
 
-  // Detaching a WS_CHILD window from WorkerW can leave it behind the current
-  // foreground app in Windows' Z-order even though the click came from Luma.
-  // Give only desktop-host activations a short topmost pulse, then restore the
-  // real Pin state. This does not change the user's persistent Pin preference.
-  if (wasDesktopHosted && !isPinnedAlwaysOnTop) {
+  if (!isPinnedAlwaysOnTop) {
+    // Windows can leave a detached WorkerW child behind the current foreground
+    // app. Use a short topmost pulse plus a native foreground request so one
+    // click on the exposed Luma surface reliably raises it above Chrome.
     mainWindow.setAlwaysOnTop(true);
     mainWindow.show();
     mainWindow.moveTop();
+    await activateNativeWindow();
+    if (!mainWindow || mainWindow.isDestroyed()) return;
     mainWindow.focus();
     setTimeout(() => {
       if (!mainWindow || mainWindow.isDestroyed() || isPinnedAlwaysOnTop) return;
       mainWindow.setAlwaysOnTop(false);
       if (mainWindow.isFocused()) mainWindow.moveTop();
-    }, 120);
+    }, 160);
     return;
   }
 
-  mainWindow.setAlwaysOnTop(isPinnedAlwaysOnTop);
+  mainWindow.setAlwaysOnTop(true);
   mainWindow.show();
   mainWindow.moveTop();
+  await activateNativeWindow();
+  if (!mainWindow || mainWindow.isDestroyed()) return;
   mainWindow.focus();
 }
 
@@ -1263,7 +1293,9 @@ ipcMain.handle('window:set-always-on-top', async (_event, enabled) => {
 
 ipcMain.on('window:activate', () => {
   cancelDesktopAttach();
-  if (!isPinnedAlwaysOnTop && isDesktopHosted) activateMainWindow();
+  if (!isPinnedAlwaysOnTop && (!mainWindow?.isFocused() || isDesktopHosted)) {
+    activateMainWindow();
+  }
 });
 
 ipcMain.on('window:resize-start', (_event, payload) => {
