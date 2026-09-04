@@ -1884,3 +1884,161 @@ html[data-theme="light"] .day-event.completed-calendar-event:hover,
 html[data-theme="light"] .day-event.completed-calendar-event:focus-visible {
   background: rgba(58,71,92,.025);
 }
+
+
+/* Calendar information hierarchy: neutral Events, project-colored Todo checkboxes. */
+.day-spans {
+  min-height: 0;
+  display: grid;
+  gap: 1px;
+  margin-top: 2px;
+  overflow: visible;
+}
+
+.calendar-span-event {
+  min-width: 0;
+  height: 17px;
+  margin-left: -6px;
+  margin-right: -6px;
+  padding: 0 5px;
+  overflow: hidden;
+  border-top: 1px solid rgba(190,198,212,.24);
+  border-bottom: 1px solid rgba(190,198,212,.24);
+  border-radius: 0;
+  color: rgba(244,247,252,.80);
+  background: rgba(139,147,163,.20);
+  font-size: 10px;
+  line-height: 15px;
+  font-weight: 620;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  user-select: none;
+}
+.calendar-span-event.span-left-round {
+  margin-left: 0;
+  border-left: 1px solid rgba(190,198,212,.24);
+  border-radius: 4px 0 0 4px;
+}
+.calendar-span-event.span-right-round {
+  margin-right: 0;
+  border-right: 1px solid rgba(190,198,212,.24);
+  border-radius: 0 4px 4px 0;
+}
+.calendar-span-event.span-left-round.span-right-round {
+  border-radius: 4px;
+}
+.calendar-span-event:hover {
+  background: rgba(139,147,163,.28);
+}
+
+.day-event.calendar-event-item {
+  border: 1px solid rgba(190,198,212,.24);
+  color: rgba(244,247,252,.82);
+  background: rgba(139,147,163,.18);
+  font-weight: 610;
+}
+.day-event.calendar-event-item:hover,
+.day-event.calendar-event-item:focus-visible {
+  background: rgba(139,147,163,.28);
+  filter: none;
+}
+
+.day-event.calendar-todo-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  border-color: transparent;
+  color: rgba(239,243,249,.78);
+  background: transparent;
+  padding-left: 3px;
+}
+.day-event.calendar-todo-item::before {
+  content: '';
+  flex: 0 0 9px;
+  width: 9px;
+  height: 9px;
+  box-sizing: border-box;
+  border: 1.4px solid var(--event-color);
+  border-radius: 2.5px;
+  background: color-mix(in srgb, var(--event-color) 8%, transparent);
+}
+.day-event.calendar-todo-item:hover,
+.day-event.calendar-todo-item:focus-visible {
+  background: rgba(255,255,255,.028);
+  filter: none;
+}
+
+.day-event.calendar-todo-item.completed-calendar-event {
+  color: rgba(232,236,244,.46);
+  background: transparent;
+  opacity: .76;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  text-decoration-color: rgba(232,236,244,.34);
+}
+.day-event.calendar-todo-item.completed-calendar-event::before {
+  content: '✓';
+  display: grid;
+  place-items: center;
+  border-color: color-mix(in srgb, var(--event-color) 72%, transparent);
+  color: rgba(255,255,255,.88);
+  background: color-mix(in srgb, var(--event-color) 62%, rgba(139,147,163,.18));
+  font-size: 7px;
+  line-height: 1;
+  text-decoration: none;
+}
+.day-event.calendar-todo-item.completed-calendar-event:hover,
+.day-event.calendar-todo-item.completed-calendar-event:focus-visible {
+  background: rgba(255,255,255,.02);
+}
+
+.calendar-detail-schedule.event-detail-row {
+  --detail-color: #8b93a3;
+}
+.calendar-detail-schedule.event-detail-row .calendar-detail-dot {
+  background: rgba(139,147,163,.72);
+}
+
+.calendar-create-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+#calendarTaskEndDateLabel[hidden],
+#calendarTaskProjectLabel[hidden] {
+  display: none !important;
+}
+
+html[data-theme="light"] .calendar-span-event {
+  border-color: rgba(82,91,107,.18);
+  color: rgba(45,55,72,.78);
+  background: rgba(107,114,128,.10);
+}
+html[data-theme="light"] .calendar-span-event:hover {
+  background: rgba(107,114,128,.16);
+}
+html[data-theme="light"] .day-event.calendar-event-item {
+  border-color: rgba(82,91,107,.18);
+  color: rgba(45,55,72,.80);
+  background: rgba(107,114,128,.09);
+}
+html[data-theme="light"] .day-event.calendar-event-item:hover,
+html[data-theme="light"] .day-event.calendar-event-item:focus-visible {
+  background: rgba(107,114,128,.15);
+}
+html[data-theme="light"] .day-event.calendar-todo-item {
+  color: rgba(45,55,72,.78);
+  background: transparent;
+}
+html[data-theme="light"] .day-event.calendar-todo-item:hover,
+html[data-theme="light"] .day-event.calendar-todo-item:focus-visible {
+  background: rgba(58,71,92,.025);
+}
+html[data-theme="light"] .day-event.calendar-todo-item.completed-calendar-event {
+  color: rgba(58,71,92,.44);
+  text-decoration-color: rgba(58,71,92,.30);
+}
+html[data-theme="light"] .day-event.calendar-todo-item.completed-calendar-event::before {
+  color: rgba(255,255,255,.94);
+}
