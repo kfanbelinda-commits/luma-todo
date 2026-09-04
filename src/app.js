@@ -96,6 +96,20 @@ function normalizeState(input) {
     task.itemType = (task.itemType === 'event' || task.googleCalendarExternal) ? 'event' : 'todo';
     task.projectId ??= 'inbox';
     task.syncTarget ??= task.time ? 'calendar' : 'tasks';
+
+    // Current rule: a concrete time belongs to an Event, not a Todo.
+    // Migrate legacy timed Todos while preserving their former project color.
+    if (!task.googleCalendarExternal && task.itemType === 'todo' && task.time) {
+      const previousProject = input.projects.find((project) => project.id === task.projectId);
+      task.itemType = 'event';
+      task.endDate = task.endDate || task.dueDate || '';
+      task.eventColor = /^#[0-9a-f]{6}$/i.test(task.eventColor || '')
+        ? task.eventColor
+        : (/^#[0-9a-f]{6}$/i.test(previousProject?.color || '') ? previousProject.color : DEFAULT_EVENT_COLOR);
+      task.projectId = 'inbox';
+      task.syncTarget = 'calendar';
+    }
+
     if (task.itemType === 'event') {
       task.endDate = task.endDate || task.dueDate || '';
       task.eventColor = /^#[0-9a-f]{6}$/i.test(task.eventColor || '') ? task.eventColor : DEFAULT_EVENT_COLOR;
@@ -1651,9 +1665,27 @@ async function saveTaskSchedule(event) {
   if (!task || task.googleCalendarExternal || task.syncTarget === 'external-calendar') return;
   const timeResult = validatedTimeField($('#scheduleTime'));
   if (!timeResult.valid) return;
+
+  const previousProject = projectById(task.projectId);
   task.dueDate = $('#scheduleDate').value;
   task.time = timeResult.value;
-  task.syncTarget = task.time ? 'calendar' : 'tasks';
+
+  if (task.time) {
+    task.itemType = 'event';
+    task.endDate = task.dueDate;
+    task.eventColor = /^#[0-9a-f]{6}$/i.test(task.eventColor || '')
+      ? task.eventColor
+      : (/^#[0-9a-f]{6}$/i.test(previousProject?.color || '') ? previousProject.color : DEFAULT_EVENT_COLOR);
+    task.projectId = 'inbox';
+    task.syncTarget = 'calendar';
+  } else {
+    task.itemType = 'todo';
+    task.endDate = '';
+    task.endTime = '';
+    task.eventColor = '';
+    task.syncTarget = 'tasks';
+  }
+
   task.updatedAt = Date.now();
   $('#scheduleDialog').close();
   editingScheduleTaskId = null;
