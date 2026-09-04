@@ -1334,3 +1334,513 @@ html[data-theme="light"] .calendar-day.muted:hover,
 html[data-theme="light"] .calendar-day.muted:focus-visible {
   background: rgba(58,71,92,.045);
 }
+
+
+/* Header date summary doubles as the single calendar entry point. */
+.topbar {
+  gap: 8px;
+}
+.brand {
+  flex: 0 0 auto;
+}
+.date-summary {
+  min-width: 0;
+  max-width: 170px;
+  height: 29px;
+  flex: 1 1 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-left: auto;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 8px;
+  padding: 0 8px;
+  color: rgba(239,242,248,.72);
+  background: rgba(255,255,255,.035);
+  font: inherit;
+  font-size: 10.5px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+.date-summary svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.date-summary #dateSummaryText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.date-summary-chevron {
+  flex: 0 0 auto;
+  margin-top: -2px;
+  color: rgba(239,242,248,.46);
+  font-size: 12px;
+  transition: transform 160ms ease;
+}
+.date-summary:hover,
+.date-summary:focus-visible,
+.date-summary.expanded {
+  border-color: rgba(255,255,255,.16);
+  color: rgba(255,255,255,.94);
+  background: rgba(255,255,255,.075);
+  outline: none;
+}
+.date-summary.expanded .date-summary-chevron {
+  transform: rotate(180deg);
+}
+.date-summary.filtered-date {
+  color: rgba(255,255,255,.90);
+}
+.top-actions {
+  flex: 0 0 auto;
+}
+html[data-theme="light"] .date-summary {
+  border-color: rgba(57,70,92,.13);
+  color: #5d6879;
+  background: rgba(255,255,255,.42);
+}
+html[data-theme="light"] .date-summary-chevron {
+  color: rgba(58,71,92,.42);
+}
+html[data-theme="light"] .date-summary:hover,
+html[data-theme="light"] .date-summary:focus-visible,
+html[data-theme="light"] .date-summary.expanded {
+  border-color: rgba(57,70,92,.19);
+  color: #263244;
+  background: rgba(255,255,255,.78);
+}
+
+
+/* Keep the compact header date readable; full lunar date is available on hover and in Calendar. */
+.date-summary {
+  max-width: 112px;
+  flex: 0 1 112px;
+  gap: 5px;
+  padding: 0 7px 0 9px;
+  font-size: 11px;
+}
+.date-summary #dateSummaryText {
+  overflow: visible;
+  text-overflow: clip;
+}
+.date-summary svg {
+  display: none;
+}
+.month-lunar {
+  min-height: 14px;
+  margin-top: 2px;
+  color: rgba(232,236,244,.58);
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+html[data-theme="light"] .month-lunar {
+  color: rgba(58,71,92,.56);
+}
+
+
+/* Final compact date control: calendar icon + date text, no chevron. */
+.date-summary {
+  max-width: 126px;
+  flex-basis: 126px;
+  gap: 6px;
+  padding: 0 9px;
+}
+.date-summary svg {
+  display: block;
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+}
+.date-summary-chevron {
+  display: none;
+}
+
+
+/* Calendar date detail: overlay only, never changes the calendar/todo layout. */
+.calendar-panel {
+  position: relative;
+}
+.calendar-detail {
+  position: absolute;
+  z-index: 18;
+  top: 86px;
+  right: 20px;
+  bottom: 20px;
+  width: min(350px, 43%);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 14px;
+  background: rgba(34,37,44,.96);
+  box-shadow: 0 16px 40px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.07);
+  overflow: hidden;
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 150ms ease, transform 170ms ease;
+}
+.calendar-detail.hidden {
+  display: flex !important;
+  opacity: 0;
+  transform: translateX(10px);
+  pointer-events: none;
+  visibility: hidden;
+}
+.calendar-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 17px 12px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.calendar-detail-header h3 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.2;
+}
+.calendar-detail-lunar {
+  margin: 4px 0 0;
+  color: rgba(232,236,244,.58);
+  font-size: 11px;
+}
+.calendar-detail-close {
+  width: 25px;
+  height: 25px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: rgba(239,242,248,.58);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.calendar-detail-close:hover {
+  color: white;
+  background: rgba(255,255,255,.08);
+}
+.calendar-detail-section {
+  padding: 12px 16px 10px;
+}
+.calendar-detail-section + .calendar-detail-section {
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+.calendar-detail-todos {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+}
+.calendar-detail-section-title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 7px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.calendar-detail-count {
+  color: rgba(232,236,244,.48);
+  font-size: 11px;
+  font-weight: 500;
+}
+.calendar-detail-hint {
+  margin: -3px 0 8px;
+  color: rgba(232,236,244,.45);
+  font-size: 10px;
+}
+.calendar-detail-list {
+  display: grid;
+  gap: 3px;
+}
+.calendar-detail-schedule,
+.calendar-detail-todo-row {
+  min-width: 0;
+  min-height: 32px;
+  display: grid;
+  grid-template-columns: 8px 46px minmax(0,1fr) auto;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 8px;
+  padding: 5px 7px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+}
+.calendar-detail-schedule:not(.readonly) {
+  cursor: pointer;
+}
+.calendar-detail-schedule:not(.readonly):hover,
+.calendar-detail-todo-row:hover {
+  background: rgba(255,255,255,.055);
+}
+.calendar-detail-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--detail-color);
+}
+.calendar-detail-time {
+  color: rgba(232,236,244,.55);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+.calendar-detail-task-title {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(250,251,253,.91);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+}
+.calendar-detail-project {
+  max-width: 62px;
+  overflow: hidden;
+  border-radius: 999px;
+  padding: 2px 6px;
+  color: var(--detail-color);
+  background: color-mix(in srgb, var(--detail-color) 14%, transparent);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9.5px;
+}
+.calendar-detail-todo-row {
+  grid-template-columns: 18px minmax(0,1fr) auto auto;
+}
+.calendar-detail-check {
+  width: 15px;
+  height: 15px;
+  border: 1px solid var(--detail-color);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+.calendar-detail-overdue {
+  color: rgba(240,186,115,.75);
+  font-size: 9.5px;
+}
+.calendar-detail-add {
+  width: 100%;
+  margin-top: 8px;
+  border: 1px dashed rgba(255,255,255,.11);
+  border-radius: 8px;
+  padding: 7px;
+  color: rgba(239,242,248,.60);
+  background: rgba(255,255,255,.025);
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+.calendar-detail-add:hover {
+  color: rgba(255,255,255,.92);
+  background: rgba(255,255,255,.06);
+}
+.calendar-detail-empty {
+  margin: 4px 7px 6px;
+  color: rgba(232,236,244,.40);
+  font-size: 10.5px;
+}
+html[data-theme="light"] .calendar-detail {
+  border-color: rgba(57,70,92,.13);
+  background: rgba(249,250,252,.97);
+  box-shadow: 0 16px 40px rgba(61,72,92,.16), inset 0 1px 0 rgba(255,255,255,.86);
+}
+html[data-theme="light"] .calendar-detail-header,
+html[data-theme="light"] .calendar-detail-section + .calendar-detail-section {
+  border-color: rgba(57,70,92,.09);
+}
+html[data-theme="light"] .calendar-detail-lunar,
+html[data-theme="light"] .calendar-detail-count,
+html[data-theme="light"] .calendar-detail-time,
+html[data-theme="light"] .calendar-detail-hint,
+html[data-theme="light"] .calendar-detail-empty {
+  color: rgba(58,71,92,.55);
+}
+html[data-theme="light"] .calendar-detail-task-title {
+  color: #263244;
+}
+html[data-theme="light"] .calendar-detail-close {
+  color: rgba(58,71,92,.58);
+}
+html[data-theme="light"] .calendar-detail-close:hover,
+html[data-theme="light"] .calendar-detail-schedule:not(.readonly):hover,
+html[data-theme="light"] .calendar-detail-todo-row:hover {
+  color: #263244;
+  background: rgba(58,71,92,.055);
+}
+html[data-theme="light"] .calendar-detail-add {
+  border-color: rgba(57,70,92,.13);
+  color: rgba(58,71,92,.62);
+  background: rgba(58,71,92,.025);
+}
+
+
+/* Refine date detail into a compact card positioned beside the selected cell. */
+.calendar-detail {
+  right: auto;
+  bottom: auto;
+  width: 322px;
+  max-width: calc(100% - 36px);
+  max-height: min(430px, calc(100% - 90px));
+  overflow: hidden;
+}
+.calendar-detail-header {
+  padding: 13px 15px 10px;
+}
+.calendar-detail-header h3 {
+  font-size: 17px;
+}
+.calendar-detail-section {
+  padding: 10px 14px 9px;
+}
+.calendar-detail-section:first-of-type .calendar-detail-list {
+  max-height: 110px;
+  overflow-y: auto;
+}
+.calendar-detail-todos {
+  flex: 0 1 auto;
+  max-height: 238px;
+  overflow: hidden;
+}
+.calendar-detail-todos .calendar-detail-list {
+  max-height: 170px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.calendar-detail-schedule,
+.calendar-detail-todo-row {
+  min-height: 29px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.calendar-detail-add {
+  margin-top: 6px;
+  padding: 6px;
+}
+.calendar-detail-list {
+  scrollbar-width: thin;
+}
+
+
+/* When a date card is open, let the month recede without turning it into a modal. */
+.calendar-panel.calendar-detail-open .calendar-header {
+  opacity: .68;
+  transition: opacity 150ms ease;
+}
+.calendar-panel.calendar-detail-open .weekdays {
+  opacity: .60;
+  transition: opacity 150ms ease;
+}
+.calendar-panel.calendar-detail-open .calendar-day:not(.selected-date) {
+  opacity: .54;
+  filter: saturate(.78) brightness(.97);
+  transition: opacity 150ms ease, filter 150ms ease, background 150ms ease;
+}
+.calendar-panel.calendar-detail-open .calendar-day.selected-date {
+  position: relative;
+  z-index: 4;
+  opacity: 1;
+  filter: none;
+  background: var(--action-soft);
+  box-shadow: inset 0 0 0 2px var(--action-focus-ring), 0 3px 12px rgba(0,0,0,.08);
+}
+.calendar-panel.calendar-detail-open .calendar-day:not(.selected-date):hover,
+.calendar-panel.calendar-detail-open .calendar-day:not(.selected-date):focus-visible {
+  opacity: .72;
+}
+.calendar-panel.calendar-detail-open .calendar-detail {
+  box-shadow: 0 20px 48px rgba(0,0,0,.34), 0 5px 18px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.08);
+}
+html[data-theme="light"] .calendar-panel.calendar-detail-open .calendar-day:not(.selected-date) {
+  opacity: .50;
+  filter: saturate(.74) brightness(.99);
+}
+html[data-theme="light"] .calendar-panel.calendar-detail-open .calendar-day.selected-date {
+  background: rgba(255,255,255,.88);
+  box-shadow: inset 0 0 0 2px var(--action-focus-ring), 0 4px 14px rgba(61,72,92,.10);
+}
+html[data-theme="light"] .calendar-panel.calendar-detail-open .calendar-detail {
+  box-shadow: 0 20px 48px rgba(61,72,92,.20), 0 5px 18px rgba(61,72,92,.10), inset 0 1px 0 rgba(255,255,255,.90);
+}
+
+
+/* While the date card is open, header blank space must receive clicks for light-dismiss. */
+.calendar-panel.calendar-detail-open .calendar-header {
+  -webkit-app-region: no-drag;
+}
+
+
+/* Completed tasks: compact inline disclosure, no chevron or card strip. */
+.completed-toggle {
+  width: max-content;
+  min-height: 20px;
+  margin: 1px 2px 1px 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  border-radius: 5px;
+  padding: 0 4px;
+  color: rgba(232,236,244,.52);
+  background: transparent;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 20px;
+  cursor: pointer;
+}
+.completed-toggle-check {
+  width: 12px;
+  height: 12px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(232,236,244,.28);
+  border-radius: 50%;
+  color: rgba(232,236,244,.58);
+  font-size: 8px;
+  line-height: 1;
+}
+.completed-toggle:hover,
+.completed-toggle:focus-visible {
+  color: rgba(248,249,252,.84);
+  background: rgba(255,255,255,.045);
+  outline: none;
+}
+.completed-toggle:hover .completed-toggle-check,
+.completed-toggle:focus-visible .completed-toggle-check {
+  border-color: rgba(232,236,244,.42);
+  color: rgba(248,249,252,.82);
+}
+.completed-list { margin-top: 0; }
+.completed-list:not(.collapsed) { margin-bottom: 1px; }
+.completed-list .task-item {
+  min-height: 34px;
+  padding-top: 3px;
+  padding-bottom: 3px;
+  opacity: .68;
+}
+html[data-theme="light"] .completed-toggle { color: rgba(58,71,92,.52); }
+html[data-theme="light"] .completed-toggle-check {
+  border-color: rgba(58,71,92,.24);
+  color: rgba(58,71,92,.52);
+}
+html[data-theme="light"] .completed-toggle:hover,
+html[data-theme="light"] .completed-toggle:focus-visible {
+  color: rgba(38,50,68,.82);
+  background: rgba(58,71,92,.045);
+}
+html[data-theme="light"] .completed-toggle:hover .completed-toggle-check,
+html[data-theme="light"] .completed-toggle:focus-visible .completed-toggle-check {
+  border-color: rgba(58,71,92,.36);
+  color: rgba(38,50,68,.78);
+}
