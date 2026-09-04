@@ -7,12 +7,18 @@ const COLORS = [
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 const DEFAULT_EVENT_COLOR = '#91a9c7';
 const EVENT_COLORS = [
-  { value: DEFAULT_EVENT_COLOR, label: '默认' },
-  { value: '#79a7d3', label: '蓝' },
-  { value: '#7fb39a', label: '绿' },
-  { value: '#d0a86e', label: '琥珀' },
-  { value: '#c9858d', label: '红' },
-  { value: '#9a8ac2', label: '紫' },
+  { value: DEFAULT_EVENT_COLOR, label: '默认蓝灰' },
+  { value: '#039be5', label: '亮蓝' },
+  { value: '#3f51b5', label: '靛蓝' },
+  { value: '#00a6a6', label: '青' },
+  { value: '#33b679', label: '绿' },
+  { value: '#f6bf26', label: '黄' },
+  { value: '#f4511e', label: '橙' },
+  { value: '#e67c73', label: '珊瑚' },
+  { value: '#d50000', label: '红' },
+  { value: '#ff2d55', label: '粉红' },
+  { value: '#8e24aa', label: '紫' },
+  { value: '#616161', label: '石墨' },
 ];
 
 const $ = (selector) => document.querySelector(selector);
