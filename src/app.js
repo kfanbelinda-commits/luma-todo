@@ -54,6 +54,7 @@ let calendarCursor = new Date();
 calendarCursor.setDate(1);
 let taskDateFilter = null;
 let calendarDetailDate = null;
+let calendarDetailViewMode = 'detail';
 let calendarCreateMode = 'todo';
 let editingCalendarEventId = null;
 let calendarEventResizeState = null;
@@ -923,7 +924,10 @@ function renderCalendar() {
       if (taskId) await moveTaskToDate(taskId, key);
     });
     cell.addEventListener('click', () => openCalendarDetail(key));
-    cell.addEventListener('dblclick', () => openCalendarTaskDialog(key));
+    cell.addEventListener('dblclick', (event) => {
+      if (event.target.closest('.day-event, .calendar-span-event, .day-overflow')) return;
+      openCalendarTaskDialog(key);
+    });
     cell.addEventListener('keydown', (event) => {
       if ((event.key === 'Enter' || event.key === ' ') && event.target === cell) {
         event.preventDefault();
@@ -934,8 +938,18 @@ function renderCalendar() {
   }
 }
 
+function setCalendarDetailView(mode) {
+  calendarDetailViewMode = mode === 'editor' ? 'editor' : 'detail';
+  $('#calendarDetailView')?.classList.toggle('hidden', calendarDetailViewMode !== 'detail');
+  $('#calendarEditorView')?.classList.toggle('hidden', calendarDetailViewMode !== 'editor');
+  requestAnimationFrame(positionCalendarDetail);
+}
+
 function closeCalendarDetail() {
   calendarDetailDate = null;
+  calendarDetailViewMode = 'detail';
+  editingCalendarEventId = null;
+  closeTimePickers();
   const detail = $('#calendarDetail');
   $('#calendarPanel')?.classList.remove('calendar-detail-open');
   detail.classList.add('hidden');
@@ -979,11 +993,10 @@ function positionCalendarDetail() {
 }
 
 function openCalendarDetail(dateKey) {
-  if (calendarDetailDate === dateKey) {
-    closeCalendarDetail();
-    return;
-  }
   calendarDetailDate = dateKey;
+  calendarDetailViewMode = 'detail';
+  editingCalendarEventId = null;
+  closeTimePickers();
   $('#calendarPanel')?.classList.add('calendar-detail-open');
   const selected = fromDateKey(dateKey);
   if (selected.getFullYear() !== calendarCursor.getFullYear() || selected.getMonth() !== calendarCursor.getMonth()) {
@@ -991,7 +1004,7 @@ function openCalendarDetail(dateKey) {
   }
   renderCalendar();
   renderCalendarDetail();
-  requestAnimationFrame(positionCalendarDetail);
+  setCalendarDetailView('detail');
 }
 
 function renderCalendarDetail() {
@@ -1010,7 +1023,7 @@ function renderCalendarDetail() {
   $('#calendarDetailLunar').textContent = lunar;
   detail.classList.remove('hidden');
   detail.setAttribute('aria-hidden', 'false');
-  requestAnimationFrame(positionCalendarDetail);
+  setCalendarDetailView(calendarDetailViewMode);
 
   const schedules = state.tasks
     .filter((task) => !task.completed && isCalendarEvent(task) && eventCoversDate(task, calendarDetailDate))
@@ -1142,12 +1155,10 @@ function updateCalendarItemDialogMode() {
   syncCalendarEventEndTimeState();
 
   if (!editingCalendarEventId) {
-    $('#calendarTaskEyebrow').textContent = '月历事项';
     $('#calendarTaskDialogTitle').textContent = '新建事项';
     $('#calendarTaskTitleText').textContent = '事项内容';
     $('#calendarTaskSubmit').textContent = '添加事项';
   } else {
-    $('#calendarTaskEyebrow').textContent = eventMode ? '月历日程' : '月历待办';
     $('#calendarTaskDialogTitle').textContent = eventMode ? '编辑日程' : '编辑待办';
     $('#calendarTaskTitleText').textContent = eventMode ? '日程内容' : '待办内容';
     $('#calendarTaskSubmit').textContent = eventMode ? '保存日程' : '保存待办';
@@ -1167,6 +1178,15 @@ function openCalendarTaskDialog(dateKey, mode = 'todo', eventId = null) {
     ? state.tasks.find((task) => task.id === eventId && isCalendarEvent(task) && !task.googleCalendarExternal && task.syncTarget !== 'external-calendar')
     : null;
 
+  calendarDetailDate = dateKey;
+  calendarDetailViewMode = 'editor';
+  $('#calendarPanel')?.classList.add('calendar-detail-open');
+
+  const selected = fromDateKey(dateKey);
+  if (selected.getFullYear() !== calendarCursor.getFullYear() || selected.getMonth() !== calendarCursor.getMonth()) {
+    calendarCursor = new Date(selected.getFullYear(), selected.getMonth(), 1);
+  }
+
   editingCalendarEventId = editingEvent?.id || null;
   calendarCreateMode = editingEvent ? 'event' : (mode === 'event' ? 'event' : 'todo');
   selectedEventColor = editingEvent ? eventColorFor(editingEvent) : DEFAULT_EVENT_COLOR;
@@ -1182,8 +1202,10 @@ function openCalendarTaskDialog(dateKey, mode = 'todo', eventId = null) {
     : (calendarCreateMode === 'event' ? '全天' : '');
   $('#calendarTaskProject').innerHTML = projectOptions('inbox');
 
+  renderCalendar();
+  renderCalendarDetail();
   updateCalendarItemDialogMode();
-  $('#calendarTaskDialog').showModal();
+  setCalendarDetailView('editor');
   requestAnimationFrame(() => $('#calendarTaskTitle').focus());
 }
 
@@ -1273,9 +1295,12 @@ async function createCalendarTask(event) {
 
       task.updatedAt = Date.now();
       editingCalendarEventId = null;
-      $('#calendarTaskDialog').close();
+      calendarDetailDate = dueDate;
+      calendarDetailViewMode = 'detail';
+      closeTimePickers();
       await persist();
       render();
+      setCalendarDetailView('detail');
       return;
     }
   }
@@ -1298,17 +1323,22 @@ async function createCalendarTask(event) {
   };
 
   state.tasks.push(task);
-  $('#calendarTaskDialog').close();
+  calendarDetailDate = dueDate;
+  calendarDetailViewMode = 'detail';
+  closeTimePickers();
   await persist();
   render();
+  setCalendarDetailView('detail');
 }
 
 async function deleteEditingCalendarEvent() {
   const taskId = editingCalendarEventId;
   if (!taskId) return;
   editingCalendarEventId = null;
-  $('#calendarTaskDialog').close();
+  calendarDetailViewMode = 'detail';
+  closeTimePickers();
   await deleteTask(taskId);
+  setCalendarDetailView('detail');
 }
 
 
@@ -1372,7 +1402,7 @@ function populateTimePicker(picker) {
   none.dataset.time = '';
   none.textContent = '无时间';
   picker.appendChild(none);
-  if (picker.closest('#calendarTaskDialog')) {
+  if (picker.closest('#calendarTaskForm')) {
     const allDay = document.createElement('button');
     allDay.type = 'button';
     allDay.className = 'time-option time-option-all-day';
@@ -1494,9 +1524,7 @@ function bindTimePickers() {
     if (event.target.closest('.time-field')) return;
     closeTimePickers();
   });
-  document.querySelectorAll('#scheduleDialog, #calendarTaskDialog').forEach((dialog) => {
-    dialog.addEventListener('close', () => closeTimePickers());
-  });
+  $('#scheduleDialog')?.addEventListener('close', () => closeTimePickers());
 }
 
 function render() {
@@ -2072,6 +2100,12 @@ function bindEvents() {
   $('#nextMonth').addEventListener('click', () => changeCalendarMonth(1));
   $('#todayMonth').addEventListener('click', goToCurrentCalendarMonth);
   $('#closeCalendarDetail').addEventListener('click', closeCalendarDetail);
+  $('#backCalendarDetail').addEventListener('click', () => {
+    editingCalendarEventId = null;
+    closeTimePickers();
+    setCalendarDetailView('detail');
+    renderCalendarDetail();
+  });
 
   document.addEventListener('pointermove', (event) => {
     if (calendarEventResizeState && event.pointerId === calendarEventResizeState.pointerId) {
@@ -2143,7 +2177,7 @@ function bindEvents() {
   $('#cancelScheduleButton').addEventListener('click', () => $('#scheduleDialog').close());
   $('#clearScheduleButton').addEventListener('click', clearTaskSchedule);
   $('#scheduleForm').addEventListener('submit', saveTaskSchedule);
-  $('#cancelCalendarTaskButton').addEventListener('click', () => { editingCalendarEventId = null; $('#calendarTaskDialog').close(); });
+  $('#cancelCalendarTaskButton').addEventListener('click', closeCalendarDetail);
   $('#deleteCalendarEventButton').addEventListener('click', deleteEditingCalendarEvent);
   $('#calendarTaskForm').addEventListener('submit', createCalendarTask);
   $('#calendarModeTodo').addEventListener('click', () => setCalendarItemMode('todo'));
