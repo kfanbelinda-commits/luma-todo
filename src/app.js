@@ -141,7 +141,25 @@ function eventColorFor(task) {
 }
 
 function renderEventColorChoices() {
-  document.querySelectorAll('#calendarEventColors [data-event-color]').forEach((button) => {
+  const host = $('#calendarEventColors');
+  if (!host) return;
+  if (!host.children.length) {
+    EVENT_COLORS.forEach((option) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'event-color-choice';
+      button.dataset.eventColor = option.value;
+      button.title = option.label;
+      button.setAttribute('aria-label', `日程颜色：${option.label}`);
+      button.style.setProperty('--choice-color', option.value);
+      button.addEventListener('click', () => {
+        selectedEventColor = option.value;
+        renderEventColorChoices();
+      });
+      host.appendChild(button);
+    });
+  }
+  host.querySelectorAll('[data-event-color]').forEach((button) => {
     const active = button.dataset.eventColor === selectedEventColor;
     button.classList.toggle('selected', active);
     button.setAttribute('aria-pressed', String(active));
@@ -1766,12 +1784,6 @@ function bindEvents() {
   $('#cancelScheduleButton').addEventListener('click', () => $('#scheduleDialog').close());
   $('#clearScheduleButton').addEventListener('click', clearTaskSchedule);
   $('#scheduleForm').addEventListener('submit', saveTaskSchedule);
-  document.querySelectorAll('#calendarEventColors [data-event-color]').forEach((button) => {
-    button.addEventListener('click', () => {
-      selectedEventColor = button.dataset.eventColor || DEFAULT_EVENT_COLOR;
-      renderEventColorChoices();
-    });
-  });
   $('#cancelCalendarTaskButton').addEventListener('click', () => { editingCalendarEventId = null; $('#calendarTaskDialog').close(); });
   $('#deleteCalendarEventButton').addEventListener('click', deleteEditingCalendarEvent);
   $('#calendarTaskForm').addEventListener('submit', createCalendarTask);
