@@ -1552,6 +1552,7 @@ function bindEvents() {
   });
 
   $('#calendarPanel').addEventListener('wheel', (event) => {
+    if (event.target.closest('#calendarDetail')) return;
     if (!expanded || event.ctrlKey || event.shiftKey || document.querySelector('dialog[open]')) return;
     if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
 
