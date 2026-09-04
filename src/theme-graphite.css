@@ -3703,3 +3703,26 @@ html[data-theme="light"] .calendar-detail-check.is-checked {
   border-color: var(--detail-color);
   background: var(--detail-color);
 }
+
+
+/* Completed calendar Todo keeps its checked control for direct restore. */
+.day-event.calendar-todo-item.completed-calendar-event {
+  gap: 5px;
+  padding: 2px 5px 2px 4px;
+}
+
+.day-event.calendar-todo-item.completed-calendar-event .calendar-todo-check {
+  flex: 0 0 9px;
+  width: 9px;
+  min-width: 9px;
+  height: 9px;
+  display: block;
+  opacity: .82;
+}
+
+.day-event.calendar-todo-item.completed-calendar-event .calendar-item-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
