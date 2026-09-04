@@ -3,7 +3,7 @@ param(
     [long] $Handle,
 
     [Parameter(Mandatory = $true)]
-    [ValidateSet('Attach', 'Detach')]
+    [ValidateSet('Attach', 'Detach', 'Activate')]
     [string] $Mode
 )
 
@@ -16,6 +16,7 @@ using System.Runtime.InteropServices;
 public static class LumaDesktopWindow
 {
     private const int GWL_STYLE = -16;
+    private const int GWLP_HWNDPARENT = -8;
     private const long WS_CHILD = 0x40000000L;
     private const long WS_POPUP = 0x80000000L;
     private const uint WM_SPAWN_WORKER = 0x052C;
@@ -73,6 +74,12 @@ public static class LumaDesktopWindow
 
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr hwnd, int command);
+
+    [DllImport("user32.dll")]
+    private static extern bool BringWindowToTop(IntPtr hwnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hwnd);
 
     [DllImport("user32.dll")]
     private static extern IntPtr SetThreadDpiAwarenessContext(IntPtr dpiContext);
@@ -182,18 +189,25 @@ public static class LumaDesktopWindow
         RECT windowRect;
         if (!GetWindowRect(hwnd, out windowRect)) return false;
 
-        POINT hostPoint = new POINT { X = windowRect.Left, Y = windowRect.Top };
-        if (!ScreenToClient(host, ref hostPoint)) return false;
-
+        // Keep Luma as a real top-level popup. Making it WS_CHILD of WorkerW
+        // prevents Windows from reliably activating it with one click.
         long style = GetWindowLongPtr(hwnd, GWL_STYLE).ToInt64();
-        SetWindowLongPtr(hwnd, GWL_STYLE, new IntPtr((style & ~WS_POPUP) | WS_CHILD));
-        SetParent(hwnd, host);
+        SetWindowLongPtr(hwnd, GWL_STYLE, new IntPtr((style & ~WS_CHILD) | WS_POPUP));
+
+        // For a top-level popup, GWLP_HWNDPARENT sets the owner rather than
+        // converting the window into a child. Ownership keeps Luma above the
+        // desktop host while ordinary app windows can still cover it.
+        SetWindowLongPtr(hwnd, GWLP_HWNDPARENT, host);
         ShowWindow(hwnd, SW_RESTORE);
+
+        // Push the unpinned window to the bottom of normal top-level Z-order.
+        // Windows preserves the invariant that an owned popup stays above its
+        // owner, leaving Luma immediately above the desktop surface.
         SetWindowPos(
             hwnd,
-            HWND_TOP,
-            hostPoint.X,
-            hostPoint.Y,
+            new IntPtr(1), // HWND_BOTTOM
+            windowRect.Left,
+            windowRect.Top,
             windowRect.Right - windowRect.Left,
             windowRect.Bottom - windowRect.Top,
             SWP_NOACTIVATE | SWP_FRAMECHANGED | SWP_SHOWWINDOW
@@ -214,7 +228,8 @@ public static class LumaDesktopWindow
         RECT windowRect;
         if (hwnd == IntPtr.Zero || !GetWindowRect(hwnd, out windowRect)) return false;
 
-        SetParent(hwnd, IntPtr.Zero);
+        // Clear the desktop owner while keeping the window top-level.
+        SetWindowLongPtr(hwnd, GWLP_HWNDPARENT, IntPtr.Zero);
         long style = GetWindowLongPtr(hwnd, GWL_STYLE).ToInt64();
         SetWindowLongPtr(hwnd, GWL_STYLE, new IntPtr((style & ~WS_CHILD) | WS_POPUP));
         SetWindowPos(
@@ -228,16 +243,34 @@ public static class LumaDesktopWindow
         );
         return GetParent(hwnd) == IntPtr.Zero;
     }
+
+    public static bool Activate(long rawHandle)
+    {
+        IntPtr previousDpiContext = EnterPerMonitorDpiMode();
+        try
+        {
+            IntPtr hwnd = new IntPtr(rawHandle);
+            if (hwnd == IntPtr.Zero || GetParent(hwnd) != IntPtr.Zero) return false;
+            ShowWindow(hwnd, SW_RESTORE);
+            SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+            bool brought = BringWindowToTop(hwnd);
+            bool foreground = SetForegroundWindow(hwnd);
+            return brought || foreground;
+        }
+        finally { RestoreDpiMode(previousDpiContext); }
+    }
 }
 '@
 
+$before = [LumaDesktopWindow]::Bounds($Handle)
 $success = if ($Mode -eq 'Attach') {
-    $before = [LumaDesktopWindow]::Bounds($Handle)
     [LumaDesktopWindow]::Attach($Handle)
 }
-else {
-    $before = [LumaDesktopWindow]::Bounds($Handle)
+elseif ($Mode -eq 'Detach') {
     [LumaDesktopWindow]::Detach($Handle)
+}
+else {
+    [LumaDesktopWindow]::Activate($Handle)
 }
 
 if (-not $success) {

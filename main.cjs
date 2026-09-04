@@ -5,9 +5,15 @@ const http = require('http');
 const crypto = require('crypto');
 const { execFile } = require('child_process');
 
-// Keep task data in one stable location regardless of how Electron is launched.
+const DEMO_MODE = !app.isPackaged && process.argv.includes('--demo');
+const DEMO_RESET_MODE = DEMO_MODE && process.argv.includes('--demo-reset');
+
+// Keep real and demo data completely separate.
 if (process.platform === 'win32') {
-  app.setPath('userData', path.join(app.getPath('home'), 'AppData', 'Roaming', 'luma-todo'));
+  const appDataName = DEMO_MODE ? 'luma-todo-demo' : 'luma-todo';
+  app.setPath('userData', path.join(app.getPath('home'), 'AppData', 'Roaming', appDataName));
+} else if (DEMO_MODE) {
+  app.setPath('userData', `${app.getPath('userData')}-demo`);
 }
 
 const COMPACT = { width: 410, height: 550 };
@@ -34,6 +40,16 @@ if (!hasSingleInstanceLock) app.quit();
 
 function dataPath() {
   return path.join(app.getPath('userData'), 'luma-data.json');
+}
+
+function ensureDemoData() {
+  if (!DEMO_MODE) return;
+  const target = dataPath();
+  if (DEMO_RESET_MODE && fs.existsSync(target)) fs.unlinkSync(target);
+  if (fs.existsSync(target)) return;
+  const { buildDemoState } = require('./demo/demo-state.cjs');
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, JSON.stringify(buildDemoState(), null, 2), 'utf8');
 }
 
 function desktopWindowHelperPath() {
@@ -86,6 +102,32 @@ function setDesktopHosted(enabled) {
   return desktopHostTransition;
 }
 
+function activateNativeWindow() {
+  if (process.platform !== 'win32' || !mainWindow || mainWindow.isDestroyed()) return Promise.resolve(false);
+  return new Promise((resolve) => {
+    execFile(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', desktopWindowHelperPath(),
+        '-Handle', windowHandleArgument(),
+        '-Mode', 'Activate',
+      ],
+      { windowsHide: true },
+      (error) => {
+        if (error) {
+          console.warn(`[Luma Todo] Native foreground activation failed: ${error.message}`);
+          resolve(false);
+          return;
+        }
+        resolve(true);
+      },
+    );
+  });
+}
+
 function cancelDesktopAttach() {
   desktopAttachRequestId += 1;
   if (!desktopAttachTimer) return;
@@ -97,12 +139,37 @@ async function activateMainWindow() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   isExplicitlyHidden = false;
   cancelDesktopAttach();
-  if (isDesktopHosted) await setDesktopHosted(false);
+
+  // Always queue a detach. If a blur-triggered WorkerW attach is still running,
+  // this waits for it and immediately detaches again instead of losing the click.
+  await setDesktopHosted(false);
   if (!mainWindow || mainWindow.isDestroyed()) return;
+
   if (mainWindow.isMinimized()) mainWindow.restore();
-  mainWindow.setAlwaysOnTop(isPinnedAlwaysOnTop);
+
+  if (!isPinnedAlwaysOnTop) {
+    // Windows can leave a detached WorkerW child behind the current foreground
+    // app. Use a short topmost pulse plus a native foreground request so one
+    // click on the exposed Luma surface reliably raises it above Chrome.
+    mainWindow.setAlwaysOnTop(true);
+    mainWindow.show();
+    mainWindow.moveTop();
+    await activateNativeWindow();
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.focus();
+    setTimeout(() => {
+      if (!mainWindow || mainWindow.isDestroyed() || isPinnedAlwaysOnTop) return;
+      mainWindow.setAlwaysOnTop(false);
+      if (mainWindow.isFocused()) mainWindow.moveTop();
+    }, 160);
+    return;
+  }
+
+  mainWindow.setAlwaysOnTop(true);
   mainWindow.show();
   mainWindow.moveTop();
+  await activateNativeWindow();
+  if (!mainWindow || mainWindow.isDestroyed()) return;
   mainWindow.focus();
 }
 
@@ -294,11 +361,18 @@ function nextDateKey(dateKey) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+function previousDateKey(dateKey) {
+  const date = new Date(`${dateKey}T12:00:00`);
+  date.setDate(date.getDate() - 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 const LUMA_TASK_NOTES_PREFIX = '[Luma Todo]\n';
 const LUMA_METADATA_NOTES_PREFIX = '[Luma Todo Sync Metadata v1]\n';
 const LUMA_METADATA_TITLE = 'Luma Todo 同步数据（请勿删除）';
 const FALLBACK_PROJECT_COLORS = ['#7289f5', '#8b6ef5', '#4fb58f', '#f0a85a', '#ef7180', '#4da7c9'];
 const GOOGLE_CALENDAR_PROJECT_ID = 'google-calendar';
+const DEFAULT_EVENT_COLOR = '#91a9c7';
 
 function ensureGoogleCalendarProject(state) {
   state.projects ??= [];
@@ -380,17 +454,19 @@ function projectMetadataForTask(state, task) {
 
 function taskNotes(state, task) {
   return LUMA_TASK_NOTES_PREFIX + JSON.stringify({
-    version: 2,
+    version: 3,
     taskId: task.id,
     ...projectMetadataForTask(state, task),
     order: Number(task.order ?? task.createdAt ?? 0),
     reminder: task.reminder ?? null,
+    time: /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(task.time || '') ? task.time : '',
     updatedAt: Number(task.updatedAt || task.createdAt || Date.now()),
   });
 }
 
 function calendarBody(state, task) {
   const project = projectMetadataForTask(state, task);
+  const itemType = task.itemType === 'event' ? 'event' : 'todo';
   const body = {
     summary: task.title,
     extendedProperties: {
@@ -398,6 +474,8 @@ function calendarBody(state, task) {
         lumaTodo: 'true',
         lumaVersion: '2',
         lumaTaskId: String(task.id),
+        lumaItemType: itemType,
+        lumaEventColor: itemType === 'event' ? String(task.eventColor || DEFAULT_EVENT_COLOR) : '',
         lumaProjectId: project.projectId,
         lumaProjectName: project.projectName,
         lumaProjectColor: project.projectColor,
@@ -409,6 +487,22 @@ function calendarBody(state, task) {
       },
     },
   };
+
+  if (itemType === 'event') {
+    const endDate = task.endDate && task.endDate >= task.dueDate ? task.endDate : task.dueDate;
+    if (task.time) {
+      const start = new Date(`${task.dueDate}T${task.time}:00`);
+      let end = new Date(`${endDate}T${task.endTime || task.time}:00`);
+      if (end <= start) end = new Date(start.getTime() + 30 * 60000);
+      body.start = { dateTime: start.toISOString() };
+      body.end = { dateTime: end.toISOString() };
+    } else {
+      body.start = { date: task.dueDate };
+      body.end = { date: nextDateKey(endDate || task.dueDate) };
+    }
+    return body;
+  }
+
   if (task.time) {
     const start = new Date(`${task.dueDate}T${task.time}:00`);
     const end = new Date(start.getTime() + 30 * 60000);
@@ -424,6 +518,7 @@ function calendarBody(state, task) {
 function applyCalendarEvent(task, event) {
   const details = event.extendedProperties?.private || {};
   task.title = event.summary || task.title;
+
   if (event.start?.date) {
     task.dueDate = event.start.date;
     task.time = '';
@@ -431,6 +526,24 @@ function applyCalendarEvent(task, event) {
     const start = new Date(event.start.dateTime);
     task.dueDate = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
     task.time = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`;
+  }
+
+  if (event.end?.date) {
+    task.endDate = previousDateKey(event.end.date);
+    task.endTime = '';
+  } else if (event.end?.dateTime) {
+    const end = new Date(event.end.dateTime);
+    task.endDate = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
+    task.endTime = `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`;
+  } else {
+    task.endDate = task.dueDate || '';
+    task.endTime = '';
+  }
+
+  if (Object.hasOwn(details, 'lumaItemType')) task.itemType = details.lumaItemType === 'event' ? 'event' : 'todo';
+  const remoteEventColor = details.lumaEventColor || event._lumaCalendarColor || task.eventColor || DEFAULT_EVENT_COLOR;
+  if ((task.itemType === 'event' || task.googleCalendarExternal || task.syncTarget === 'external-calendar') && /^#[0-9a-f]{6}$/i.test(remoteEventColor)) {
+    task.eventColor = remoteEventColor;
   }
   if (Object.hasOwn(details, 'lumaCompleted')) task.completed = details.lumaCompleted === 'true';
   if (Object.hasOwn(details, 'lumaReminder')) task.reminder = details.lumaReminder === '' ? null : Number(details.lumaReminder);
@@ -440,9 +553,12 @@ function applyCalendarEvent(task, event) {
 
 function applyGoogleTask(task, remoteTask, details = {}) {
   task.title = remoteTask.title || task.title;
+  task.itemType = 'todo';
   task.completed = remoteTask.status === 'completed';
   task.dueDate = remoteTask.due ? remoteTask.due.slice(0, 10) : '';
-  task.time = '';
+  task.endDate = '';
+  task.endTime = '';
+  task.time = /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(details.time || '') ? details.time : '';
   task.projectId = details.projectId || task.projectId || 'inbox';
   if (details.order != null) task.order = Number(details.order);
   if (Object.hasOwn(details, 'reminder')) task.reminder = details.reminder;
@@ -495,6 +611,7 @@ async function listEventsForCalendar(calendar, { lumaOnly = false } = {}) {
       ...event,
       _lumaCalendarId: calendar.id,
       _lumaCalendarName: calendar.summaryOverride || calendar.summary || calendar.id,
+      _lumaCalendarColor: /^#[0-9a-f]{6}$/i.test(calendar.backgroundColor || '') ? calendar.backgroundColor : DEFAULT_EVENT_COLOR,
     })));
     pageToken = page.nextPageToken || '';
   } while (pageToken);
@@ -583,6 +700,8 @@ function calendarTaskDetails(event) {
   return {
     version: Number(details.lumaVersion || 1),
     taskId: details.lumaTaskId,
+    itemType: details.lumaItemType === 'event' ? 'event' : 'todo',
+    eventColor: /^#[0-9a-f]{6}$/i.test(details.lumaEventColor || '') ? details.lumaEventColor : '',
     projectId: details.lumaProjectId || 'inbox',
     projectName: details.lumaProjectName,
     projectColor: details.lumaProjectColor,
@@ -643,7 +762,7 @@ async function syncGoogleState(state) {
       const remoteUpdatedAt = Date.parse(remote.updated || 0) || syncTime;
       const previousRemoteUpdatedAt = Number(task.googleRemoteUpdatedAt || 0);
       applyCalendarEvent(task, remote);
-      task.time = '';
+      task.itemType = 'event';
       task.projectId = ensureGoogleCalendarProject(state).id;
       task.completed = false;
       task.syncTarget = 'external-calendar';
@@ -720,7 +839,7 @@ async function syncGoogleState(state) {
       const remote = remoteDeleted ? null : foundRemote;
       const remoteUpdatedAt = Date.parse(foundRemote?.updated || 0);
       const remoteDetails = remote ? (googleTaskMetadata(remote) || {}) : {};
-      const needsMetadataUpgrade = remote && Number(remoteDetails.version || 1) < 2;
+      const needsMetadataUpgrade = remote && Number(remoteDetails.version || 1) < 3;
 
       if (remoteDeleted && !localChangedSinceSync(task)) {
         deleted += 1;
@@ -784,6 +903,9 @@ async function syncGoogleState(state) {
       updatedAt: remoteUpdatedAt,
       order: Number(event.extendedProperties?.private?.lumaOrder || remoteUpdatedAt),
       reminder: null,
+      itemType: isLumaEvent
+        ? (event.extendedProperties?.private?.lumaItemType === 'event' ? 'event' : 'todo')
+        : 'event',
       syncTarget: isLumaEvent ? 'calendar' : 'external-calendar',
       googleCalendarEventId: event.id,
       googleCalendarId: calendarIdForEvent(event),
@@ -794,8 +916,8 @@ async function syncGoogleState(state) {
     };
     applyCalendarEvent(task, event);
     if (!isLumaEvent) {
+      task.itemType = 'event';
       task.projectId = project.id;
-      task.time = '';
     }
     retainedTasks.push(task);
     state.tasks.push(task);
@@ -817,6 +939,7 @@ async function syncGoogleState(state) {
       updatedAt: remoteUpdatedAt,
       order: Number(details.order || remoteUpdatedAt),
       reminder: details.reminder ?? null,
+      itemType: 'todo',
       syncTarget: 'tasks',
       googleTaskId: remoteTask.id,
       googleRemoteUpdatedAt: remoteUpdatedAt,
@@ -1127,6 +1250,7 @@ app.on('second-instance', () => {
 
 app.whenReady().then(() => {
   if (!hasSingleInstanceLock) return;
+  ensureDemoData();
   ensureDailyBackup();
   createWindow();
   createTray();
@@ -1169,7 +1293,9 @@ ipcMain.handle('window:set-always-on-top', async (_event, enabled) => {
 
 ipcMain.on('window:activate', () => {
   cancelDesktopAttach();
-  if (!isPinnedAlwaysOnTop && isDesktopHosted) activateMainWindow();
+  if (!isPinnedAlwaysOnTop && (!mainWindow?.isFocused() || isDesktopHosted)) {
+    activateMainWindow();
+  }
 });
 
 ipcMain.on('window:resize-start', (_event, payload) => {
@@ -1253,6 +1379,13 @@ ipcMain.handle('data:export', async (_event, payload) => {
 });
 
 ipcMain.handle('google:status', () => {
+  if (DEMO_MODE) {
+    return {
+      connected: false,
+      requiresCalendarReauth: false,
+      credentialsAvailable: false,
+    };
+  }
   const token = loadGoogleToken();
   const scopes = new Set(String(token?.scope || '').split(/\s+/).filter(Boolean));
   const hasCalendarListScope = scopes.has('https://www.googleapis.com/auth/calendar')
@@ -1265,6 +1398,7 @@ ipcMain.handle('google:status', () => {
 });
 
 ipcMain.handle('google:connect', async () => {
+  if (DEMO_MODE) throw new Error('演示模式不会连接真实 Google 账户');
   if (!fs.existsSync(googleCredentialsPath())) throw new Error('项目目录中没有找到 credentials.json');
   return connectGoogle();
 });
@@ -1284,12 +1418,16 @@ ipcMain.handle('google:disconnect', async () => {
   return { connected: false, credentialsAvailable: fs.existsSync(googleCredentialsPath()) };
 });
 
-ipcMain.handle('google:sync', (_event, payload) => syncGoogleState(payload));
-ipcMain.handle('google:delete-task', (_event, task) => deleteGoogleTask(task));
+ipcMain.handle('google:sync', (_event, payload) => {
+  if (DEMO_MODE) return { state: payload, summary: { uploaded: 0, downloaded: 0, deleted: 0, externalCalendarDownloaded: 0, projectsUploaded: 0, projectsDownloaded: 0 } };
+  return syncGoogleState(payload);
+});
+ipcMain.handle('google:delete-task', (_event, task) => DEMO_MODE ? false : deleteGoogleTask(task));
 
 ipcMain.handle('settings:auto-start', (_event, enabled) => {
+  if (DEMO_MODE) return false;
   app.setLoginItemSettings({ openAtLogin: Boolean(enabled) });
   return app.getLoginItemSettings().openAtLogin;
 });
 
-ipcMain.handle('settings:get-auto-start', () => app.getLoginItemSettings().openAtLogin);
+ipcMain.handle('settings:get-auto-start', () => DEMO_MODE ? false : app.getLoginItemSettings().openAtLogin);

@@ -1844,3 +1844,1885 @@ html[data-theme="light"] .completed-toggle:focus-visible .completed-toggle-check
   border-color: rgba(58,71,92,.36);
   color: rgba(38,50,68,.78);
 }
+
+
+/* Keep completed dated tasks visible in the month view as lightweight history. */
+.day-event.completed-calendar-event {
+  order: 20;
+  border-color: transparent;
+  color: rgba(232,236,244,.50);
+  background: transparent;
+  opacity: .78;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  text-decoration-color: rgba(232,236,244,.38);
+  cursor: default;
+}
+.day-event.completed-calendar-event::before {
+  content: '✓';
+  margin-right: 4px;
+  color: color-mix(in srgb, var(--event-color) 70%, rgba(232,236,244,.48));
+  text-decoration: none;
+}
+.day-event.completed-calendar-event:hover,
+.day-event.completed-calendar-event:focus-visible {
+  filter: none;
+  background: rgba(255,255,255,.025);
+}
+.calendar-day.muted .day-event.completed-calendar-event {
+  opacity: .46;
+}
+html[data-theme="light"] .day-event.completed-calendar-event {
+  color: rgba(58,71,92,.48);
+  text-decoration-color: rgba(58,71,92,.34);
+  background: transparent;
+}
+html[data-theme="light"] .day-event.completed-calendar-event::before {
+  color: color-mix(in srgb, var(--event-color) 62%, rgba(58,71,92,.44));
+}
+html[data-theme="light"] .day-event.completed-calendar-event:hover,
+html[data-theme="light"] .day-event.completed-calendar-event:focus-visible {
+  background: rgba(58,71,92,.025);
+}
+
+
+/* Calendar information hierarchy: neutral Events, project-colored Todo checkboxes. */
+.day-spans {
+  min-height: 0;
+  display: grid;
+  gap: 1px;
+  margin-top: 2px;
+  overflow: visible;
+}
+
+.calendar-span-event {
+  min-width: 0;
+  height: 17px;
+  margin-left: -6px;
+  margin-right: -6px;
+  padding: 0 5px;
+  overflow: hidden;
+  border-top: 1px solid rgba(190,198,212,.24);
+  border-bottom: 1px solid rgba(190,198,212,.24);
+  border-radius: 0;
+  color: rgba(244,247,252,.80);
+  background: rgba(139,147,163,.20);
+  font-size: 10px;
+  line-height: 15px;
+  font-weight: 620;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  user-select: none;
+}
+.calendar-span-event.span-left-round {
+  margin-left: 0;
+  border-left: 1px solid rgba(190,198,212,.24);
+  border-radius: 4px 0 0 4px;
+}
+.calendar-span-event.span-right-round {
+  margin-right: 0;
+  border-right: 1px solid rgba(190,198,212,.24);
+  border-radius: 0 4px 4px 0;
+}
+.calendar-span-event.span-left-round.span-right-round {
+  border-radius: 4px;
+}
+.calendar-span-event:hover {
+  background: rgba(139,147,163,.28);
+}
+
+.day-event.calendar-event-item {
+  border: 1px solid rgba(190,198,212,.24);
+  color: rgba(244,247,252,.82);
+  background: rgba(139,147,163,.18);
+  font-weight: 610;
+}
+.day-event.calendar-event-item:hover,
+.day-event.calendar-event-item:focus-visible {
+  background: rgba(139,147,163,.28);
+  filter: none;
+}
+
+.day-event.calendar-todo-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  border-color: transparent;
+  color: rgba(239,243,249,.78);
+  background: transparent;
+  padding-left: 3px;
+}
+.day-event.calendar-todo-item::before {
+  content: '';
+  flex: 0 0 9px;
+  width: 9px;
+  height: 9px;
+  box-sizing: border-box;
+  border: 1.4px solid var(--event-color);
+  border-radius: 2.5px;
+  background: color-mix(in srgb, var(--event-color) 8%, transparent);
+}
+.day-event.calendar-todo-item:hover,
+.day-event.calendar-todo-item:focus-visible {
+  background: rgba(255,255,255,.028);
+  filter: none;
+}
+
+.day-event.calendar-todo-item.completed-calendar-event {
+  color: rgba(232,236,244,.46);
+  background: transparent;
+  opacity: .76;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  text-decoration-color: rgba(232,236,244,.34);
+}
+.day-event.calendar-todo-item.completed-calendar-event::before {
+  content: '✓';
+  display: grid;
+  place-items: center;
+  border-color: color-mix(in srgb, var(--event-color) 72%, transparent);
+  color: rgba(255,255,255,.88);
+  background: color-mix(in srgb, var(--event-color) 62%, rgba(139,147,163,.18));
+  font-size: 7px;
+  line-height: 1;
+  text-decoration: none;
+}
+.day-event.calendar-todo-item.completed-calendar-event:hover,
+.day-event.calendar-todo-item.completed-calendar-event:focus-visible {
+  background: rgba(255,255,255,.02);
+}
+
+.calendar-detail-schedule.event-detail-row {
+  --detail-color: #8b93a3;
+}
+.calendar-detail-schedule.event-detail-row .calendar-detail-dot {
+  background: rgba(139,147,163,.72);
+}
+
+.calendar-create-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+#calendarTaskEndDateLabel[hidden],
+#calendarTaskProjectLabel[hidden] {
+  display: none !important;
+}
+
+html[data-theme="light"] .calendar-span-event {
+  border-color: rgba(82,91,107,.18);
+  color: rgba(45,55,72,.78);
+  background: rgba(107,114,128,.10);
+}
+html[data-theme="light"] .calendar-span-event:hover {
+  background: rgba(107,114,128,.16);
+}
+html[data-theme="light"] .day-event.calendar-event-item {
+  border-color: rgba(82,91,107,.18);
+  color: rgba(45,55,72,.80);
+  background: rgba(107,114,128,.09);
+}
+html[data-theme="light"] .day-event.calendar-event-item:hover,
+html[data-theme="light"] .day-event.calendar-event-item:focus-visible {
+  background: rgba(107,114,128,.15);
+}
+html[data-theme="light"] .day-event.calendar-todo-item {
+  color: rgba(45,55,72,.78);
+  background: transparent;
+}
+html[data-theme="light"] .day-event.calendar-todo-item:hover,
+html[data-theme="light"] .day-event.calendar-todo-item:focus-visible {
+  background: rgba(58,71,92,.025);
+}
+html[data-theme="light"] .day-event.calendar-todo-item.completed-calendar-event {
+  color: rgba(58,71,92,.44);
+  text-decoration-color: rgba(58,71,92,.30);
+}
+html[data-theme="light"] .day-event.calendar-todo-item.completed-calendar-event::before {
+  color: rgba(255,255,255,.94);
+}
+
+
+.calendar-day.muted .day-spans { opacity: .46; }
+html[data-theme="light"] .calendar-day.muted .day-spans { opacity: .42; }
+
+
+/* Refined calendar semantics: project color belongs to Todo; Event uses its own low-saturation color. */
+.day-event.calendar-todo-item {
+  border: 1px solid color-mix(in srgb, var(--event-color) 24%, transparent);
+  color: rgba(242,245,250,.86);
+  background: color-mix(in srgb, var(--event-color) 16%, rgba(255,255,255,.015));
+  padding: 2px 5px 2px 4px;
+}
+.day-event.calendar-todo-item::before {
+  flex: 0 0 9px;
+  width: 9px;
+  height: 9px;
+  border: 1.4px solid var(--event-color);
+  border-radius: 2.5px;
+  background: color-mix(in srgb, var(--event-color) 7%, transparent);
+}
+.day-event.calendar-todo-item:hover,
+.day-event.calendar-todo-item:focus-visible {
+  border-color: color-mix(in srgb, var(--event-color) 38%, transparent);
+  background: color-mix(in srgb, var(--event-color) 21%, rgba(255,255,255,.02));
+}
+
+/* Completed Todo is identified only by strike-through and fading: no box and no checkmark. */
+.day-event.calendar-todo-item.completed-calendar-event {
+  gap: 0;
+  border-color: color-mix(in srgb, var(--event-color) 10%, transparent);
+  color: rgba(232,236,244,.42);
+  background: color-mix(in srgb, var(--event-color) 6%, transparent);
+  padding-left: 5px;
+  opacity: .78;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  text-decoration-color: rgba(232,236,244,.30);
+}
+.day-event.calendar-todo-item.completed-calendar-event::before,
+.day-event.completed-calendar-event::before {
+  content: none !important;
+  display: none !important;
+}
+.day-event.calendar-todo-item.completed-calendar-event:hover,
+.day-event.calendar-todo-item.completed-calendar-event:focus-visible {
+  border-color: color-mix(in srgb, var(--event-color) 14%, transparent);
+  background: color-mix(in srgb, var(--event-color) 8%, transparent);
+}
+
+/* Event color is independent from Todo project colors. */
+.day-event.calendar-event-item {
+  border-color: color-mix(in srgb, var(--event-color) 38%, rgba(255,255,255,.10));
+  color: rgba(247,249,253,.88);
+  background: color-mix(in srgb, var(--event-color) 24%, rgba(31,35,43,.62));
+}
+.day-event.calendar-event-item:hover,
+.day-event.calendar-event-item:focus-visible {
+  border-color: color-mix(in srgb, var(--event-color) 50%, rgba(255,255,255,.12));
+  background: color-mix(in srgb, var(--event-color) 31%, rgba(31,35,43,.60));
+}
+
+.calendar-span-event {
+  border-top-color: color-mix(in srgb, var(--event-color) 38%, rgba(255,255,255,.10));
+  border-bottom-color: color-mix(in srgb, var(--event-color) 38%, rgba(255,255,255,.10));
+  color: rgba(247,249,253,.88);
+  background: color-mix(in srgb, var(--event-color) 27%, rgba(31,35,43,.60));
+}
+.calendar-span-event.span-left-round {
+  border-left-color: color-mix(in srgb, var(--event-color) 38%, rgba(255,255,255,.10));
+}
+.calendar-span-event.span-right-round {
+  border-right-color: color-mix(in srgb, var(--event-color) 38%, rgba(255,255,255,.10));
+}
+.calendar-span-event:hover {
+  background: color-mix(in srgb, var(--event-color) 34%, rgba(31,35,43,.58));
+}
+
+.calendar-detail-schedule.event-detail-row .calendar-detail-dot {
+  background: var(--detail-color);
+}
+
+/* Event color selector: deliberately muted palette, with blue-gray as default. */
+.calendar-event-color-label {
+  gap: 7px;
+}
+.event-color-choices {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 30px;
+}
+.event-color-choice {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 7px;
+  background: var(--choice-color);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.20);
+  cursor: pointer;
+  outline: none;
+}
+.event-color-choice:hover {
+  transform: translateY(-1px);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.28), 0 2px 8px rgba(0,0,0,.12);
+}
+.event-color-choice.selected {
+  border-color: rgba(255,255,255,.90);
+  box-shadow: 0 0 0 2px rgba(115,137,180,.58), inset 0 0 0 1px rgba(255,255,255,.30);
+}
+
+html[data-theme="light"] .day-event.calendar-todo-item {
+  border-color: color-mix(in srgb, var(--event-color) 23%, rgba(58,71,92,.05));
+  color: rgba(39,49,65,.82);
+  background: color-mix(in srgb, var(--event-color) 14%, rgba(255,255,255,.84));
+}
+html[data-theme="light"] .day-event.calendar-todo-item:hover,
+html[data-theme="light"] .day-event.calendar-todo-item:focus-visible {
+  border-color: color-mix(in srgb, var(--event-color) 34%, rgba(58,71,92,.06));
+  background: color-mix(in srgb, var(--event-color) 18%, rgba(255,255,255,.82));
+}
+html[data-theme="light"] .day-event.calendar-todo-item.completed-calendar-event {
+  border-color: color-mix(in srgb, var(--event-color) 10%, rgba(58,71,92,.03));
+  color: rgba(58,71,92,.40);
+  background: color-mix(in srgb, var(--event-color) 5%, rgba(255,255,255,.88));
+  text-decoration-color: rgba(58,71,92,.28);
+}
+html[data-theme="light"] .day-event.calendar-event-item {
+  border-color: color-mix(in srgb, var(--event-color) 32%, rgba(58,71,92,.08));
+  color: rgba(37,48,65,.84);
+  background: color-mix(in srgb, var(--event-color) 18%, rgba(255,255,255,.80));
+}
+html[data-theme="light"] .day-event.calendar-event-item:hover,
+html[data-theme="light"] .day-event.calendar-event-item:focus-visible {
+  border-color: color-mix(in srgb, var(--event-color) 42%, rgba(58,71,92,.09));
+  background: color-mix(in srgb, var(--event-color) 24%, rgba(255,255,255,.78));
+}
+html[data-theme="light"] .calendar-span-event {
+  border-color: color-mix(in srgb, var(--event-color) 32%, rgba(58,71,92,.08));
+  color: rgba(37,48,65,.84);
+  background: color-mix(in srgb, var(--event-color) 21%, rgba(255,255,255,.78));
+}
+html[data-theme="light"] .calendar-span-event:hover {
+  background: color-mix(in srgb, var(--event-color) 27%, rgba(255,255,255,.76));
+}
+html[data-theme="light"] .event-color-choice.selected {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px rgba(79,91,113,.40), inset 0 0 0 1px rgba(255,255,255,.62);
+}
+
+
+/* Event edge-resize affordance. Events never show Todo checkboxes. */
+.day-event.calendar-event-item,
+.calendar-span-event {
+  position: relative;
+}
+.day-event.calendar-event-item::before {
+  content: none !important;
+  display: none !important;
+}
+
+.event-resize-handle {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  z-index: 4;
+  width: 7px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  opacity: 0;
+  cursor: ew-resize;
+  -webkit-app-region: no-drag;
+}
+.event-resize-start { left: 0; }
+.event-resize-end { right: 0; }
+
+.day-event.calendar-event-item:hover .event-resize-handle,
+.day-event.calendar-event-item:focus-within .event-resize-handle,
+.calendar-span-event:hover .event-resize-handle,
+.calendar-span-event:focus-within .event-resize-handle,
+.event-resizing .event-resize-handle {
+  opacity: 1;
+}
+.event-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 2px;
+  width: 2px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--event-color) 72%, rgba(255,255,255,.54));
+}
+.event-resize-end::after {
+  left: auto;
+  right: 2px;
+}
+.event-resize-handle:hover::after {
+  width: 3px;
+  background: color-mix(in srgb, var(--event-color) 84%, rgba(255,255,255,.72));
+}
+
+body.calendar-event-resizing,
+body.calendar-event-resizing * {
+  cursor: ew-resize !important;
+  user-select: none !important;
+}
+.calendar-event-resizing .calendar-day {
+  transition: none !important;
+}
+.calendar-event-resizing .calendar-span-event.event-resizing,
+.calendar-event-resizing .day-event.calendar-event-item.event-resizing {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--event-color) 60%, rgba(255,255,255,.30));
+}
+
+html[data-theme="light"] .event-resize-handle::after {
+  background: color-mix(in srgb, var(--event-color) 72%, rgba(55,65,81,.42));
+}
+html[data-theme="light"] .event-resize-handle:hover::after {
+  background: color-mix(in srgb, var(--event-color) 84%, rgba(55,65,81,.56));
+}
+
+
+/* Unified calendar item creation. */
+.calendar-detail-add-item {
+  margin: 8px 14px 12px;
+  width: calc(100% - 28px);
+}
+.calendar-item-type-hint {
+  margin: -6px 0 2px;
+  color: rgba(232,236,244,.46);
+  font-size: 10.5px;
+  line-height: 1.3;
+}
+.time-option-all-day {
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  border-radius: 0;
+  color: rgba(239,242,248,.82);
+}
+html[data-theme="light"] .calendar-item-type-hint {
+  color: rgba(58,71,92,.52);
+}
+html[data-theme="light"] .time-option-all-day {
+  border-color: rgba(58,71,92,.10);
+  color: #526071;
+}
+
+
+/* Light Calendar: neutral Microsoft-style surface. */
+html[data-theme="light"] .calendar-panel {
+  background: rgba(244,244,242,calc(var(--panel-opacity) + .03));
+}
+html[data-theme="light"] .calendar-panel .calendar-header .soft-button,
+html[data-theme="light"] .calendar-panel .month-controls .soft-button {
+  color: #555856;
+  background: rgba(255,255,255,.50);
+  border-color: rgba(50,50,48,.10);
+}
+html[data-theme="light"] .calendar-panel .calendar-header .soft-button:hover,
+html[data-theme="light"] .calendar-panel .month-controls .soft-button:hover {
+  color: #272826;
+  background: rgba(255,255,255,.78);
+}
+html[data-theme="light"] .calendar-panel .weekdays,
+html[data-theme="light"] .calendar-panel .day-number {
+  color: #515350;
+}
+html[data-theme="light"] .calendar-panel .month-lunar,
+html[data-theme="light"] .calendar-panel .calendar-footer,
+html[data-theme="light"] .calendar-panel .day-overflow {
+  color: rgba(63,64,61,.58);
+}
+html[data-theme="light"] .calendar-panel .calendar-grid,
+html[data-theme="light"] .calendar-panel .calendar-day {
+  border-color: rgba(50,50,48,.085);
+}
+html[data-theme="light"] .calendar-panel .calendar-day:hover,
+html[data-theme="light"] .calendar-panel .calendar-day:focus-visible {
+  background: rgba(255,255,255,.48);
+  box-shadow: inset 0 0 0 1px rgba(50,50,48,.075);
+}
+html[data-theme="light"] .calendar-panel .calendar-day.focused-date {
+  background: rgba(255,255,255,.26);
+}
+html[data-theme="light"] .calendar-panel .calendar-day.muted {
+  background: rgba(50,50,48,.022);
+}
+html[data-theme="light"] .calendar-panel .calendar-day.muted .day-number {
+  color: rgba(58,59,56,.34);
+}
+html[data-theme="light"] .calendar-panel .calendar-day.muted:hover,
+html[data-theme="light"] .calendar-panel .calendar-day.muted:focus-visible {
+  background: rgba(50,50,48,.040);
+}
+html[data-theme="light"] .calendar-panel.calendar-detail-open .calendar-day.selected-date {
+  background: rgba(255,255,255,.90);
+  box-shadow: inset 0 0 0 2px var(--action-focus-ring), 0 4px 14px rgba(50,50,48,.09);
+}
+html[data-theme="light"] .calendar-panel .calendar-detail {
+  border-color: rgba(50,50,48,.11);
+  background: rgba(250,250,248,.98);
+  box-shadow: 0 16px 40px rgba(50,50,48,.13), inset 0 1px 0 rgba(255,255,255,.90);
+}
+html[data-theme="light"] .calendar-panel .calendar-detail-header,
+html[data-theme="light"] .calendar-panel .calendar-detail-section + .calendar-detail-section {
+  border-color: rgba(50,50,48,.075);
+}
+html[data-theme="light"] .calendar-panel.calendar-detail-open .calendar-detail {
+  box-shadow: 0 20px 48px rgba(50,50,48,.16), 0 5px 18px rgba(50,50,48,.08), inset 0 1px 0 rgba(255,255,255,.92);
+}
+
+
+/* Fluent-inspired light surface system: neutral, coherent, restrained. */
+:root[data-theme="light"] {
+  --luma-bg-app: #f5f5f5;
+  --luma-bg-app-rgb: 245,245,245;
+  --luma-bg-raised: #fafafa;
+  --luma-bg-control: #ffffff;
+  --luma-bg-subtle: #f0f0f0;
+  --luma-fg-1: #242424;
+  --luma-fg-2: #424242;
+  --luma-fg-3: #616161;
+  --luma-fg-disabled: #a6a6a6;
+  --luma-stroke-1: #d1d1d1;
+  --luma-stroke-2: #e0e0e0;
+  --luma-stroke-3: #ebebeb;
+  --ink: var(--luma-fg-1);
+  --muted: var(--luma-fg-3);
+  --line: var(--luma-stroke-2);
+  --control-deep: rgba(0,0,0,.045);
+  --control-deep-hover: rgba(0,0,0,.075);
+}
+
+/* One neutral application surface across Todo and Calendar. */
+html[data-theme="light"] .todo-panel,
+html[data-theme="light"] .calendar-panel {
+  background: rgba(var(--luma-bg-app-rgb), calc(var(--panel-opacity) + .03));
+  border-color: rgba(255,255,255,.82);
+}
+
+/* Text hierarchy: neutral grays, no blue cast. */
+html[data-theme="light"] h1,
+html[data-theme="light"] h2,
+html[data-theme="light"] h3,
+html[data-theme="light"] .project-title,
+html[data-theme="light"] .task-title,
+html[data-theme="light"] .upcoming-title,
+html[data-theme="light"] .schedule-task-title,
+html[data-theme="light"] .calendar-detail-task-title {
+  color: var(--luma-fg-1);
+}
+html[data-theme="light"] .eyebrow,
+html[data-theme="light"] .input-hint,
+html[data-theme="light"] .project-progress,
+html[data-theme="light"] .task-meta,
+html[data-theme="light"] .task-date-label,
+html[data-theme="light"] .completed-toggle,
+html[data-theme="light"] .upcoming-project,
+html[data-theme="light"] .empty-note,
+html[data-theme="light"] .calendar-footer,
+html[data-theme="light"] .month-lunar,
+html[data-theme="light"] .settings-section small,
+html[data-theme="light"] .account-card small,
+html[data-theme="light"] .settings-note {
+  color: var(--luma-fg-3);
+}
+
+/* Neutral controls and cards. */
+html[data-theme="light"] .quick-input-wrap,
+html[data-theme="light"] .summary-card,
+html[data-theme="light"] .date-summary,
+html[data-theme="light"] .date-filter,
+html[data-theme="light"] .icon-button,
+html[data-theme="light"] .task-time,
+html[data-theme="light"] .edit-project-button,
+html[data-theme="light"] .secondary-button,
+html[data-theme="light"] .soft-button {
+  border-color: var(--luma-stroke-2);
+  color: var(--luma-fg-2);
+  background: rgba(255,255,255,.72);
+  box-shadow: none;
+}
+html[data-theme="light"] .quick-input-wrap {
+  background: rgba(255,255,255,.82);
+}
+html[data-theme="light"] .quick-input-wrap:hover,
+html[data-theme="light"] .summary-card:hover,
+html[data-theme="light"] .date-summary:hover,
+html[data-theme="light"] .date-summary:focus-visible,
+html[data-theme="light"] .date-summary.expanded,
+html[data-theme="light"] .icon-button:hover,
+html[data-theme="light"] .secondary-button:hover,
+html[data-theme="light"] .soft-button:hover {
+  color: var(--luma-fg-1);
+  background: #fff;
+}
+
+/* Calendar grid stays on the application base with very quiet separators. */
+html[data-theme="light"] .calendar-panel .calendar-grid,
+html[data-theme="light"] .calendar-panel .calendar-day {
+  border-color: var(--luma-stroke-3);
+}
+html[data-theme="light"] .calendar-panel .weekdays,
+html[data-theme="light"] .calendar-panel .day-number {
+  color: var(--luma-fg-2);
+}
+html[data-theme="light"] .calendar-panel .calendar-day:hover,
+html[data-theme="light"] .calendar-panel .calendar-day:focus-visible {
+  background: rgba(255,255,255,.64);
+  box-shadow: inset 0 0 0 1px var(--luma-stroke-3);
+}
+html[data-theme="light"] .calendar-panel .calendar-day.focused-date {
+  background: rgba(255,255,255,.42);
+}
+html[data-theme="light"] .calendar-panel .calendar-day.muted {
+  background: rgba(0,0,0,.018);
+}
+html[data-theme="light"] .calendar-panel .calendar-day.muted .day-number {
+  color: var(--luma-fg-disabled);
+}
+
+/* Raised surfaces use a single Fluent-like neutral family. */
+html[data-theme="light"] .modal,
+html[data-theme="light"] .popover,
+html[data-theme="light"] .task-menu,
+html[data-theme="light"] .time-picker,
+html[data-theme="light"] .calendar-detail,
+html[data-theme="light"] .settings-modal {
+  border-color: var(--luma-stroke-2);
+  color: var(--luma-fg-1);
+  background: var(--luma-bg-raised);
+}
+
+/* Modal dialogs are blocking surfaces: lighter than the app with controlled elevation. */
+html[data-theme="light"] .modal,
+html[data-theme="light"] .calendar-task-modal {
+  box-shadow:
+    0 24px 56px rgba(0,0,0,.14),
+    0 8px 20px rgba(0,0,0,.08);
+}
+html[data-theme="light"] .modal::backdrop {
+  background: rgba(0,0,0,.12);
+}
+html[data-theme="light"] .modal label {
+  color: var(--luma-fg-2);
+}
+html[data-theme="light"] .modal .eyebrow,
+html[data-theme="light"] .calendar-item-type-hint {
+  color: var(--luma-fg-3);
+}
+
+/* Inputs are the brightest surface inside a raised dialog. */
+html[data-theme="light"] .modal label > input,
+html[data-theme="light"] .calendar-task-modal select,
+html[data-theme="light"] .time-text-input,
+html[data-theme="light"] .project-quick-input {
+  border-color: var(--luma-stroke-1);
+  color: var(--luma-fg-1);
+  background: var(--luma-bg-control);
+  box-shadow: none;
+}
+html[data-theme="light"] .modal label > input:hover,
+html[data-theme="light"] .calendar-task-modal select:hover,
+html[data-theme="light"] .time-text-input:hover,
+html[data-theme="light"] .project-quick-input:hover {
+  border-color: #b3b3b3;
+}
+html[data-theme="light"] .modal label > input:focus,
+html[data-theme="light"] .calendar-task-modal select:focus,
+html[data-theme="light"] .time-text-input:focus,
+html[data-theme="light"] .project-quick-input:focus {
+  border-color: #707070;
+  box-shadow: 0 0 0 1px #707070;
+}
+
+/* Menus and detail cards: low-contrast elevation, same hue family. */
+html[data-theme="light"] .task-menu,
+html[data-theme="light"] .time-picker,
+html[data-theme="light"] .calendar-detail {
+  box-shadow:
+    0 12px 28px rgba(0,0,0,.10),
+    0 3px 8px rgba(0,0,0,.05);
+}
+html[data-theme="light"] .time-option,
+html[data-theme="light"] .task-menu-header button,
+html[data-theme="light"] .task-menu-action,
+html[data-theme="light"] .task-menu-link,
+html[data-theme="light"] .task-project-choice {
+  color: var(--luma-fg-2);
+}
+html[data-theme="light"] .time-option:hover,
+html[data-theme="light"] .time-option:focus-visible,
+html[data-theme="light"] .task-menu-action:hover,
+html[data-theme="light"] .task-menu-link:hover,
+html[data-theme="light"] .task-project-choice:hover,
+html[data-theme="light"] .calendar-detail-close:hover,
+html[data-theme="light"] .calendar-detail-schedule:not(.readonly):hover,
+html[data-theme="light"] .calendar-detail-todo-row:hover {
+  color: var(--luma-fg-1);
+  background: var(--luma-bg-subtle);
+}
+
+/* Keep large secondary actions neutral. */
+html[data-theme="light"] .new-project-button {
+  border-color: var(--luma-stroke-1);
+  color: var(--luma-fg-1);
+  background: rgba(255,255,255,.48);
+}
+html[data-theme="light"] .new-project-button:hover {
+  border-color: #bdbdbd;
+  color: var(--luma-fg-1);
+  background: rgba(255,255,255,.84);
+}
+
+/* Todo rows use neutral hover only; project colors remain semantic accents. */
+html[data-theme="light"] .task-item {
+  border-color: var(--luma-stroke-3);
+}
+html[data-theme="light"] .task-item:hover,
+html[data-theme="light"] .task-item:focus-within,
+html[data-theme="light"] .task-item.menu-open {
+  border-color: var(--luma-stroke-3);
+  background: rgba(0,0,0,.025);
+}
+
+/* Selected/current surfaces stay neutral; category and Event colors are untouched. */
+html[data-theme="light"] .calendar-panel.calendar-detail-open .calendar-day.selected-date {
+  background: #fff;
+  box-shadow: inset 0 0 0 2px rgba(36,36,36,.24), 0 4px 14px rgba(0,0,0,.08);
+}
+html[data-theme="light"] .calendar-panel.calendar-detail-open .calendar-detail {
+  box-shadow:
+    0 18px 42px rgba(0,0,0,.13),
+    0 5px 14px rgba(0,0,0,.06);
+}
+
+
+/* Whiter light mode: closer to VS Code/Microsoft light surfaces. */
+:root[data-theme="light"] {
+  --luma-bg-app: #ffffff;
+  --luma-bg-app-rgb: 255,255,255;
+  --luma-bg-raised: #ffffff;
+  --luma-bg-control: #ffffff;
+  --luma-bg-subtle: #f5f5f5;
+}
+
+/* Main Luma surfaces should read as white, not gray. */
+html[data-theme="light"] .todo-panel,
+html[data-theme="light"] .calendar-panel {
+  background: rgba(255,255,255,calc(var(--panel-opacity) + .03));
+}
+
+/* Keep structure visible through very light neutral separators. */
+html[data-theme="light"] .calendar-panel .calendar-grid,
+html[data-theme="light"] .calendar-panel .calendar-day,
+html[data-theme="light"] .task-item {
+  border-color: #eeeeee;
+}
+
+html[data-theme="light"] .calendar-panel .calendar-day.muted {
+  background: #fafafa;
+}
+html[data-theme="light"] .calendar-panel .calendar-day:hover,
+html[data-theme="light"] .calendar-panel .calendar-day:focus-visible,
+html[data-theme="light"] .task-item:hover,
+html[data-theme="light"] .task-item:focus-within,
+html[data-theme="light"] .task-item.menu-open {
+  background: #f7f7f7;
+}
+
+/* Raised surfaces stay white; depth comes from shadow and border rather than tint. */
+html[data-theme="light"] .modal,
+html[data-theme="light"] .popover,
+html[data-theme="light"] .task-menu,
+html[data-theme="light"] .time-picker,
+html[data-theme="light"] .calendar-detail,
+html[data-theme="light"] .settings-modal {
+  background: #ffffff;
+}
+
+/* Secondary cards remain only slightly gray so the whole UI stays bright. */
+html[data-theme="light"] .summary-card,
+html[data-theme="light"] .new-project-button {
+  background: #fafafa;
+}
+
+html[data-theme="light"] .quick-input-wrap,
+html[data-theme="light"] .date-summary,
+html[data-theme="light"] .date-filter,
+html[data-theme="light"] .icon-button,
+html[data-theme="light"] .task-time,
+html[data-theme="light"] .edit-project-button,
+html[data-theme="light"] .secondary-button,
+html[data-theme="light"] .soft-button {
+  background: #ffffff;
+}
+
+
+/* Calendar light-mode date alignment and current-day polish. */
+/* Adjacent-month labels keep the same top-left anchor as normal dates. */
+.calendar-panel .calendar-day.muted .day-number,
+html[data-theme="light"] .calendar-panel .calendar-day.muted .day-number {
+  width: 26px;
+  min-width: 26px;
+  max-width: 26px;
+  align-self: flex-start;
+  padding: 0;
+  text-align: left;
+}
+
+/* In the white theme, today is indicated mainly by the date badge.
+   The full cell gets only a very light neutral wash. */
+html[data-theme="light"] .calendar-panel .calendar-day.today,
+html[data-theme="light"] .calendar-panel .calendar-day.today.focused-date {
+  background: #f7f7f7;
+}
+
+html[data-theme="light"] .calendar-panel .calendar-day.today:hover,
+html[data-theme="light"] .calendar-panel .calendar-day.today:focus-visible {
+  background: #f3f3f3;
+}
+
+/* Keep the current date badge compact and neutral. */
+html[data-theme="light"] .calendar-panel .today .day-number {
+  width: 26px;
+  min-width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  padding: 0;
+  color: #ffffff;
+  background: #242424;
+  border-radius: 6px;
+  text-align: center;
+}
+
+
+/* Calendar item color balance: stronger than the pale pass, lighter than the old solid blocks. */
+/* Todo keeps the project color visible across the whole chip. */
+html[data-theme="light"] .day-event.calendar-todo-item {
+  border-color: color-mix(in srgb, var(--event-color) 42%, #ffffff 58%);
+  color: color-mix(in srgb, var(--event-color) 40%, #242424 60%);
+  background: color-mix(in srgb, var(--event-color) 28%, #ffffff 72%);
+}
+html[data-theme="light"] .day-event.calendar-todo-item::before {
+  border-color: color-mix(in srgb, var(--event-color) 78%, #5f5f5f 22%);
+  background: rgba(255,255,255,.55);
+}
+html[data-theme="light"] .day-event.calendar-todo-item:hover,
+html[data-theme="light"] .day-event.calendar-todo-item:focus-visible {
+  border-color: color-mix(in srgb, var(--event-color) 52%, #ffffff 48%);
+  background: color-mix(in srgb, var(--event-color) 34%, #ffffff 66%);
+}
+
+/* Event is the denser calendar object, but stays below the old solid-fill weight. */
+html[data-theme="light"] .day-event.calendar-event-item {
+  border-color: color-mix(in srgb, var(--event-color) 58%, #ffffff 42%);
+  color: color-mix(in srgb, var(--event-color) 32%, #242424 68%);
+  background: color-mix(in srgb, var(--event-color) 42%, #ffffff 58%);
+}
+html[data-theme="light"] .day-event.calendar-event-item:hover,
+html[data-theme="light"] .day-event.calendar-event-item:focus-visible {
+  border-color: color-mix(in srgb, var(--event-color) 68%, #ffffff 32%);
+  background: color-mix(in srgb, var(--event-color) 49%, #ffffff 51%);
+}
+
+/* Multi-day Events use the same weight as single-day Events. */
+html[data-theme="light"] .calendar-span-event {
+  border-color: color-mix(in srgb, var(--event-color) 58%, #ffffff 42%);
+  color: color-mix(in srgb, var(--event-color) 32%, #242424 68%);
+  background: color-mix(in srgb, var(--event-color) 44%, #ffffff 56%);
+}
+html[data-theme="light"] .calendar-span-event:hover {
+  background: color-mix(in srgb, var(--event-color) 51%, #ffffff 49%);
+}
+
+/* Completed Todo remains recognizable as history without becoming a second active item. */
+html[data-theme="light"] .day-event.calendar-todo-item.completed-calendar-event {
+  border-color: color-mix(in srgb, var(--event-color) 18%, #ffffff 82%);
+  color: #8a8a8a;
+  background: color-mix(in srgb, var(--event-color) 10%, #ffffff 90%);
+  opacity: .82;
+  text-decoration-color: #a8a8a8;
+}
+html[data-theme="light"] .day-event.calendar-todo-item.completed-calendar-event:hover,
+html[data-theme="light"] .day-event.calendar-todo-item.completed-calendar-event:focus-visible {
+  border-color: color-mix(in srgb, var(--event-color) 22%, #ffffff 78%);
+  background: color-mix(in srgb, var(--event-color) 13%, #ffffff 87%);
+}
+
+
+/* Stable event form geometry + softer Google Calendar colors. */
+/* Date and time never swap positions when Todo turns into Event. */
+.calendar-create-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+.calendar-start-date-field {
+  grid-column: 1;
+  grid-row: 1;
+}
+.calendar-time-field {
+  grid-column: 2;
+  grid-row: 1;
+}
+.calendar-end-date-field {
+  grid-column: 1;
+  grid-row: 2;
+}
+#calendarTaskEndDateLabel[hidden] {
+  display: none !important;
+}
+
+/* Google Calendar keeps its source hue, but renders as a lighter read-only pastel. */
+html[data-theme="light"] .day-event.calendar-event-item.google-calendar-event,
+html[data-theme="light"] .calendar-span-event.google-calendar-event {
+  border-color: color-mix(in srgb, var(--event-color) 34%, #ffffff 66%);
+  color: color-mix(in srgb, var(--event-color) 24%, #424242 76%);
+  background: color-mix(in srgb, var(--event-color) 20%, #ffffff 80%);
+  opacity: 1;
+}
+
+html[data-theme="light"] .day-event.calendar-event-item.google-calendar-event:hover,
+html[data-theme="light"] .day-event.calendar-event-item.google-calendar-event:focus-visible,
+html[data-theme="light"] .calendar-span-event.google-calendar-event:hover {
+  border-color: color-mix(in srgb, var(--event-color) 42%, #ffffff 58%);
+  background: color-mix(in srgb, var(--event-color) 26%, #ffffff 74%);
+}
+
+
+/* Final calendar form geometry: two stable rows in both Todo and Event modes. */
+.calendar-create-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: auto auto;
+  align-items: start;
+}
+
+.calendar-start-date-field {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.calendar-time-field {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.calendar-project-field {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.calendar-end-date-field {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.calendar-event-color-field {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.calendar-create-fields .calendar-event-color-field {
+  min-width: 0;
+}
+
+.calendar-create-fields .calendar-event-color-field .event-color-choices {
+  min-height: 44px;
+  gap: 5px;
+  flex-wrap: nowrap;
+}
+
+.calendar-create-fields .calendar-event-color-field .event-color-choice {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border-radius: 6px;
+}
+
+.calendar-create-fields + .calendar-item-type-hint {
+  margin-top: -4px;
+  white-space: nowrap;
+}
+
+
+/* Calendar form hidden fields must stay fully hidden after grid placement. */
+#calendarTaskProjectLabel[hidden],
+#calendarTaskEndDateLabel[hidden],
+#calendarEventColorLabel[hidden] {
+  display: none !important;
+}
+
+
+/* Explicit Todo/Event calendar editor. */
+.calendar-item-type-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  margin: -2px 0 13px;
+  padding: 3px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  background: rgba(255,255,255,.035);
+}
+
+.calendar-mode-button {
+  min-height: 32px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: rgba(232,236,244,.66);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.calendar-mode-button:hover {
+  color: rgba(248,250,253,.92);
+  background: rgba(255,255,255,.05);
+}
+
+.calendar-mode-button.active[data-calendar-mode="todo"] {
+  color: #bfe5cf;
+  border-color: rgba(118,199,168,.28);
+  background: rgba(118,199,168,.12);
+}
+
+.calendar-mode-button.active[data-calendar-mode="event"] {
+  color: #c5d9f2;
+  border-color: rgba(121,167,211,.30);
+  background: rgba(121,167,211,.13);
+}
+
+.calendar-create-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: auto auto auto;
+  align-items: start;
+}
+
+.calendar-start-date-field {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.calendar-time-field {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.calendar-project-field {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.calendar-end-date-field {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.calendar-end-time-field {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.calendar-event-color-field {
+  grid-column: 1 / -1;
+  grid-row: 3;
+}
+
+#calendarTaskProjectLabel[hidden],
+#calendarTaskEndDateLabel[hidden],
+#calendarTaskEndTimeLabel[hidden],
+#calendarEventColorLabel[hidden] {
+  display: none !important;
+}
+
+#calendarTaskEndTime:disabled {
+  cursor: default;
+  opacity: .58;
+}
+
+.calendar-create-fields .calendar-event-color-field .event-color-choices {
+  min-height: 30px;
+  gap: 7px;
+}
+
+.calendar-create-fields .calendar-event-color-field .event-color-choice {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+}
+
+.calendar-create-fields + .calendar-item-type-hint {
+  margin-top: -4px;
+  white-space: normal;
+}
+
+/* Light Fluent-style segmented control. */
+html[data-theme="light"] .calendar-item-type-switch {
+  border-color: #e5e5e5;
+  background: #f5f5f5;
+}
+
+html[data-theme="light"] .calendar-mode-button {
+  color: #616161;
+}
+
+html[data-theme="light"] .calendar-mode-button:hover {
+  color: #242424;
+  background: rgba(255,255,255,.72);
+}
+
+html[data-theme="light"] .calendar-mode-button.active[data-calendar-mode="todo"] {
+  color: #32694a;
+  border-color: color-mix(in srgb, #63b985 30%, #ffffff 70%);
+  background: color-mix(in srgb, #63b985 12%, #ffffff 88%);
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+
+html[data-theme="light"] .calendar-mode-button.active[data-calendar-mode="event"] {
+  color: #3f6389;
+  border-color: color-mix(in srgb, #79a7d3 32%, #ffffff 68%);
+  background: color-mix(in srgb, #79a7d3 13%, #ffffff 87%);
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+
+html[data-theme="light"] #calendarTaskEndTime:disabled {
+  color: #8a8a8a;
+  border-color: #e1e1e1;
+  background: #f7f7f7;
+  opacity: 1;
+}
+
+
+/* Stable calendar editor size + stable Todo scrollbar gutter. */
+/* Todo and Event use exactly the same dialog box size, so switching type never
+   moves the dialog or changes its outer geometry. */
+.calendar-task-modal {
+  width: 390px;
+  height: 594px;
+  min-height: 594px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  box-sizing: border-box;
+}
+
+.calendar-task-modal > form {
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  grid-template-rows: auto auto auto 1fr auto auto;
+  align-content: stretch;
+}
+
+/* "月历事项" repeated the meaning already conveyed by "新建事项/编辑日程". */
+#calendarTaskEyebrow {
+  display: none;
+}
+
+/* Keep the form body occupying the same vertical area in both modes.
+   Event gets more fields inside that area; Todo simply has more breathing room. */
+.calendar-task-modal .calendar-create-fields {
+  align-self: start;
+}
+
+.calendar-task-modal .project-form-actions {
+  align-self: end;
+}
+
+/* Reserve scrollbar width before completed items are expanded.
+   The thumb may appear/disappear, but task rows no longer shift horizontally. */
+.todo-panel .task-scroll {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  box-sizing: border-box;
+}
+
+/* Chromium/WebView fallback: keep a quiet scrollbar track when the platform
+   does not fully honor scrollbar-gutter. */
+.todo-panel .task-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.todo-panel .task-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.todo-panel .task-scroll::-webkit-scrollbar-thumb {
+  border-radius: 6px;
+  background: rgba(128,128,128,.20);
+}
+html[data-theme="light"] .todo-panel .task-scroll::-webkit-scrollbar-thumb {
+  background: rgba(36,36,36,.16);
+}
+
+
+/* Geometrically centered calendar dialog close icon. */
+#cancelCalendarTaskButton {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  line-height: 1;
+  font-size: 0;
+}
+
+#cancelCalendarTaskButton::before,
+#cancelCalendarTaskButton::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 9px;
+  height: 1.25px;
+  border-radius: 999px;
+  background: currentColor;
+  transform-origin: center;
+}
+
+#cancelCalendarTaskButton::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+#cancelCalendarTaskButton::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+
+/* Calendar event color row: single-line label + vivid swatches. */
+.calendar-create-fields .calendar-event-color-field {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  min-width: 0;
+  width: 100%;
+}
+
+.calendar-create-fields .calendar-event-color-label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.calendar-create-fields .calendar-event-color-label > span {
+  flex: 0 0 auto;
+  min-width: 52px;
+  white-space: nowrap;
+  line-height: 20px;
+}
+
+.calendar-create-fields .calendar-event-color-label .event-color-choices {
+  min-width: 0;
+  min-height: 28px;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.calendar-create-fields .calendar-event-color-label .event-color-choice {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border-radius: 6px;
+  border-width: 1.5px;
+}
+
+html[data-theme="light"] .calendar-create-fields .calendar-event-color-label > span {
+  color: var(--luma-fg-2);
+}
+
+
+/* Keep calendar detail time ranges on one line. */
+.calendar-detail-schedule {
+  grid-template-columns: 8px 70px minmax(0, 1fr) auto;
+}
+
+.calendar-detail-schedule .calendar-detail-time {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  line-height: 1.2;
+  font-size: 10px;
+  letter-spacing: -0.01em;
+}
+
+
+/* Unified date card: detail, create, and event edit share one anchored surface. */
+.calendar-detail {
+  width: 360px;
+  height: min(450px, calc(100% - 96px));
+  max-width: calc(100% - 36px);
+  max-height: none;
+  overflow: visible;
+}
+
+.calendar-detail-view,
+.calendar-editor-view {
+  width: 100%;
+  height: 100%;
+}
+
+.calendar-detail-view.hidden,
+.calendar-editor-view.hidden {
+  display: none !important;
+}
+
+.calendar-detail-view {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.calendar-detail-view .calendar-detail-todos {
+  flex: 1 1 auto;
+}
+
+.calendar-detail-view .calendar-detail-list {
+  min-height: 0;
+}
+
+.calendar-editor-view {
+  position: relative;
+  overflow: visible;
+  border-radius: inherit;
+}
+
+.calendar-editor-view form {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.calendar-editor-header {
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 28px minmax(0,1fr) 28px;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.calendar-editor-header h3 {
+  margin: 0;
+  text-align: center;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.calendar-detail-back {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  padding: 0;
+  color: rgba(239,242,248,.68);
+  background: transparent;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.calendar-detail-back:hover {
+  color: #fff;
+  background: rgba(255,255,255,.08);
+}
+
+.calendar-editor-body {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px 13px;
+}
+
+.calendar-editor-body > label,
+.calendar-editor-body .calendar-create-fields > label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: rgba(248,249,252,.88);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.calendar-editor-body > label > input,
+.calendar-editor-body .calendar-create-fields > label > input,
+.calendar-editor-body select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 10px;
+  outline: none;
+  padding: 0 10px;
+  color: var(--ink);
+  background: rgba(255,255,255,.055);
+  font-size: 13px;
+}
+
+.calendar-editor-body .time-field {
+  margin-top: 0;
+}
+
+.calendar-editor-body .time-text-input {
+  min-height: 38px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.calendar-editor-body .time-field::after {
+  top: 10px;
+}
+
+.calendar-editor-body .calendar-item-type-switch {
+  flex: 0 0 auto;
+  margin: 0 0 2px;
+}
+
+.calendar-editor-body .calendar-create-fields {
+  flex: 0 0 auto;
+  gap: 10px;
+}
+
+.calendar-editor-body .calendar-item-type-hint {
+  min-height: 28px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  font-size: 9.5px;
+  line-height: 1.35;
+}
+
+.calendar-editor-actions {
+  margin-top: auto;
+  min-height: 38px;
+}
+
+.calendar-editor-actions .primary-button,
+.calendar-editor-actions .danger-button {
+  min-height: 38px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.calendar-editor-body .calendar-event-color-label {
+  min-height: 25px;
+}
+
+.calendar-editor-body .calendar-event-color-label > span {
+  min-width: 50px;
+  font-size: 11px;
+}
+
+.calendar-editor-body .calendar-event-color-label .event-color-choices {
+  gap: 4px;
+  min-height: 24px;
+}
+
+.calendar-editor-body .calendar-event-color-label .event-color-choice {
+  width: 16px;
+  height: 16px;
+  flex-basis: 16px;
+  border-radius: 5px;
+}
+
+.calendar-editor-body .time-picker {
+  z-index: 120;
+  max-height: 170px;
+}
+
+html[data-theme="light"] .calendar-detail-back {
+  color: var(--luma-fg-3);
+}
+
+html[data-theme="light"] .calendar-detail-back:hover {
+  color: var(--luma-fg-1);
+  background: var(--luma-bg-subtle);
+}
+
+html[data-theme="light"] .calendar-editor-body > label,
+html[data-theme="light"] .calendar-editor-body .calendar-create-fields > label {
+  color: var(--luma-fg-2);
+}
+
+html[data-theme="light"] .calendar-editor-body > label > input,
+html[data-theme="light"] .calendar-editor-body .calendar-create-fields > label > input,
+html[data-theme="light"] .calendar-editor-body select,
+html[data-theme="light"] .calendar-editor-body .time-text-input {
+  border-color: var(--luma-stroke-1);
+  color: var(--luma-fg-1);
+  background: #fff;
+  box-shadow: none;
+}
+
+html[data-theme="light"] .calendar-editor-body > label > input:hover,
+html[data-theme="light"] .calendar-editor-body .calendar-create-fields > label > input:hover,
+html[data-theme="light"] .calendar-editor-body select:hover,
+html[data-theme="light"] .calendar-editor-body .time-text-input:hover {
+  border-color: #b3b3b3;
+}
+
+html[data-theme="light"] .calendar-editor-body > label > input:focus,
+html[data-theme="light"] .calendar-editor-body .calendar-create-fields > label > input:focus,
+html[data-theme="light"] .calendar-editor-body select:focus,
+html[data-theme="light"] .calendar-editor-body .time-text-input:focus {
+  border-color: #707070;
+  box-shadow: 0 0 0 1px #707070;
+}
+
+
+/* Calendar editor visual cleanup: fewer horizontal boundaries. */
+/* The editor header is separated by whitespace, not a rule. */
+.calendar-editor-header {
+  min-height: 44px;
+  padding: 11px 14px 7px;
+  border-bottom: 0 !important;
+}
+
+/* Keep the segmented control as one soft tray. */
+.calendar-editor-body .calendar-item-type-switch {
+  margin: 1px 0 7px;
+  padding: 3px;
+  gap: 2px;
+  border: 0;
+  border-radius: 11px;
+  background: rgba(255,255,255,.045);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.055);
+}
+
+.calendar-editor-body .calendar-mode-button {
+  min-height: 33px;
+  border: 0 !important;
+  border-radius: 8px;
+  box-shadow: none !important;
+}
+
+.calendar-editor-body .calendar-mode-button.active[data-calendar-mode="todo"] {
+  color: #bfe5cf;
+  background: rgba(118,199,168,.13);
+}
+
+.calendar-editor-body .calendar-mode-button.active[data-calendar-mode="event"] {
+  color: #c5d9f2;
+  background: rgba(121,167,211,.14);
+}
+
+/* Let spacing, rather than stacked rules, separate the body fields. */
+.calendar-editor-body {
+  gap: 11px;
+  padding: 9px 14px 13px;
+}
+
+.calendar-editor-body .calendar-create-fields {
+  gap: 11px;
+}
+
+.calendar-editor-body .calendar-item-type-hint {
+  margin-top: 3px;
+  color: rgba(232,236,244,.46);
+}
+
+/* Light mode: neutral Fluent-like tray, active state carried by fill only. */
+html[data-theme="light"] .calendar-editor-body .calendar-item-type-switch {
+  border: 0;
+  background: #f3f4f4;
+  box-shadow: inset 0 0 0 1px rgba(32,41,56,.05);
+}
+
+html[data-theme="light"] .calendar-editor-body .calendar-mode-button {
+  color: #5f6368;
+  background: transparent;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="light"] .calendar-editor-body .calendar-mode-button:hover {
+  color: #242424;
+  background: rgba(255,255,255,.56);
+}
+
+html[data-theme="light"] .calendar-editor-body .calendar-mode-button.active[data-calendar-mode="todo"] {
+  color: #315640;
+  background: #e7f1ea;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="light"] .calendar-editor-body .calendar-mode-button.active[data-calendar-mode="event"] {
+  color: #3f6389;
+  background: #eaf2f8;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+
+/* Refine the current-day badge: keep the normal top-left date anchor,
+   soften only the badge fill, and center the numeral inside the badge. */
+html[data-theme="light"] .calendar-panel .today .day-number {
+  width: 26px;
+  min-width: 26px;
+  max-width: 26px;
+  height: 26px;
+  align-self: flex-start;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: #ffffff;
+  background: #5b6067;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+
+/* Apple-like project headers: neutral labels with a clear color marker. */
+.project-title {
+  gap: 6px;
+  cursor: pointer;
+}
+
+.project-title:active {
+  cursor: pointer;
+}
+
+.project-collapse {
+  width: 10px;
+  flex: 0 0 10px;
+  opacity: .38;
+  color: currentColor;
+}
+
+.project-collapse::before {
+  width: 5px;
+  height: 5px;
+  left: 1px;
+  border-right-width: 1.5px;
+  border-bottom-width: 1.5px;
+}
+
+.project-color-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--group-color);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--group-color) 42%, transparent);
+}
+
+.project-name {
+  color: inherit;
+}
+
+.project-progress {
+  opacity: .62;
+}
+
+.project-header:hover .project-collapse,
+.project-title:focus-visible .project-collapse {
+  opacity: .62;
+}
+
+html[data-theme="light"] .project-title {
+  color: var(--luma-fg-1);
+}
+
+html[data-theme="light"] .project-collapse {
+  color: var(--luma-fg-3);
+}
+
+html[data-theme="light"] .project-progress {
+  color: var(--luma-fg-3);
+  opacity: .76;
+}
+
+html[data-theme="light"] .project-add-task {
+  color: var(--luma-fg-3);
+}
+
+html[data-theme="light"] .project-add-task:hover,
+html[data-theme="light"] .project-add-task:focus-visible {
+  color: var(--group-color);
+  border-color: color-mix(in srgb, var(--group-color) 28%, transparent);
+  background: color-mix(in srgb, var(--group-color) 8%, transparent);
+}
+
+
+/* Calendar Todo checkbox is a real control, not a decorative pseudo-element. */
+.day-event.calendar-todo-item::before {
+  content: none !important;
+  display: none !important;
+}
+
+.calendar-todo-check {
+  width: 9px;
+  min-width: 9px;
+  height: 9px;
+  flex: 0 0 9px;
+  padding: 0;
+  border: 1.4px solid var(--event-color);
+  border-radius: 2.5px;
+  background: color-mix(in srgb, var(--event-color) 7%, transparent);
+  box-sizing: border-box;
+  cursor: pointer;
+  outline: none;
+}
+
+.calendar-todo-check:hover,
+.calendar-todo-check:focus-visible {
+  background: color-mix(in srgb, var(--event-color) 20%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--event-color) 18%, transparent);
+}
+
+.calendar-item-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-theme="light"] .calendar-todo-check {
+  border-color: color-mix(in srgb, var(--event-color) 78%, #5f5f5f 22%);
+  background: rgba(255,255,255,.55);
+}
+
+html[data-theme="light"] .calendar-todo-check:hover,
+html[data-theme="light"] .calendar-todo-check:focus-visible {
+  background: color-mix(in srgb, var(--event-color) 14%, #ffffff 86%);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--event-color) 18%, transparent);
+}
+
+
+/* Todo completion grace period: checkbox itself doubles as undo. */
+@keyframes todo-complete-feedback {
+  0% { opacity: 1; }
+  45% { opacity: .62; }
+  100% { opacity: .76; }
+}
+
+@keyframes todo-check-feedback {
+  0% { transform: scale(.78); }
+  58% { transform: scale(1.10); }
+  100% { transform: scale(1); }
+}
+
+/* Right Todo list: keep the row in place for 1.5s, but show completion immediately. */
+.task-item.pending-completion {
+  opacity: .76;
+  animation: todo-complete-feedback 220ms ease-out both;
+}
+
+.task-item.pending-completion .check {
+  animation: todo-check-feedback 220ms ease-out both;
+}
+
+.task-item.pending-completion .task-title {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+/* Calendar: pending completion keeps the checkbox visible so a second click can undo. */
+.day-event.calendar-todo-item.pending-completion {
+  gap: 5px;
+  padding: 2px 5px 2px 4px;
+  opacity: .76;
+  animation: todo-complete-feedback 220ms ease-out both;
+}
+
+.calendar-todo-check.is-checked {
+  position: relative;
+  color: #fff;
+  background: var(--event-color);
+  animation: todo-check-feedback 220ms ease-out both;
+}
+
+.calendar-todo-check.is-checked::after {
+  content: '✓';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 7px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* Date detail uses the same reversible completion state. */
+.calendar-detail-todo-row.pending-completion {
+  opacity: .72;
+  animation: todo-complete-feedback 220ms ease-out both;
+}
+
+.calendar-detail-todo-row.pending-completion .calendar-detail-task-title {
+  text-decoration: line-through;
+}
+
+.calendar-detail-check.is-checked {
+  position: relative;
+  color: #fff;
+  background: var(--detail-color);
+  animation: todo-check-feedback 220ms ease-out both;
+}
+
+.calendar-detail-check.is-checked::after {
+  content: '✓';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-item.pending-completion,
+  .task-item.pending-completion .check,
+  .day-event.calendar-todo-item.pending-completion,
+  .calendar-todo-check.is-checked,
+  .calendar-detail-todo-row.pending-completion,
+  .calendar-detail-check.is-checked {
+    animation: none;
+  }
+}
+
+html[data-theme="light"] .task-item.pending-completion .task-title {
+  color: #8a8a8a;
+}
+
+html[data-theme="light"] .calendar-todo-check.is-checked {
+  border-color: var(--event-color);
+  background: var(--event-color);
+}
+
+html[data-theme="light"] .calendar-detail-check.is-checked {
+  border-color: var(--detail-color);
+  background: var(--detail-color);
+}
+
+
+/* Completed calendar Todo keeps its checked control for direct restore. */
+.day-event.calendar-todo-item.completed-calendar-event {
+  gap: 5px;
+  padding: 2px 5px 2px 4px;
+}
+
+.day-event.calendar-todo-item.completed-calendar-event .calendar-todo-check {
+  flex: 0 0 9px;
+  width: 9px;
+  min-width: 9px;
+  height: 9px;
+  display: block;
+  opacity: .82;
+}
+
+.day-event.calendar-todo-item.completed-calendar-event .calendar-item-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
