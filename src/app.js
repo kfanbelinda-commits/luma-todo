@@ -40,6 +40,7 @@ calendarCursor.setDate(1);
 let taskDateFilter = null;
 let calendarDetailDate = null;
 let calendarCreateMode = 'todo';
+let editingCalendarEventId = null;
 let pendingReminderTaskId = null;
 let draggedTaskId = null;
 let draggedProjectId = null;
@@ -865,8 +866,9 @@ function renderCalendarDetail() {
         <span class="calendar-detail-task-title">${escapeAttribute(task.title)}</span>
         <span class="calendar-detail-project">${escapeAttribute(external ? (task.googleCalendarName || 'Google Calendar') : '日程')}</span>
       `;
-      row.title = external ? '来自 Google Calendar（只读）' : 'Luma 日程';
+      row.title = external ? '来自 Google Calendar（只读）' : '点击编辑日程';
       row.classList.toggle('readonly', external);
+      if (!external) row.addEventListener('click', () => openCalendarTaskDialog(task.dueDate, 'event', task.id));
       scheduleHost.appendChild(row);
     });
   }
@@ -903,22 +905,28 @@ async function moveTaskToDate(taskId, dateKey) {
   render();
 }
 
-function openCalendarTaskDialog(dateKey, mode = 'todo') {
+function openCalendarTaskDialog(dateKey, mode = 'todo', eventId = null) {
   calendarCreateMode = mode === 'event' ? 'event' : 'todo';
   const eventMode = calendarCreateMode === 'event';
-  $('#calendarTaskTitle').value = '';
-  $('#calendarTaskDate').value = dateKey;
-  $('#calendarTaskEndDate').value = dateKey;
-  $('#calendarTaskTime').value = '';
+  const editingEvent = eventMode && eventId
+    ? state.tasks.find((task) => task.id === eventId && isCalendarEvent(task) && !task.googleCalendarExternal && task.syncTarget !== 'external-calendar')
+    : null;
+  editingCalendarEventId = editingEvent?.id || null;
+
+  $('#calendarTaskTitle').value = editingEvent?.title || '';
+  $('#calendarTaskDate').value = editingEvent?.dueDate || dateKey;
+  $('#calendarTaskEndDate').value = editingEvent?.endDate || editingEvent?.dueDate || dateKey;
+  $('#calendarTaskTime').value = editingEvent?.time || '';
   $('#calendarTaskProject').innerHTML = projectOptions('inbox');
   $('#calendarTaskEyebrow').textContent = eventMode ? '月历日程' : '月历待办';
-  $('#calendarTaskDialogTitle').textContent = eventMode ? '新建日程' : '新建待办';
+  $('#calendarTaskDialogTitle').textContent = editingEvent ? '编辑日程' : (eventMode ? '新建日程' : '新建待办');
   $('#calendarTaskTitleText').textContent = eventMode ? '日程内容' : '待办内容';
   $('#calendarTaskDateText').textContent = eventMode ? '开始日期' : '日期';
   $('#calendarTaskTimeText').textContent = eventMode ? '开始时间' : '时间';
   $('#calendarTaskEndDateLabel').hidden = !eventMode;
   $('#calendarTaskProjectLabel').hidden = eventMode;
-  $('#calendarTaskSubmit').textContent = eventMode ? '添加日程' : '添加待办';
+  $('#deleteCalendarEventButton').hidden = !editingEvent;
+  $('#calendarTaskSubmit').textContent = editingEvent ? '保存日程' : (eventMode ? '添加日程' : '添加待办');
   $('#calendarTaskDialog').showModal();
   requestAnimationFrame(() => $('#calendarTaskTitle').focus());
 }
@@ -939,6 +947,25 @@ async function createCalendarTask(event) {
     return;
   }
   $('#calendarTaskEndDate').setCustomValidity('');
+
+  if (eventMode && editingCalendarEventId) {
+    const task = state.tasks.find((item) => item.id === editingCalendarEventId);
+    if (task && !task.googleCalendarExternal && task.syncTarget !== 'external-calendar') {
+      task.title = title;
+      task.dueDate = dueDate;
+      task.endDate = endDate;
+      task.time = timeResult.value;
+      task.itemType = 'event';
+      task.completed = false;
+      task.syncTarget = 'calendar';
+      task.updatedAt = Date.now();
+      editingCalendarEventId = null;
+      $('#calendarTaskDialog').close();
+      await persist();
+      render();
+      return;
+    }
+  }
 
   const task = {
     id: uid(),
@@ -963,6 +990,14 @@ async function createCalendarTask(event) {
     pendingReminderTaskId = task.id;
     $('#reminderPopover').classList.remove('hidden');
   }
+}
+
+async function deleteEditingCalendarEvent() {
+  const taskId = editingCalendarEventId;
+  if (!taskId) return;
+  editingCalendarEventId = null;
+  $('#calendarTaskDialog').close();
+  await deleteTask(taskId);
 }
 
 
@@ -1699,7 +1734,8 @@ function bindEvents() {
   $('#cancelScheduleButton').addEventListener('click', () => $('#scheduleDialog').close());
   $('#clearScheduleButton').addEventListener('click', clearTaskSchedule);
   $('#scheduleForm').addEventListener('submit', saveTaskSchedule);
-  $('#cancelCalendarTaskButton').addEventListener('click', () => $('#calendarTaskDialog').close());
+  $('#cancelCalendarTaskButton').addEventListener('click', () => { editingCalendarEventId = null; $('#calendarTaskDialog').close(); });
+  $('#deleteCalendarEventButton').addEventListener('click', deleteEditingCalendarEvent);
   $('#calendarTaskForm').addEventListener('submit', createCalendarTask);
   $('#closeTaskMenu').addEventListener('click', closeTaskMenu);
   $('#taskScheduleAction').addEventListener('click', () => {
