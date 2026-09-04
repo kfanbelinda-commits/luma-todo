@@ -5,9 +5,15 @@ const http = require('http');
 const crypto = require('crypto');
 const { execFile } = require('child_process');
 
-// Keep task data in one stable location regardless of how Electron is launched.
+const DEMO_MODE = process.argv.includes('--demo');
+const DEMO_RESET_MODE = DEMO_MODE && process.argv.includes('--demo-reset');
+
+// Keep real and demo data completely separate.
 if (process.platform === 'win32') {
-  app.setPath('userData', path.join(app.getPath('home'), 'AppData', 'Roaming', 'luma-todo'));
+  const appDataName = DEMO_MODE ? 'luma-todo-demo' : 'luma-todo';
+  app.setPath('userData', path.join(app.getPath('home'), 'AppData', 'Roaming', appDataName));
+} else if (DEMO_MODE) {
+  app.setPath('userData', `${app.getPath('userData')}-demo`);
 }
 
 const COMPACT = { width: 410, height: 550 };
@@ -34,6 +40,270 @@ if (!hasSingleInstanceLock) app.quit();
 
 function dataPath() {
   return path.join(app.getPath('userData'), 'luma-data.json');
+}
+
+function demoDateKey(offset = 0) {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() + offset);
+  const pad = (value) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function demoNextWeekday(targetDay, extraWeeks = 0) {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  let delta = (targetDay - date.getDay() + 7) % 7;
+  if (delta === 0) delta = 7;
+  delta += extraWeeks * 7;
+  return demoDateKey(delta);
+}
+
+function buildDemoState() {
+  const now = Date.now();
+  const projects = [
+    { id: 'inbox', name: '未分类', color: '#8b8e92', order: 0, updatedAt: now },
+    { id: 'work', name: '工作', color: '#5d8de0', order: 1, updatedAt: now },
+    { id: 'product', name: '产品项目', color: '#4fb58f', order: 2, updatedAt: now },
+    { id: 'study', name: '学习', color: '#a878ad', order: 3, updatedAt: now },
+    { id: 'life', name: '生活', color: '#f58a3d', order: 4, updatedAt: now },
+    { id: 'travel', name: '旅行计划', color: '#4aa6a1', order: 5, updatedAt: now },
+  ];
+
+  const nextFriday = demoNextWeekday(5);
+  const fridayDate = new Date(`${nextFriday}T12:00:00`);
+  const saturday = new Date(fridayDate);
+  saturday.setDate(fridayDate.getDate() + 1);
+  const sunday = new Date(fridayDate);
+  sunday.setDate(fridayDate.getDate() + 2);
+  const keyFor = (date) => {
+    const pad = (value) => String(value).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  };
+
+  return {
+    version: 1,
+    settings: {
+      autoStart: false,
+      googleConnected: false,
+      panelOpacity: 96,
+      alwaysOnTop: false,
+      lightMode: true,
+      collapsedProjectIds: [],
+    },
+    projects,
+    projectsUpdatedAt: now,
+    tasks: [
+      {
+        id: 'demo-todo-meeting-notes',
+        title: '整理周会纪要',
+        projectId: 'work',
+        dueDate: demoDateKey(0),
+        time: '10:00',
+        itemType: 'todo',
+        completed: false,
+        createdAt: now - 7 * 86400000,
+        updatedAt: now - 1800000,
+        order: 10,
+        syncTarget: 'tasks',
+      },
+      {
+        id: 'demo-todo-design-feedback',
+        title: '提交设计反馈',
+        projectId: 'product',
+        dueDate: demoDateKey(1),
+        time: '14:30',
+        itemType: 'todo',
+        completed: false,
+        createdAt: now - 6 * 86400000,
+        updatedAt: now - 1200000,
+        order: 20,
+        syncTarget: 'tasks',
+      },
+      {
+        id: 'demo-todo-product-docs',
+        title: '阅读产品文档',
+        projectId: 'study',
+        dueDate: demoDateKey(2),
+        time: '',
+        itemType: 'todo',
+        completed: false,
+        createdAt: now - 5 * 86400000,
+        updatedAt: now - 900000,
+        order: 30,
+        syncTarget: 'tasks',
+      },
+      {
+        id: 'demo-todo-health-check',
+        title: '预约体检',
+        projectId: 'life',
+        dueDate: demoDateKey(4),
+        time: '09:00',
+        itemType: 'todo',
+        completed: false,
+        createdAt: now - 4 * 86400000,
+        updatedAt: now - 600000,
+        order: 40,
+        syncTarget: 'tasks',
+      },
+      {
+        id: 'demo-todo-presentation',
+        title: '准备项目演示',
+        projectId: 'product',
+        dueDate: demoDateKey(6),
+        time: '',
+        itemType: 'todo',
+        completed: false,
+        createdAt: now - 3 * 86400000,
+        updatedAt: now - 480000,
+        order: 50,
+        syncTarget: 'tasks',
+      },
+      {
+        id: 'demo-todo-gift',
+        title: '购买生日礼物',
+        projectId: 'life',
+        dueDate: demoDateKey(3),
+        time: '',
+        itemType: 'todo',
+        completed: false,
+        createdAt: now - 2 * 86400000,
+        updatedAt: now - 420000,
+        order: 60,
+        syncTarget: 'tasks',
+      },
+      {
+        id: 'demo-todo-trip-list',
+        title: '整理旅行清单',
+        projectId: 'travel',
+        dueDate: keyFor(saturday),
+        time: '',
+        itemType: 'todo',
+        completed: false,
+        createdAt: now - 86400000,
+        updatedAt: now - 360000,
+        order: 70,
+        syncTarget: 'tasks',
+      },
+      {
+        id: 'demo-completed-room',
+        title: '确认会议室预订',
+        projectId: 'work',
+        dueDate: demoDateKey(-1),
+        completedDate: demoDateKey(-1),
+        time: '',
+        itemType: 'todo',
+        completed: true,
+        createdAt: now - 8 * 86400000,
+        updatedAt: now - 20 * 3600000,
+        order: 80,
+        syncTarget: 'tasks',
+      },
+      {
+        id: 'demo-completed-release-notes',
+        title: '更新版本说明',
+        projectId: 'product',
+        dueDate: demoDateKey(0),
+        completedDate: demoDateKey(0),
+        time: '',
+        itemType: 'todo',
+        completed: true,
+        createdAt: now - 5 * 86400000,
+        updatedAt: now - 2 * 3600000,
+        order: 90,
+        syncTarget: 'tasks',
+      },
+      {
+        id: 'demo-event-standup',
+        title: '团队晨会',
+        projectId: 'inbox',
+        dueDate: demoDateKey(0),
+        endDate: demoDateKey(0),
+        time: '09:30',
+        endTime: '10:00',
+        eventColor: '#039be5',
+        itemType: 'event',
+        completed: false,
+        createdAt: now - 9 * 86400000,
+        updatedAt: now - 240000,
+        order: 100,
+        syncTarget: 'calendar',
+      },
+      {
+        id: 'demo-event-review',
+        title: '产品评审',
+        projectId: 'inbox',
+        dueDate: demoDateKey(1),
+        endDate: demoDateKey(1),
+        time: '14:00',
+        endTime: '15:00',
+        eventColor: '#e67c73',
+        itemType: 'event',
+        completed: false,
+        createdAt: now - 8 * 86400000,
+        updatedAt: now - 180000,
+        order: 110,
+        syncTarget: 'calendar',
+      },
+      {
+        id: 'demo-event-health',
+        title: '年度体检',
+        projectId: 'inbox',
+        dueDate: demoDateKey(4),
+        endDate: demoDateKey(4),
+        time: '',
+        endTime: '',
+        eventColor: '#33b679',
+        itemType: 'event',
+        completed: false,
+        createdAt: now - 7 * 86400000,
+        updatedAt: now - 120000,
+        order: 120,
+        syncTarget: 'calendar',
+      },
+      {
+        id: 'demo-event-sharing',
+        title: '线上分享会',
+        projectId: 'inbox',
+        dueDate: demoDateKey(6),
+        endDate: demoDateKey(6),
+        time: '19:30',
+        endTime: '20:30',
+        eventColor: '#8e24aa',
+        itemType: 'event',
+        completed: false,
+        createdAt: now - 6 * 86400000,
+        updatedAt: now - 90000,
+        order: 130,
+        syncTarget: 'calendar',
+      },
+      {
+        id: 'demo-event-weekend-trip',
+        title: '周末短途旅行',
+        projectId: 'inbox',
+        dueDate: nextFriday,
+        endDate: keyFor(sunday),
+        time: '',
+        endTime: '',
+        eventColor: '#f4511e',
+        itemType: 'event',
+        completed: false,
+        createdAt: now - 5 * 86400000,
+        updatedAt: now - 60000,
+        order: 140,
+        syncTarget: 'calendar',
+      },
+    ],
+  };
+}
+
+function ensureDemoData() {
+  if (!DEMO_MODE) return;
+  const target = dataPath();
+  if (DEMO_RESET_MODE && fs.existsSync(target)) fs.unlinkSync(target);
+  if (fs.existsSync(target)) return;
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, JSON.stringify(buildDemoState(), null, 2), 'utf8');
 }
 
 function desktopWindowHelperPath() {
@@ -1204,6 +1474,7 @@ app.on('second-instance', () => {
 
 app.whenReady().then(() => {
   if (!hasSingleInstanceLock) return;
+  ensureDemoData();
   ensureDailyBackup();
   createWindow();
   createTray();
@@ -1330,6 +1601,13 @@ ipcMain.handle('data:export', async (_event, payload) => {
 });
 
 ipcMain.handle('google:status', () => {
+  if (DEMO_MODE) {
+    return {
+      connected: false,
+      requiresCalendarReauth: false,
+      credentialsAvailable: false,
+    };
+  }
   const token = loadGoogleToken();
   const scopes = new Set(String(token?.scope || '').split(/\s+/).filter(Boolean));
   const hasCalendarListScope = scopes.has('https://www.googleapis.com/auth/calendar')
@@ -1342,6 +1620,7 @@ ipcMain.handle('google:status', () => {
 });
 
 ipcMain.handle('google:connect', async () => {
+  if (DEMO_MODE) throw new Error('演示模式不会连接真实 Google 账户');
   if (!fs.existsSync(googleCredentialsPath())) throw new Error('项目目录中没有找到 credentials.json');
   return connectGoogle();
 });
@@ -1361,12 +1640,16 @@ ipcMain.handle('google:disconnect', async () => {
   return { connected: false, credentialsAvailable: fs.existsSync(googleCredentialsPath()) };
 });
 
-ipcMain.handle('google:sync', (_event, payload) => syncGoogleState(payload));
-ipcMain.handle('google:delete-task', (_event, task) => deleteGoogleTask(task));
+ipcMain.handle('google:sync', (_event, payload) => {
+  if (DEMO_MODE) return { state: payload, summary: { uploaded: 0, downloaded: 0, deleted: 0, externalCalendarDownloaded: 0, projectsUploaded: 0, projectsDownloaded: 0 } };
+  return syncGoogleState(payload);
+});
+ipcMain.handle('google:delete-task', (_event, task) => DEMO_MODE ? false : deleteGoogleTask(task));
 
 ipcMain.handle('settings:auto-start', (_event, enabled) => {
+  if (DEMO_MODE) return false;
   app.setLoginItemSettings({ openAtLogin: Boolean(enabled) });
   return app.getLoginItemSettings().openAtLogin;
 });
 
-ipcMain.handle('settings:get-auto-start', () => app.getLoginItemSettings().openAtLogin);
+ipcMain.handle('settings:get-auto-start', () => DEMO_MODE ? false : app.getLoginItemSettings().openAtLogin);
