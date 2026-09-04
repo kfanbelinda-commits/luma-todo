@@ -338,13 +338,17 @@ async function icloudPropfind(url, credentials, depth, body) {
   });
   const text = await response.text();
   if (!response.ok) {
+    const requestId = response.headers.get('x-apple-request-uuid')
+      || response.headers.get('x-apple-jingle-correlation-key')
+      || '';
+    const suffix = requestId ? ' · Apple Request ID: ' + requestId : '';
     if (response.status === 401) {
-      throw new Error('iCloud 登录失败，请确认 Apple 账户邮箱和 App 专用密码');
+      throw new Error('iCloud 身份验证被拒绝（HTTP 401）' + suffix);
     }
     if (response.status === 403) {
-      throw new Error('iCloud 拒绝访问日历，请确认该账户已启用 iCloud 日历');
+      throw new Error('iCloud 日历访问被拒绝（HTTP 403）' + suffix);
     }
-    throw new Error('iCloud CalDAV 请求失败（HTTP ' + response.status + '）');
+    throw new Error('iCloud CalDAV 请求失败（HTTP ' + response.status + '）' + suffix);
   }
   return { text, url: response.url || url };
 }
@@ -352,12 +356,28 @@ async function icloudPropfind(url, credentials, depth, body) {
 async function discoverIcloudCalendars(credentials) {
   const principalQuery = '<?xml version="1.0" encoding="UTF-8"?>'
     + '<d:propfind xmlns:d="DAV:"><d:prop><d:current-user-principal/></d:prop></d:propfind>';
-  const principalResponse = await icloudPropfind(
-    'https://caldav.icloud.com/',
-    credentials,
-    0,
-    principalQuery
-  );
+
+  let principalResponse;
+  try {
+    principalResponse = await icloudPropfind(
+      'https://caldav.icloud.com/.well-known/caldav',
+      credentials,
+      0,
+      principalQuery
+    );
+  } catch (error) {
+    const message = String(error && error.message || error || '');
+    if (/HTTP (400|404|405)/.test(message)) {
+      principalResponse = await icloudPropfind(
+        'https://caldav.icloud.com/',
+        credentials,
+        0,
+        principalQuery
+      );
+    } else {
+      throw error;
+    }
+  }
   const principalInner = xmlLocalTagInner(principalResponse.text, 'current-user-principal');
   const principalHref = xmlLocalTagText(principalInner, 'href');
   const principalUrl = resolveCaldavHref(principalHref, principalResponse.url);
