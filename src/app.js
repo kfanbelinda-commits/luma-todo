@@ -836,8 +836,7 @@ function renderCalendar() {
     const visibleSpans = spanningEvents.slice(0, 1);
     const slots = Math.max(0, 3 - visibleSpans.length);
     const frontItems = [...singleEvents, ...activeTodos];
-    const frontLimit = completedTodos.length && slots > 0 ? Math.max(0, slots - 1) : slots;
-    const visibleFront = frontItems.slice(0, frontLimit);
+    const visibleFront = frontItems.slice(0, slots);
     const visibleCompleted = completedTodos.slice(0, Math.max(0, slots - visibleFront.length));
     const visibleItems = [...visibleFront, ...visibleCompleted];
     const totalCount = spanningEvents.length + singleEvents.length + activeTodos.length + completedTodos.length;
@@ -950,9 +949,7 @@ function renderCalendar() {
     if (hiddenCount > 0) {
       const overflow = document.createElement('div');
       overflow.className = 'day-overflow';
-      const hiddenCompleted = Math.max(0, completedTodos.length - visibleCompleted.length);
-      const hiddenNonCompleted = Math.max(0, hiddenCount - hiddenCompleted);
-      overflow.textContent = hiddenNonCompleted === 0 && hiddenCompleted > 0 ? `+${hiddenCompleted} 已完成` : `+${hiddenCount}`;
+      overflow.textContent = `+${hiddenCount}`;
       overflow.title = `还有 ${hiddenCount} 项未显示，点击日期查看`;
       events.appendChild(overflow);
     }
