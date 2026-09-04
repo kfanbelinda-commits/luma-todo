@@ -75,6 +75,8 @@ let calendarWheelDelta = 0;
 let calendarWheelResetTimer = null;
 let calendarWheelLockedUntil = 0;
 const expandedCompleted = new Set();
+const COMPLETION_GRACE_MS = 1500;
+const pendingTaskCompletions = new Map();
 let collapsedProjects = new Set();
 
 function normalizeState(input) {
@@ -450,9 +452,11 @@ function applyColorMode(lightMode) {
 function taskElement(task) {
   const project = projectById(task.projectId);
   const externalCalendar = Boolean(task.googleCalendarExternal || task.syncTarget === 'external-calendar');
+  const pendingCompletion = isTaskPendingCompletion(task.id);
+  const visuallyCompleted = task.completed || pendingCompletion;
   const item = document.createElement('article');
-  item.className = `task-item${task.completed ? ' completed' : ''}${externalCalendar ? ' external-calendar-event' : ''}${activeTaskMenuId === task.id ? ' menu-open' : ''}`;
-  item.draggable = !task.completed && !externalCalendar;
+  item.className = `task-item${visuallyCompleted ? ' completed' : ''}${pendingCompletion ? ' pending-completion' : ''}${externalCalendar ? ' external-calendar-event' : ''}${activeTaskMenuId === task.id ? ' menu-open' : ''}`;
+  item.draggable = !visuallyCompleted && !externalCalendar;
   item.dataset.taskId = task.id;
   item.style.setProperty('--task-color', project.color);
 
@@ -465,7 +469,7 @@ function taskElement(task) {
   if (task.dueDate) scheduleParts.push(task.dueDate === dayOffset(0) ? '今天' : formatShortDate(task.dueDate));
 
   item.innerHTML = `
-    <button class="check" aria-label="${externalCalendar ? 'Google Calendar 事件' : (task.completed ? '恢复任务' : '完成任务')}"${externalCalendar ? ' disabled' : ''}></button>
+    <button class="check" aria-label="${externalCalendar ? 'Google Calendar 事件' : (visuallyCompleted ? '恢复任务' : '完成任务')}"${externalCalendar ? ' disabled' : ''}></button>
     <div class="task-copy">
       <input class="task-title" value="${escapeAttribute(task.title)}" aria-label="任务标题"${externalCalendar ? ' readonly' : ''} />
       ${meta.length ? `<div class="task-meta">${meta.join('')}</div>` : ''}
@@ -870,23 +874,27 @@ function renderCalendar() {
       const project = projectById(task.projectId);
       const calendarEvent = isCalendarEvent(task);
       const external = Boolean(task.googleCalendarExternal || task.syncTarget === 'external-calendar');
-      item.className = `day-event${calendarEvent ? ' calendar-event-item' : ' calendar-todo-item'}${task.completed ? ' completed-calendar-event' : ''}${task.id === highlightedTaskId ? ' highlighted' : ''}${external ? ' google-calendar-event' : ''}${calendarEventResizeState?.taskId === task.id ? ' event-resizing' : ''}`;
-      item.draggable = !calendarEvent && !task.completed;
+      const pendingCompletion = !calendarEvent && isTaskPendingCompletion(task.id);
+      const visuallyCompleted = task.completed || pendingCompletion;
+      item.className = `day-event${calendarEvent ? ' calendar-event-item' : ' calendar-todo-item'}${visuallyCompleted ? ' completed-calendar-event' : ''}${pendingCompletion ? ' pending-completion' : ''}${task.id === highlightedTaskId ? ' highlighted' : ''}${external ? ' google-calendar-event' : ''}${calendarEventResizeState?.taskId === task.id ? ' event-resizing' : ''}`;
+      item.draggable = !calendarEvent && !visuallyCompleted;
       item.setAttribute('role', 'button');
       item.setAttribute('tabindex', '0');
       item.style.setProperty('--event-color', calendarEvent ? eventColorFor(task) : project.color);
       const calendarItemText = `${task.time ? `${task.time} ` : ''}${task.title}`;
-      if (!calendarEvent && !task.completed) {
-        item.innerHTML = `<button class="calendar-todo-check" type="button" draggable="false" aria-label="完成 ${escapeAttribute(task.title)}"></button><span class="calendar-item-label">${escapeAttribute(calendarItemText)}</span>`;
+      if (!calendarEvent && (!task.completed || pendingCompletion)) {
+        item.innerHTML = `<button class="calendar-todo-check${pendingCompletion ? ' is-checked' : ''}" type="button" draggable="false" aria-label="${pendingCompletion ? '撤销完成' : '完成'} ${escapeAttribute(task.title)}"></button><span class="calendar-item-label">${escapeAttribute(calendarItemText)}</span>`;
       } else {
         item.innerHTML = `<span class="calendar-item-label">${escapeAttribute(calendarItemText)}</span>`;
       }
-      item.title = task.completed
-        ? `${task.title} · 已完成`
-        : (calendarEvent
-          ? `${task.title} · 日程${external ? ' · Google Calendar（只读）' : ''}`
-          : `${task.title} · 待办 · 点击文字修改安排，点击方框完成`);
-      if (!calendarEvent && !task.completed) {
+      item.title = pendingCompletion
+        ? `${task.title} · 已完成 · 再点方框可撤销`
+        : (task.completed
+          ? `${task.title} · 已完成`
+          : (calendarEvent
+            ? `${task.title} · 日程${external ? ' · Google Calendar（只读）' : ''}`
+            : `${task.title} · 待办 · 点击文字修改安排，点击方框完成`));
+      if (!calendarEvent && (!task.completed || pendingCompletion)) {
         const todoCheck = item.querySelector('.calendar-todo-check');
         todoCheck.addEventListener('pointerdown', (pointerEvent) => pointerEvent.stopPropagation());
         todoCheck.addEventListener('dblclick', (doubleClickEvent) => doubleClickEvent.stopPropagation());
@@ -1114,11 +1122,12 @@ function renderCalendarDetail() {
     todos.forEach((task) => {
       const project = projectById(task.projectId);
       const row = document.createElement('div');
-      row.className = 'calendar-detail-todo-row';
+      const pendingCompletion = isTaskPendingCompletion(task.id);
+      row.className = `calendar-detail-todo-row${pendingCompletion ? ' pending-completion' : ''}`;
       row.style.setProperty('--detail-color', project.color);
       const overdue = task.dueDate < calendarDetailDate;
       row.innerHTML = `
-        <button class="calendar-detail-check" type="button" aria-label="完成 ${escapeAttribute(task.title)}"></button>
+        <button class="calendar-detail-check${pendingCompletion ? ' is-checked' : ''}" type="button" aria-label="${pendingCompletion ? '撤销完成' : '完成'} ${escapeAttribute(task.title)}"></button>
         <span class="calendar-detail-task-title">${escapeAttribute(task.time ? `${task.time} ${task.title}` : task.title)}</span>
         ${overdue ? '<span class="calendar-detail-overdue">之前</span>' : ''}
         <span class="calendar-detail-project">${escapeAttribute(project.name)}</span>
@@ -1668,13 +1677,56 @@ async function addTask() {
   await addTaskToProject('inbox', $('#quickInput'));
 }
 
+function isTaskPendingCompletion(id) {
+  return pendingTaskCompletions.has(id);
+}
+
+function cancelPendingTaskCompletion(id) {
+  const timer = pendingTaskCompletions.get(id);
+  if (timer) clearTimeout(timer);
+  pendingTaskCompletions.delete(id);
+}
+
+async function finalizeTaskCompletion(id) {
+  if (!pendingTaskCompletions.has(id)) return;
+  pendingTaskCompletions.delete(id);
+
+  const task = state.tasks.find((item) => item.id === id);
+  if (!task || task.completed || task.googleCalendarExternal || task.syncTarget === 'external-calendar') return;
+
+  task.completed = true;
+  task.completedDate = dayOffset(0);
+  task.updatedAt = Date.now();
+  await persist();
+  render();
+}
+
 async function toggleTask(id) {
   const task = state.tasks.find((item) => item.id === id);
   if (!task || task.googleCalendarExternal || task.syncTarget === 'external-calendar') return;
-  task.completed = !task.completed;
-  task.completedDate = task.completed ? dayOffset(0) : null;
-  task.updatedAt = Date.now();
-  await persist();
+
+  // A second click during the grace period is the undo action.
+  if (isTaskPendingCompletion(id)) {
+    cancelPendingTaskCompletion(id);
+    render();
+    return;
+  }
+
+  // Tasks already stored in Completed restore immediately.
+  if (task.completed) {
+    task.completed = false;
+    task.completedDate = null;
+    task.updatedAt = Date.now();
+    await persist();
+    render();
+    return;
+  }
+
+  // Show completion feedback immediately, but do not persist/move the task yet.
+  const timer = setTimeout(() => {
+    finalizeTaskCompletion(id).catch((error) => console.error('无法完成待办', error));
+  }, COMPLETION_GRACE_MS);
+  pendingTaskCompletions.set(id, timer);
   render();
 }
 
@@ -1824,6 +1876,7 @@ async function toggleTaskCalendar() {
 }
 
 async function deleteTask(id) {
+  cancelPendingTaskCompletion(id);
   const task = state.tasks.find((item) => item.id === id);
   if (task?.googleCalendarExternal || task?.syncTarget === 'external-calendar') return;
   if (task && state.settings.googleConnected && (task.googleCalendarEventId || task.googleTaskId)) {
