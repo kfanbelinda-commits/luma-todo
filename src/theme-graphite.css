@@ -1185,12 +1185,12 @@ html[data-theme="light"] .task-item.menu-open .task-more {
   padding: 14px 15px 13px;
 }
 .settings-modal .modal-title { min-height: 35px; align-items: flex-start; }
-.settings-modal .modal-title h3 { font-size: 17px; line-height: 20px; }
+.settings-modal .modal-title h3 { font-size: 18px; line-height: 22px; font-weight: 720; }
 .settings-modal .modal-title .eyebrow {
   margin-top: 2px;
-  color: rgba(232,236,244,.56);
-  font-size: 10px;
-  line-height: 14px;
+  color: rgba(232,236,244,.62);
+  font-size: 11px;
+  line-height: 15px;
   letter-spacing: .04em;
 }
 .settings-close-button {
@@ -1223,9 +1223,9 @@ html[data-theme="light"] .task-item.menu-open .task-more {
 }
 .settings-modal .settings-section:last-child { border-bottom: 0; }
 .settings-modal .settings-section strong,
-.settings-modal .account-card strong { font-size: 13px; line-height: 17px; }
+.settings-modal .account-card strong { font-size: 13.5px; line-height: 18px; font-weight: 680; }
 .settings-modal .settings-section small,
-.settings-modal .account-card small { margin-top: 1px; font-size: 10px; line-height: 14px; }
+.settings-modal .account-card small { margin-top: 2px; font-size: 11px; line-height: 15px; }
 .settings-modal .opacity-control { min-width: 122px; grid-template-columns: 34px 1fr; gap: 6px; }
 .settings-modal .account-card {
   min-height: 56px;
@@ -3934,10 +3934,10 @@ html[data-theme="light"] .settings-modal .reminders-bridge-logo {
 .apple-sync-kind > span {
   display: block;
   overflow: hidden;
-  color: rgba(248,249,252,.93);
-  font-size: 12.5px;
-  font-weight: 680;
-  line-height: 16px;
+  color: rgba(248,249,252,.95);
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 18px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -3945,11 +3945,11 @@ html[data-theme="light"] .settings-modal .reminders-bridge-logo {
 .sync-copy small,
 .apple-sync-kind small {
   display: block;
-  margin-top: 1px;
+  margin-top: 2px;
   overflow: hidden;
-  color: rgba(232,236,244,.57);
-  font-size: 9.5px;
-  line-height: 13px;
+  color: rgba(232,236,244,.64);
+  font-size: 11px;
+  line-height: 15px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -3963,21 +3963,22 @@ html[data-theme="light"] .settings-modal .reminders-bridge-logo {
 
 .settings-modal .sync-actions .soft-button {
   min-width: 0;
-  min-height: 27px;
-  padding: 0 8px;
+  min-height: 29px;
+  padding: 0 9px;
   border-radius: 8px;
-  font-size: 10px;
-  line-height: 25px;
+  font-size: 11px;
+  font-weight: 620;
+  line-height: 27px;
   white-space: nowrap;
 }
 
 .sync-note,
 .apple-sync-note {
-  margin: 5px 0 0 39px !important;
+  margin: 6px 0 0 39px !important;
   padding: 0 !important;
-  color: rgba(232,236,244,.49) !important;
-  font-size: 9px !important;
-  line-height: 13px !important;
+  color: rgba(232,236,244,.58) !important;
+  font-size: 10.5px !important;
+  line-height: 15px !important;
 }
 
 .apple-sync-card {
@@ -3985,7 +3986,7 @@ html[data-theme="light"] .settings-modal .reminders-bridge-logo {
 }
 
 .apple-sync-heading {
-  min-height: 47px;
+  min-height: 50px;
   border-bottom: 1px solid rgba(255,255,255,.055);
 }
 
@@ -3995,7 +3996,7 @@ html[data-theme="light"] .settings-modal .reminders-bridge-logo {
 }
 
 .apple-sync-row {
-  min-height: 43px;
+  min-height: 47px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -4008,8 +4009,8 @@ html[data-theme="light"] .settings-modal .reminders-bridge-logo {
 }
 
 .apple-sync-kind > span {
-  font-size: 11.5px;
-  line-height: 15px;
+  font-size: 12.5px;
+  line-height: 17px;
 }
 
 .apple-sync-divider {
@@ -4025,9 +4026,9 @@ html[data-theme="light"] .settings-modal .reminders-bridge-logo {
 }
 
 .icloud-credentials input {
-  height: 29px;
+  height: 31px;
   border-radius: 7px;
-  font-size: 9.5px;
+  font-size: 11px;
 }
 
 .icloud-calendar-target {
@@ -4037,19 +4038,19 @@ html[data-theme="light"] .settings-modal .reminders-bridge-logo {
 }
 
 .icloud-calendar-target label {
-  font-size: 9px;
+  font-size: 10.5px;
 }
 
 .icloud-calendar-target select {
-  height: 29px;
+  height: 31px;
   border-radius: 7px;
-  font-size: 9.5px;
+  font-size: 11px;
 }
 
 .settings-modal .experimental-badge {
-  margin-left: 3px;
-  padding: 1px 4px;
-  font-size: 7px;
+  margin-left: 4px;
+  padding: 1px 5px;
+  font-size: 8px;
   vertical-align: 1px;
 }
 
@@ -4077,9 +4078,11 @@ html[data-theme="light"] .apple-sync-kind > span {
 }
 
 html[data-theme="light"] .sync-copy small,
-html[data-theme="light"] .apple-sync-kind small,
+html[data-theme="light"] .apple-sync-kind small {
+  color: #666 !important;
+}
 html[data-theme="light"] .sync-note,
 html[data-theme="light"] .apple-sync-note {
-  color: #777 !important;
+  color: #707070 !important;
 }
 
