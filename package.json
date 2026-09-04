@@ -11,7 +11,7 @@
   "author": "Luma Todo",
   "license": "MIT",
   "scripts": {
-    "start": "electron . --demo",
+    "start": "electron .",
     "check": "node --check main.cjs && node --check preload.cjs && node --check src/app.js",
     "dist": "electron-builder --win --publish never",
     "release": "electron-builder --win --publish always",
