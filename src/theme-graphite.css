@@ -4103,3 +4103,32 @@ html[data-theme="light"] .apple-sync-note {
   padding-bottom: 5px;
 }
 
+/* Calendar rows must never compress just to fit more items. */
+.calendar-day > .day-number,
+.calendar-day > .day-spans {
+  flex: 0 0 auto;
+}
+.calendar-day > .day-events {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.day-event,
+.day-overflow {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.day-event .calendar-item-label {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* Crowding changes visibility count, not typography/row height. */
+.calendar-day.crowded .day-event {
+  padding: 2px 5px;
+  font-size: 11px;
+  line-height: 1.15;
+}
