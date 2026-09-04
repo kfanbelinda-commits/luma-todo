@@ -2739,3 +2739,42 @@ html[data-theme="light"] .day-event.calendar-todo-item.completed-calendar-event:
   border-color: color-mix(in srgb, var(--event-color) 22%, #ffffff 78%);
   background: color-mix(in srgb, var(--event-color) 13%, #ffffff 87%);
 }
+
+
+/* Stable event form geometry + softer Google Calendar colors. */
+/* Date and time never swap positions when Todo turns into Event. */
+.calendar-create-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+.calendar-start-date-field {
+  grid-column: 1;
+  grid-row: 1;
+}
+.calendar-time-field {
+  grid-column: 2;
+  grid-row: 1;
+}
+.calendar-end-date-field {
+  grid-column: 1;
+  grid-row: 2;
+}
+#calendarTaskEndDateLabel[hidden] {
+  display: none !important;
+}
+
+/* Google Calendar keeps its source hue, but renders as a lighter read-only pastel. */
+html[data-theme="light"] .day-event.calendar-event-item.google-calendar-event,
+html[data-theme="light"] .calendar-span-event.google-calendar-event {
+  border-color: color-mix(in srgb, var(--event-color) 34%, #ffffff 66%);
+  color: color-mix(in srgb, var(--event-color) 24%, #424242 76%);
+  background: color-mix(in srgb, var(--event-color) 20%, #ffffff 80%);
+  opacity: 1;
+}
+
+html[data-theme="light"] .day-event.calendar-event-item.google-calendar-event:hover,
+html[data-theme="light"] .day-event.calendar-event-item.google-calendar-event:focus-visible,
+html[data-theme="light"] .calendar-span-event.google-calendar-event:hover {
+  border-color: color-mix(in srgb, var(--event-color) 42%, #ffffff 58%);
+  background: color-mix(in srgb, var(--event-color) 26%, #ffffff 74%);
+}
