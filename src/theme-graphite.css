@@ -2685,3 +2685,57 @@ html[data-theme="light"] .calendar-panel .today .day-number {
   border-radius: 6px;
   text-align: center;
 }
+
+
+/* Calendar item color balance: stronger than the pale pass, lighter than the old solid blocks. */
+/* Todo keeps the project color visible across the whole chip. */
+html[data-theme="light"] .day-event.calendar-todo-item {
+  border-color: color-mix(in srgb, var(--event-color) 42%, #ffffff 58%);
+  color: color-mix(in srgb, var(--event-color) 40%, #242424 60%);
+  background: color-mix(in srgb, var(--event-color) 28%, #ffffff 72%);
+}
+html[data-theme="light"] .day-event.calendar-todo-item::before {
+  border-color: color-mix(in srgb, var(--event-color) 78%, #5f5f5f 22%);
+  background: rgba(255,255,255,.55);
+}
+html[data-theme="light"] .day-event.calendar-todo-item:hover,
+html[data-theme="light"] .day-event.calendar-todo-item:focus-visible {
+  border-color: color-mix(in srgb, var(--event-color) 52%, #ffffff 48%);
+  background: color-mix(in srgb, var(--event-color) 34%, #ffffff 66%);
+}
+
+/* Event is the denser calendar object, but stays below the old solid-fill weight. */
+html[data-theme="light"] .day-event.calendar-event-item {
+  border-color: color-mix(in srgb, var(--event-color) 58%, #ffffff 42%);
+  color: color-mix(in srgb, var(--event-color) 32%, #242424 68%);
+  background: color-mix(in srgb, var(--event-color) 42%, #ffffff 58%);
+}
+html[data-theme="light"] .day-event.calendar-event-item:hover,
+html[data-theme="light"] .day-event.calendar-event-item:focus-visible {
+  border-color: color-mix(in srgb, var(--event-color) 68%, #ffffff 32%);
+  background: color-mix(in srgb, var(--event-color) 49%, #ffffff 51%);
+}
+
+/* Multi-day Events use the same weight as single-day Events. */
+html[data-theme="light"] .calendar-span-event {
+  border-color: color-mix(in srgb, var(--event-color) 58%, #ffffff 42%);
+  color: color-mix(in srgb, var(--event-color) 32%, #242424 68%);
+  background: color-mix(in srgb, var(--event-color) 44%, #ffffff 56%);
+}
+html[data-theme="light"] .calendar-span-event:hover {
+  background: color-mix(in srgb, var(--event-color) 51%, #ffffff 49%);
+}
+
+/* Completed Todo remains recognizable as history without becoming a second active item. */
+html[data-theme="light"] .day-event.calendar-todo-item.completed-calendar-event {
+  border-color: color-mix(in srgb, var(--event-color) 18%, #ffffff 82%);
+  color: #8a8a8a;
+  background: color-mix(in srgb, var(--event-color) 10%, #ffffff 90%);
+  opacity: .82;
+  text-decoration-color: #a8a8a8;
+}
+html[data-theme="light"] .day-event.calendar-todo-item.completed-calendar-event:hover,
+html[data-theme="light"] .day-event.calendar-todo-item.completed-calendar-event:focus-visible {
+  border-color: color-mix(in srgb, var(--event-color) 22%, #ffffff 78%);
+  background: color-mix(in srgb, var(--event-color) 13%, #ffffff 87%);
+}
