@@ -2294,3 +2294,67 @@ html[data-theme="light"] .time-option-all-day {
   border-color: rgba(58,71,92,.10);
   color: #526071;
 }
+
+
+/* Light Calendar: neutral Microsoft-style surface. */
+html[data-theme="light"] .calendar-panel {
+  background: rgba(244,244,242,calc(var(--panel-opacity) + .03));
+}
+html[data-theme="light"] .calendar-panel .calendar-header .soft-button,
+html[data-theme="light"] .calendar-panel .month-controls .soft-button {
+  color: #555856;
+  background: rgba(255,255,255,.50);
+  border-color: rgba(50,50,48,.10);
+}
+html[data-theme="light"] .calendar-panel .calendar-header .soft-button:hover,
+html[data-theme="light"] .calendar-panel .month-controls .soft-button:hover {
+  color: #272826;
+  background: rgba(255,255,255,.78);
+}
+html[data-theme="light"] .calendar-panel .weekdays,
+html[data-theme="light"] .calendar-panel .day-number {
+  color: #515350;
+}
+html[data-theme="light"] .calendar-panel .month-lunar,
+html[data-theme="light"] .calendar-panel .calendar-footer,
+html[data-theme="light"] .calendar-panel .day-overflow {
+  color: rgba(63,64,61,.58);
+}
+html[data-theme="light"] .calendar-panel .calendar-grid,
+html[data-theme="light"] .calendar-panel .calendar-day {
+  border-color: rgba(50,50,48,.085);
+}
+html[data-theme="light"] .calendar-panel .calendar-day:hover,
+html[data-theme="light"] .calendar-panel .calendar-day:focus-visible {
+  background: rgba(255,255,255,.48);
+  box-shadow: inset 0 0 0 1px rgba(50,50,48,.075);
+}
+html[data-theme="light"] .calendar-panel .calendar-day.focused-date {
+  background: rgba(255,255,255,.26);
+}
+html[data-theme="light"] .calendar-panel .calendar-day.muted {
+  background: rgba(50,50,48,.022);
+}
+html[data-theme="light"] .calendar-panel .calendar-day.muted .day-number {
+  color: rgba(58,59,56,.34);
+}
+html[data-theme="light"] .calendar-panel .calendar-day.muted:hover,
+html[data-theme="light"] .calendar-panel .calendar-day.muted:focus-visible {
+  background: rgba(50,50,48,.040);
+}
+html[data-theme="light"] .calendar-panel.calendar-detail-open .calendar-day.selected-date {
+  background: rgba(255,255,255,.90);
+  box-shadow: inset 0 0 0 2px var(--action-focus-ring), 0 4px 14px rgba(50,50,48,.09);
+}
+html[data-theme="light"] .calendar-panel .calendar-detail {
+  border-color: rgba(50,50,48,.11);
+  background: rgba(250,250,248,.98);
+  box-shadow: 0 16px 40px rgba(50,50,48,.13), inset 0 1px 0 rgba(255,255,255,.90);
+}
+html[data-theme="light"] .calendar-panel .calendar-detail-header,
+html[data-theme="light"] .calendar-panel .calendar-detail-section + .calendar-detail-section {
+  border-color: rgba(50,50,48,.075);
+}
+html[data-theme="light"] .calendar-panel.calendar-detail-open .calendar-detail {
+  box-shadow: 0 20px 48px rgba(50,50,48,.16), 0 5px 18px rgba(50,50,48,.08), inset 0 1px 0 rgba(255,255,255,.92);
+}
