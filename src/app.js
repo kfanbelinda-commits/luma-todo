@@ -765,6 +765,7 @@ function animateCalendarMonth(direction = 0) {
 
 window.addEventListener('resize', () => {
   if (calendarDetailDate) requestAnimationFrame(positionCalendarDetail);
+  requestAnimationFrame(fitAllCalendarCells);
 });
 
 function changeCalendarMonth(offset, animate = true) {
@@ -785,12 +786,57 @@ function goToCurrentCalendarMonth() {
   animateCalendarMonth(Math.sign(targetIndex - currentIndex));
 }
 
-function calendarCellLineCapacity(host) {
-  const gridHeight = Number(host?.clientHeight || 0);
-  if (!gridHeight) return 3;
-  const rowHeight = gridHeight / 6;
-  // Reserve space for the day number/padding; each visible calendar row is ~18px.
-  return Math.max(1, Math.floor((rowHeight - 34) / 18));
+function fitCalendarCellContent(cell) {
+  if (!cell) return;
+  const events = cell.querySelector('.day-events');
+  if (!events) return;
+
+  const items = [...events.querySelectorAll('.day-event')];
+  items.forEach((item) => { item.hidden = false; });
+  events.querySelector('.day-overflow')?.remove();
+
+  let hiddenCount = Number(cell.dataset.hiddenCalendarCount || 0);
+  let overflow = null;
+  const ensureOverflow = () => {
+    if (!overflow) {
+      overflow = document.createElement('div');
+      overflow.className = 'day-overflow';
+      overflow.addEventListener('click', (event) => {
+        event.stopPropagation();
+        openCalendarDetail(cell.dataset.date);
+      });
+      events.appendChild(overflow);
+    }
+    overflow.textContent = `+${hiddenCount}`;
+    overflow.title = `还有 ${hiddenCount} 项未显示，点击日期查看`;
+  };
+
+  if (hiddenCount > 0) ensureOverflow();
+
+  // Measure only after layout exists. Hide items from the end until the actual
+  // rendered cell fits; do not reserve a fixed number of rows in advance.
+  let index = items.length - 1;
+  while (events.scrollHeight > events.clientHeight + 1 && index >= 0) {
+    items[index].hidden = true;
+    hiddenCount += 1;
+    ensureOverflow();
+    index -= 1;
+  }
+
+  // Adding the overflow indicator itself can consume the last line.
+  while (overflow && events.scrollHeight > events.clientHeight + 1 && index >= 0) {
+    items[index].hidden = true;
+    hiddenCount += 1;
+    overflow.textContent = `+${hiddenCount}`;
+    overflow.title = `还有 ${hiddenCount} 项未显示，点击日期查看`;
+    index -= 1;
+  }
+
+  if (overflow && hiddenCount <= 0) overflow.remove();
+}
+
+function fitAllCalendarCells() {
+  document.querySelectorAll('.calendar-day').forEach((cell) => fitCalendarCellContent(cell));
 }
 
 function renderCalendar() {
@@ -841,32 +887,15 @@ function renderCalendar() {
       .filter((task) => !isCalendarEvent(task) && task.completed && (task.dueDate || task.completedDate) === key)
       .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
 
-    const lineCapacity = calendarCellLineCapacity(host);
-    const visibleSpans = spanningEvents.slice(0, Math.min(1, lineCapacity));
-    const frontItems = [...singleEvents, ...activeTodos];
-    const itemCapacity = Math.max(0, lineCapacity - visibleSpans.length);
-
-    let visibleFront = frontItems.slice(0, itemCapacity);
-    let visibleCompleted = completedTodos.slice(0, Math.max(0, itemCapacity - visibleFront.length));
-    let visibleItems = [...visibleFront, ...visibleCompleted];
-
-    const totalCount = spanningEvents.length + singleEvents.length + activeTodos.length + completedTodos.length;
-    let visibleCount = visibleSpans.length + visibleItems.length;
-    let hiddenCount = Math.max(0, totalCount - visibleCount);
-
-    // Only reserve an overflow row when the cell truly cannot fit everything.
-    if (hiddenCount > 0 && itemCapacity > 1) {
-      const contentCapacity = itemCapacity - 1;
-      visibleFront = frontItems.slice(0, contentCapacity);
-      visibleCompleted = completedTodos.slice(0, Math.max(0, contentCapacity - visibleFront.length));
-      visibleItems = [...visibleFront, ...visibleCompleted];
-      visibleCount = visibleSpans.length + visibleItems.length;
-      hiddenCount = Math.max(0, totalCount - visibleCount);
-    }
+    const visibleSpans = spanningEvents.slice(0, 1);
+    const visibleItems = [...singleEvents, ...activeTodos, ...completedTodos];
+    const totalCount = spanningEvents.length + visibleItems.length;
+    const hiddenCount = Math.max(0, spanningEvents.length - visibleSpans.length);
     const allCalendarItems = [...spanningEvents, ...singleEvents, ...activeTodos, ...completedTodos];
 
     const cell = document.createElement('div');
     cell.dataset.date = key;
+    cell.dataset.hiddenCalendarCount = String(hiddenCount);
     cell.className = `calendar-day${date.getMonth() !== month ? ' muted' : ''}${key === dayOffset(0) ? ' today' : ''}${key === calendarDetailDate ? ' selected-date' : ''}`;
     if (totalCount > 4) cell.classList.add('crowded');
     if (allCalendarItems.some((task) => task.id === highlightedTaskId)) cell.classList.add('focused-date');
@@ -967,14 +996,6 @@ function renderCalendar() {
       events.appendChild(item);
     });
 
-    if (hiddenCount > 0) {
-      const overflow = document.createElement('div');
-      overflow.className = 'day-overflow';
-      overflow.textContent = `+${hiddenCount}`;
-      overflow.title = `还有 ${hiddenCount} 项未显示，点击日期查看`;
-      events.appendChild(overflow);
-    }
-
     cell.setAttribute('role', 'button');
     cell.setAttribute('tabindex', '0');
     cell.setAttribute('title', `${date.getMonth() + 1}月${date.getDate()}日 · 单击查看当天详情，双击添加事项`);
@@ -1008,6 +1029,8 @@ function renderCalendar() {
     });
     host.appendChild(cell);
   }
+
+  requestAnimationFrame(fitAllCalendarCells);
 }
 
 function setCalendarDetailView(mode) {
