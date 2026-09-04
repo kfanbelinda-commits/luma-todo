@@ -824,7 +824,7 @@ function renderCalendar() {
       .sort(taskSort);
 
     const completedTodos = state.tasks
-      .filter((task) => !isCalendarEvent(task) && task.completed && (task.completedDate || task.dueDate) === key)
+      .filter((task) => !isCalendarEvent(task) && task.completed && (task.dueDate || task.completedDate) === key)
       .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
 
     const visibleSpans = spanningEvents.slice(0, 1);
