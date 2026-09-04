@@ -16,7 +16,8 @@
     "dist": "electron-builder --win --publish never",
     "release": "electron-builder --win --publish always",
     "start:demo": "electron . --demo",
-    "start:real": "electron ."
+    "start:real": "electron .",
+    "start:demo:reset": "electron . --demo --demo-reset"
   },
   "devDependencies": {
     "electron": "^44.1.1",
