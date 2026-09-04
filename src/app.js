@@ -1050,7 +1050,6 @@ async function moveTaskToDate(taskId, dateKey) {
 }
 
 function calendarItemModeFromTimeField() {
-  if (editingCalendarEventId) return 'event';
   const raw = String($('#calendarTaskTime')?.value || '').trim();
   return raw ? 'event' : 'todo';
 }
@@ -1065,10 +1064,15 @@ function updateCalendarItemDialogMode() {
     $('#calendarTaskEyebrow').textContent = '月历事项';
     $('#calendarTaskDialogTitle').textContent = '新建事项';
     $('#calendarTaskTitleText').textContent = '事项内容';
-    $('#calendarTaskDateText').textContent = eventMode ? '开始日期' : '日期';
-    $('#calendarTaskTimeText').textContent = '时间';
     $('#calendarTaskSubmit').textContent = '添加事项';
+  } else {
+    $('#calendarTaskEyebrow').textContent = eventMode ? '月历日程' : '月历待办';
+    $('#calendarTaskDialogTitle').textContent = eventMode ? '编辑日程' : '转为待办';
+    $('#calendarTaskTitleText').textContent = eventMode ? '日程内容' : '待办内容';
+    $('#calendarTaskSubmit').textContent = eventMode ? '保存日程' : '保存待办';
   }
+  $('#calendarTaskDateText').textContent = eventMode ? '开始日期' : '日期';
+  $('#calendarTaskTimeText').textContent = '时间';
 }
 
 function openCalendarTaskDialog(dateKey, mode = 'auto', eventId = null) {
@@ -1122,7 +1126,7 @@ async function createCalendarTask(event) {
   $('#calendarTaskTime').setCustomValidity('');
 
   const dueDate = $('#calendarTaskDate').value;
-  const eventMode = Boolean(editingCalendarEventId || allDay || time);
+  const eventMode = Boolean(allDay || time);
   const endDate = eventMode ? ($('#calendarTaskEndDate').value || dueDate) : '';
   if (eventMode && endDate < dueDate) {
     $('#calendarTaskEndDate').setCustomValidity('结束日期不能早于开始日期');
@@ -1136,12 +1140,23 @@ async function createCalendarTask(event) {
     if (task && !task.googleCalendarExternal && task.syncTarget !== 'external-calendar') {
       task.title = title;
       task.dueDate = dueDate;
-      task.endDate = endDate;
-      task.time = allDay ? '' : time;
-      task.eventColor = selectedEventColor;
-      task.itemType = 'event';
       task.completed = false;
-      task.syncTarget = 'calendar';
+      if (eventMode) {
+        task.endDate = endDate;
+        task.time = allDay ? '' : time;
+        task.eventColor = selectedEventColor;
+        task.itemType = 'event';
+        task.projectId = 'inbox';
+        task.syncTarget = 'calendar';
+      } else {
+        task.endDate = '';
+        task.endTime = '';
+        task.time = '';
+        task.eventColor = '';
+        task.itemType = 'todo';
+        task.projectId = $('#calendarTaskProject').value || 'inbox';
+        task.syncTarget = 'tasks';
+      }
       task.updatedAt = Date.now();
       editingCalendarEventId = null;
       $('#calendarTaskDialog').close();
