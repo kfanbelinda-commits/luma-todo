@@ -256,6 +256,147 @@ function saveGoogleToken(token) {
   fs.writeFileSync(target, safeStorage.encryptString(JSON.stringify(token)));
 }
 
+
+function icloudCredentialPath() {
+  return path.join(app.getPath('userData'), 'icloud-calendar.enc');
+}
+
+function loadIcloudCredentials() {
+  try {
+    const encrypted = fs.readFileSync(icloudCredentialPath());
+    if (!safeStorage.isEncryptionAvailable()) return null;
+    const parsed = JSON.parse(safeStorage.decryptString(encrypted));
+    if (!parsed || !parsed.email || !parsed.password) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveIcloudCredentials(credentials) {
+  if (!safeStorage.isEncryptionAvailable()) {
+    throw new Error('Windows 安全存储当前不可用，无法安全保存 iCloud 凭据');
+  }
+  const target = icloudCredentialPath();
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, safeStorage.encryptString(JSON.stringify(credentials)));
+}
+
+function clearIcloudCredentials() {
+  const target = icloudCredentialPath();
+  if (fs.existsSync(target)) fs.unlinkSync(target);
+}
+
+function decodeXmlText(value) {
+  return String(value || '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&')
+    .trim();
+}
+
+function xmlLocalTagInner(xml, localName) {
+  const pattern = new RegExp(
+    '<(?:[A-Za-z0-9_-]+:)?' + localName + '\\b[^>]*>([\\s\\S]*?)<\\/(?:[A-Za-z0-9_-]+:)?' + localName + '\\s*>',
+    'i'
+  );
+  const match = pattern.exec(xml);
+  return match ? match[1] : '';
+}
+
+function xmlLocalTagText(xml, localName) {
+  return decodeXmlText(xmlLocalTagInner(xml, localName).replace(/<[^>]+>/g, ''));
+}
+
+function resolveCaldavHref(href, baseUrl) {
+  if (!href) return '';
+  return new URL(decodeXmlText(href), baseUrl).toString();
+}
+
+function icloudAuthHeader(credentials) {
+  return 'Basic ' + Buffer.from(credentials.email + ':' + credentials.password, 'utf8').toString('base64');
+}
+
+async function icloudPropfind(url, credentials, depth, body) {
+  const response = await fetch(url, {
+    method: 'PROPFIND',
+    redirect: 'follow',
+    headers: {
+      Authorization: icloudAuthHeader(credentials),
+      Depth: String(depth),
+      'Content-Type': 'application/xml; charset=utf-8',
+      Accept: 'application/xml, text/xml',
+      'User-Agent': 'Luma-Todo/1.0 CalDAV'
+    },
+    body
+  });
+  const text = await response.text();
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('iCloud 登录失败，请确认 Apple 账户邮箱和 App 专用密码');
+    }
+    if (response.status === 403) {
+      throw new Error('iCloud 拒绝访问日历，请确认该账户已启用 iCloud 日历');
+    }
+    throw new Error('iCloud CalDAV 请求失败（HTTP ' + response.status + '）');
+  }
+  return { text, url: response.url || url };
+}
+
+async function discoverIcloudCalendars(credentials) {
+  const principalQuery = '<?xml version="1.0" encoding="UTF-8"?>'
+    + '<d:propfind xmlns:d="DAV:"><d:prop><d:current-user-principal/></d:prop></d:propfind>';
+  const principalResponse = await icloudPropfind(
+    'https://caldav.icloud.com/',
+    credentials,
+    0,
+    principalQuery
+  );
+  const principalInner = xmlLocalTagInner(principalResponse.text, 'current-user-principal');
+  const principalHref = xmlLocalTagText(principalInner, 'href');
+  const principalUrl = resolveCaldavHref(principalHref, principalResponse.url);
+  if (!principalUrl) throw new Error('已登录 iCloud，但未能发现 CalDAV Principal');
+
+  const homeQuery = '<?xml version="1.0" encoding="UTF-8"?>'
+    + '<d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">'
+    + '<d:prop><c:calendar-home-set/></d:prop></d:propfind>';
+  const homeResponse = await icloudPropfind(principalUrl, credentials, 0, homeQuery);
+  const homeInner = xmlLocalTagInner(homeResponse.text, 'calendar-home-set');
+  const homeHref = xmlLocalTagText(homeInner, 'href');
+  const calendarHomeUrl = resolveCaldavHref(homeHref, homeResponse.url);
+  if (!calendarHomeUrl) throw new Error('已登录 iCloud，但未能发现日历目录');
+
+  const listQuery = '<?xml version="1.0" encoding="UTF-8"?>'
+    + '<d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">'
+    + '<d:prop><d:displayname/><d:resourcetype/></d:prop></d:propfind>';
+  const listResponse = await icloudPropfind(calendarHomeUrl, credentials, 1, listQuery);
+  const responseBlocks = listResponse.text.match(
+    /<(?:[A-Za-z0-9_-]+:)?response\b[\s\S]*?<\/(?:[A-Za-z0-9_-]+:)?response\s*>/gi
+  ) || [];
+  const calendars = responseBlocks
+    .filter((block) => /<(?:[A-Za-z0-9_-]+:)?calendar(?:\s|\/|>)/i.test(block))
+    .map((block) => {
+      const href = xmlLocalTagText(block, 'href');
+      const name = xmlLocalTagText(block, 'displayname') || '未命名日历';
+      return { name, url: resolveCaldavHref(href, listResponse.url) };
+    })
+    .filter((calendar) => calendar.url);
+
+  if (!calendars.length) throw new Error('iCloud 已连接，但没有发现可访问的日历');
+  return { principalUrl, calendarHomeUrl, calendars };
+}
+
+function publicIcloudStatus(credentials) {
+  if (!credentials) return { connected: false, email: '', calendars: [] };
+  return {
+    connected: true,
+    email: credentials.email,
+    calendars: Array.isArray(credentials.calendars) ? credentials.calendars : []
+  };
+}
+
 function base64Url(buffer) {
   return buffer.toString('base64').replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
 }
@@ -1423,6 +1564,36 @@ ipcMain.handle('google:sync', (_event, payload) => {
   return syncGoogleState(payload);
 });
 ipcMain.handle('google:delete-task', (_event, task) => DEMO_MODE ? false : deleteGoogleTask(task));
+
+
+ipcMain.handle('icloud:status', () => {
+  if (DEMO_MODE) return { connected: false, email: '', calendars: [], demo: true };
+  return publicIcloudStatus(loadIcloudCredentials());
+});
+
+ipcMain.handle('icloud:connect', async (_event, payload) => {
+  if (DEMO_MODE) throw new Error('演示模式不会连接真实 iCloud 账户');
+  const email = String((payload && payload.email) || '').trim();
+  const password = String((payload && payload.password) || '').trim();
+  if (!email || !password) throw new Error('请输入 Apple 账户邮箱和 App 专用密码');
+
+  const discovery = await discoverIcloudCalendars({ email, password });
+  const stored = {
+    email,
+    password,
+    principalUrl: discovery.principalUrl,
+    calendarHomeUrl: discovery.calendarHomeUrl,
+    calendars: discovery.calendars,
+    verifiedAt: Date.now()
+  };
+  saveIcloudCredentials(stored);
+  return publicIcloudStatus(stored);
+});
+
+ipcMain.handle('icloud:disconnect', () => {
+  clearIcloudCredentials();
+  return { connected: false, email: '', calendars: [] };
+});
 
 ipcMain.handle('settings:auto-start', (_event, enabled) => {
   if (DEMO_MODE) return false;
