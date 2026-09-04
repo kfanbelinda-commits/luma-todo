@@ -2213,6 +2213,73 @@ async function disconnectGoogle() {
 }
 
 
+function renderRemindersBridgeStatus(status) {
+  const available = Boolean(status && status.available);
+  const folder = String((status && status.folder) || '');
+  const outputPath = String((status && status.outputPath) || '');
+
+  $('#remindersBridgeStatusText').textContent = available ? 'iCloud Drive 已就绪' : '未找到 iCloud Drive';
+  $('#exportRemindersBridge').disabled = !available;
+
+  if (available) {
+    $('#remindersBridgeNote').textContent =
+      'Todo 将写入：' + outputPath + '。Event 不会进入这个文件。';
+  } else {
+    $('#remindersBridgeNote').textContent =
+      '未自动找到 iCloud Drive。请点“选择”，手动选择 Windows 文件资源管理器中的 iCloud Drive 文件夹。';
+  }
+}
+
+async function refreshRemindersBridgeStatus() {
+  try {
+    const status = await window.luma?.remindersBridgeStatus();
+    renderRemindersBridgeStatus(status);
+    return status;
+  } catch (error) {
+    renderRemindersBridgeStatus({ available: false });
+    $('#remindersBridgeNote').textContent =
+      '无法检查 iCloud Drive：' + googleErrorMessage(error);
+    return { available: false };
+  }
+}
+
+async function chooseRemindersBridgeFolder() {
+  const button = $('#chooseRemindersBridgeFolder');
+  button.disabled = true;
+  try {
+    const result = await window.luma?.remindersBridgeChooseFolder();
+    if (result && !result.canceled) {
+      await refreshRemindersBridgeStatus();
+    }
+  } catch (error) {
+    $('#remindersBridgeNote').textContent =
+      '选择文件夹失败：' + googleErrorMessage(error);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function exportRemindersBridge() {
+  const button = $('#exportRemindersBridge');
+  button.disabled = true;
+  $('#remindersBridgeNote').textContent = '正在生成 Apple Reminders 同步文件…';
+  try {
+    const status = await window.luma?.remindersBridgeStatus();
+    const result = await window.luma?.remindersBridgeExport({
+      state,
+      folder: status && status.folder ? status.folder : '',
+    });
+    $('#remindersBridgeNote').textContent =
+      '已生成 ' + (result?.count || 0) + ' 个 Todo：' + (result?.outputPath || '');
+    await refreshRemindersBridgeStatus();
+  } catch (error) {
+    $('#remindersBridgeNote').textContent =
+      '生成失败：' + googleErrorMessage(error);
+  } finally {
+    button.disabled = false;
+  }
+}
+
 function renderIcloudStatus(status) {
   const connected = Boolean(status && status.connected);
   const calendars = Array.isArray(status && status.calendars) ? status.calendars : [];
@@ -2536,7 +2603,7 @@ function bindEvents() {
     $('#opacitySlider').value = state.settings.panelOpacity;
     applyPanelOpacity(state.settings.panelOpacity);
     openSettingsDialog();
-    await Promise.all([refreshGoogleStatus(), refreshIcloudStatus()]);
+    await Promise.all([refreshGoogleStatus(), refreshIcloudStatus(), refreshRemindersBridgeStatus()]);
   });
   $('#closeSettingsButton').addEventListener('click', closeSettingsDialog);
   settingsDialog.addEventListener('cancel', (event) => {
@@ -2577,6 +2644,8 @@ function bindEvents() {
   $('#disconnectGoogle').addEventListener('click', disconnectGoogle);
   $('#connectIcloud').addEventListener('click', connectOrSyncIcloud);
   $('#disconnectIcloud').addEventListener('click', disconnectIcloud);
+  $('#chooseRemindersBridgeFolder').addEventListener('click', chooseRemindersBridgeFolder);
+  $('#exportRemindersBridge').addEventListener('click', exportRemindersBridge);
   window.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && settingsDialog.open) {
       closeSettingsDialog();
@@ -2606,7 +2675,7 @@ async function init() {
   bindTimePickers();
   renderColorChoices();
   render();
-  await Promise.all([refreshGoogleStatus(), refreshIcloudStatus()]);
+  await Promise.all([refreshGoogleStatus(), refreshIcloudStatus(), refreshRemindersBridgeStatus()]);
 }
 
 init();
