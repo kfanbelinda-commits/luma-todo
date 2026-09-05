@@ -2545,8 +2545,8 @@ html[data-theme="light"] .calendar-panel {
   border-color: transparent;
   background:
     linear-gradient(
-      rgba(255,255,255,calc(var(--panel-opacity) + .03)),
-      rgba(255,255,255,calc(var(--panel-opacity) + .03))
+      rgba(255,255,255,var(--panel-opacity)),
+      rgba(255,255,255,var(--panel-opacity))
     ) padding-box,
     linear-gradient(
       135deg,
