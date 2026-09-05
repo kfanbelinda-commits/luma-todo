@@ -1288,7 +1288,7 @@ function runSyncProtocolSmokeTests() {
     'END:VEVENT',
     'END:VCALENDAR',
     ''
-  ].join('\\r\\n');
+  ].join('\r\n');
   const parsedNative = parseIcloudEvent(nativeIcs, '/qa/native.ics', '"native-etag"', calendar);
   qaAssert(parsedNative?.uid === 'native-apple-event', 'Native Apple Event UID parse failed');
   qaAssert(parsedNative?.lumaTaskId === '', 'Native Apple Event was incorrectly linked to a Luma task');
