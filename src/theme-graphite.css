@@ -797,12 +797,6 @@ html[data-theme="light"] .day-event.google-calendar-event {
 }
 html[data-theme="light"] .task-time:hover,
 html[data-theme="light"] .edit-project-button:hover { color: var(--action-primary); border-color: var(--action-border); background: var(--action-soft-hover); }
-html[data-theme="light"] .new-project-button {
-  border-color: var(--action-border);
-  color: var(--action-primary);
-  background: var(--action-soft);
-}
-html[data-theme="light"] .new-project-button:hover { color: var(--action-primary-strong); border-color: var(--action-focus-ring); background: var(--action-soft-hover); }
 
 html[data-theme="light"] .calendar-header .soft-button,
 html[data-theme="light"] .month-controls .soft-button {
@@ -830,8 +824,6 @@ html[data-theme="light"] .modal {
   box-shadow: 0 22px 60px rgba(45,55,72,.20);
 }
 html[data-theme="light"] .modal { box-shadow: 0 12px 32px rgba(45,55,72,.16); }
-html[data-theme="light"] .modal::backdrop { background: transparent; }
-html[data-theme="light"] .modal label { color: #4f5b6c; }
 html[data-theme="light"] .modal label > input,
 html[data-theme="light"] .calendar-task-modal select,
 html[data-theme="light"] .project-quick-input {
