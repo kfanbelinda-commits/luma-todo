@@ -3,42 +3,31 @@
 Baseline: `main` / v1.1.0  
 Audit branch: `maintenance/codebase-cleanup-20260905`
 
-This document records findings before functional refactoring. Items marked **do not change yet** are intentionally left in place.
+This audit separates low-risk cleanup from later refactoring/security work. The cleanup branch must not change Luma product semantics.
 
-## 1. Repository and package size
+## 1. Size findings
 
-- Git-tracked repository content is about 1.82 MB.
-- The Windows installer is about 112.8 MB because Electron packages Chromium, Node.js, and the Electron runtime.
-- `assets/Lumatodo.png` is about 1.3 MB. It is used by README but not by the application. The maintenance branch already excludes it from the packaged app.
-- Large local working directories are expected to come primarily from `node_modules` and `dist`, not from Luma business source.
+- The Git-tracked application source is small; the hundreds of MB seen in a local checkout come primarily from Electron, `node_modules`, and build output.
+- The released v1.1.0 Windows installer was about 112.8 MB.
+- `assets/Lumatodo.png` is a README/promotional image (~1.3 MB), not a runtime asset.
+- The cleanup branch packages only the runtime icons/helper resources needed by the app. CI currently produces an installer around 111.47 MB.
+- A large reduction beyond this would require changing the Electron runtime architecture, not deleting ordinary Luma JavaScript.
 
-## 2. Confirmed isolated dead code
+## 2. Dead code cleanup completed
 
-Static reference scanning found these functions defined but never referenced anywhere else:
+Confirmed no-caller renderer helpers removed:
 
 - `isTodayTask`
 - `parseQuickInput`
-
-These are safe candidates for the first code-removal pass because they have no callers and do not own UI state.
-
-## 3. Dormant/dead feature cluster — do not remove in the first pass
-
-The following code appears to belong to an older upcoming/date-filter UI:
-
 - `renderUpcoming`
 - `openTaskInCalendar`
 - `stepTaskDateFilter`
 - `toggleTodayOrAll`
-- `setTaskDateFilter` is only referenced by the two dormant date-filter functions.
-- `taskDateFilter` still participates in several render paths, so removing the whole cluster should be a separate reviewed change.
+- `setTaskDateFilter`
 
-Evidence:
+The old upcoming/date-filter UI was verified absent from current HTML before removal.
 
-- There is no `#upcomingList` element in current `index.html`.
-- `render()` does not call `renderUpcoming()`.
-- Upcoming UI selectors remain in both CSS files even though the current HTML has no upcoming card.
-
-Associated likely-dead CSS includes:
+Associated unused CSS removed:
 
 - `.upcoming-card`
 - `.upcoming-list`
@@ -47,37 +36,51 @@ Associated likely-dead CSS includes:
 - `.upcoming-title`
 - `.upcoming-project`
 - `.upcoming-time`
+- old `.text-button` / `.empty-note` rules that existed only for that UI
 
-These selectors should not be deleted until the dormant JS cluster is handled in a separate commit.
+A post-cleanup reference scan currently finds no named functions in `src/app.js` or `main.cjs` that are defined only once and never referenced.
 
-## 4. CSS maintainability
+## 3. CSS cleanup completed in the low-risk area
 
-`src/theme-graphite.css` is about 4,100 lines and contains many repeated selectors. Examples:
+Only declarations proven to be superseded by a later rule with the same selector were removed.
 
-- `html[data-theme="light"] .modal` — 5 declarations
-- `.calendar-panel` — 4 declarations in the theme file, 5 across both CSS files
-- `.completed-toggle` — 4 declarations in the theme file, 5 across both CSS files
-- `.calendar-create-fields` — 4 declarations
-- `.day-event` — multiple declarations across the cascade
-- several light-theme calendar selectors are declared 3–4 times
+Completed areas:
 
-This is a maintenance risk, but **not an automatic deletion target**. Many later rules intentionally override earlier rules. CSS consolidation needs visual regression testing and should be done selector group by selector group.
+- settings modal duplicate sizing/scroll declarations
+- Apple/iCloud settings duplicate grid/input/select declarations
+- obsolete light-mode new-project button rules
+- obsolete light modal backdrop/label rules
+- superseded light-theme token values
 
-## 5. Large source files
+Calendar/Todo-sensitive selector families such as `.calendar-*`, `.day-*`, completion-state selectors, and calendar cell sizing rules were intentionally not consolidated.
 
-Current rough size:
+Each CSS batch was followed by:
 
-- `src/app.js`: ~2,660 lines, ~105 named functions
-- `main.cjs`: ~2,100 lines, ~88 named functions
-- `src/theme-graphite.css`: ~4,100 lines
+- Windows Electron startup
+- dark/light screenshots
+- behavior smoke tests
+- full Windows packaging
+- before/after pixel comparison
 
-Potential future module boundaries:
+Light settings and expanded screenshots remained pixel-identical across the safe CSS cleanup batches.
+
+## 4. Current source size
+
+Approximate current branch sizes:
+
+- `src/app.js`: 2,531 lines
+- `main.cjs`: 2,146 lines
+- `src/theme-graphite.css`: 4,032 lines
+
+QA test implementations live under `qa/` rather than being embedded in `main.cjs`. The `qa/` directory is excluded from the production package.
+
+Potential future module boundaries remain:
 
 Renderer:
 - calendar
 - todo/projects
 - settings
-- time/date parsing
+- time/date utilities
 - sync UI
 
 Main process:
@@ -87,7 +90,59 @@ Main process:
 - iCloud/CalDAV sync
 - updater
 
-**Do not split these yet.** Module extraction changes dependency boundaries and is much higher risk than dead-code removal.
+Do not split these modules until the relevant tests cover the behavior being moved.
+
+## 5. Automated protection now present
+
+`npm run check` now performs syntax checks plus repository invariants.
+
+Invariant checks protect:
+
+- real-data default startup
+- package/lock version consistency
+- production package file allowlist
+- exclusion of demo and QA files
+- credential/user-data ignore rules
+- `contextIsolation: true`
+- `nodeIntegration: false`
+- use of `safeStorage`
+- no saved iCloud password exposure through public status
+- no direct filesystem/child-process preload exposure
+- QA execution remaining dev-only
+
+Windows PR verification now runs:
+
+- `npm ci`
+- source/invariant checks
+- actual Electron startup
+- dark compact/expanded UI smoke
+- light settings compact/expanded UI smoke
+- custom window resize QA
+- Todo/Calendar behavior smoke
+- offline Apple/iCloud and Google sync protocol smoke
+- full Windows installer build and output validation
+
+Behavior smoke currently verifies:
+
+- quick-add Todo
+- timed Todo remains Todo
+- 1.5s completion grace period
+- completion undo during grace period
+- completed Todo remains on its calendar date
+- completed Todo can be restored
+- expand/collapse path
+
+Offline sync protocol smoke currently verifies:
+
+- iCloud timed Todo round-trip
+- iCloud completed Todo metadata
+- iCloud all-day Event round-trip
+- iCloud overnight Event round-trip
+- native Apple Event parsing
+- Google timed Todo mirror semantics
+- Google Event round-trip
+
+No real Apple/Google credentials are used in CI.
 
 ## 6. Electron security review
 
@@ -95,48 +150,34 @@ Existing good practices:
 
 - `contextIsolation: true`
 - `nodeIntegration: false`
-- renderer access is routed through preload
-- Apple/iCloud credentials are encrypted with Electron `safeStorage`
-- saved iCloud password is not returned by `publicIcloudStatus`
-- iCloud sync only accepts a calendar URL that matches the discovered saved calendar list
-- user data and encrypted credential files are Git-ignored
+- renderer capabilities exposed through preload
+- Apple/iCloud credentials encrypted with Electron `safeStorage`
+- saved iCloud password not returned to renderer status APIs
+- iCloud sync target restricted to the discovered saved calendar list
+- user data and encrypted credentials excluded from Git
 
-Hardening opportunities for later, one at a time:
+Hardening still deferred to a separate branch:
 
-- no explicit Content Security Policy is present
-- no explicit `setWindowOpenHandler` restriction
-- no explicit `will-navigate` restriction
-- no explicit `sandbox: true` in BrowserWindow options
-- IPC handlers do not consistently validate the sender frame
+- add an explicit Content Security Policy
+- restrict new-window creation with `setWindowOpenHandler`
+- restrict unexpected navigation with `will-navigate`
+- evaluate explicit `sandbox: true`
+- add consistent IPC sender/frame validation
 
-These are security-hardening tasks, not cleanup tasks. They should be tested in a packaged build because aggressive Electron hardening can break preload or external-auth flows if applied incorrectly.
+These must be introduced one at a time and tested in a packaged Windows build because they can affect preload, OAuth, and external browser flows.
 
-## 7. Quality tooling
+## 7. Remaining maintainability risks
 
-Current `npm run check` performs JavaScript syntax checks only.
+- `src/theme-graphite.css` still has many intentional historical overrides, especially Calendar/light-theme rules.
+- `src/app.js` and `main.cjs` are still large single files.
+- There is no general unit-test framework or lint/format enforcement yet.
+- Real authenticated Apple/Google end-to-end tests are intentionally absent from CI.
+- Screenshot comparison is currently performed during cleanup review rather than enforced as a permanent pixel-baseline test.
 
-Missing:
+## 8. Next sequence
 
-- unit tests
-- renderer smoke tests
-- sync fixture tests
-- lint rules
-- formatting rules
-- CSS regression checks
-
-Before large refactors, tests have higher value than splitting files.
-
-## 8. Documentation drift
-
-README still says v1.0.0 although the released version is v1.1.0. This is documentation-only and can be corrected independently.
-
-## Recommended sequence
-
-1. Keep current packaging exclusion and repository rules.
-2. Remove only confirmed isolated dead functions.
-3. Re-scan references.
-4. Remove the dormant upcoming UI cluster only if the second scan confirms no live callers.
-5. Remove the associated dead CSS in a separate commit.
-6. Add lightweight tests before CSS consolidation or module splitting.
-7. Apply Electron security hardening one item at a time with packaged smoke tests.
-8. Split large files only after tests exist.
+1. Merge this low-risk cleanup only after the final Windows verification passes.
+2. Start Electron security hardening on a new branch.
+3. Add pure utility/unit tests before extracting production modules.
+4. Extract low-coupling pure modules before touching Calendar renderer or Windows Pin/WorkerW code.
+5. Consolidate Calendar CSS only after a dedicated visual regression baseline exists.
