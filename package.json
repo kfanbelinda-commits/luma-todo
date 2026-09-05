@@ -12,13 +12,14 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "check": "node --check main.cjs && node --check preload.cjs && node --check src/app.js && node scripts/check-invariants.cjs",
+    "check": "node --check main.cjs && node --check preload.cjs && node --check src/app.js && npm run test:unit && node scripts/check-invariants.cjs",
     "dist": "electron-builder --win --publish never",
     "release": "electron-builder --win --publish always",
     "start:demo": "electron . --demo",
     "start:real": "electron .",
     "start:demo:reset": "electron . --demo --demo-reset",
-    "start:icloud": "electron . --icloud-test"
+    "start:icloud": "electron . --icloud-test",
+    "test:unit": "node --test qa/icloud-ics.test.cjs"
   },
   "devDependencies": {
     "electron": "^44.1.1",
