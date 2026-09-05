@@ -53,10 +53,9 @@ assert(!/function\s+taskToIcloudIcs\s*\(/.test(main), 'iCloud ICS generator must
 assert(!/function\s+parseIcloudEvent\s*\(/.test(main), 'iCloud ICS parser must not be duplicated in main.cjs');
 assert(/module\.exports\s*=\s*\{[\s\S]*taskToIcloudIcs[\s\S]*parseIcloudEvent/.test(icloudIcs), 'iCloud ICS codec exports are incomplete');
 
-const publicStatusStart = main.indexOf('function publicIcloudStatus');
-const publicStatusEnd = main.indexOf('function icsEscapeText', publicStatusStart);
-assert(publicStatusStart >= 0 && publicStatusEnd > publicStatusStart, 'publicIcloudStatus must remain identifiable');
-assert(!/password/i.test(main.slice(publicStatusStart, publicStatusEnd)), 'saved iCloud password must not be exposed by publicIcloudStatus');
+const publicStatusSource = main.match(/function publicIcloudStatus\(credentials\) \{[\s\S]*?\n\}/)?.[0] || '';
+assert(publicStatusSource, 'publicIcloudStatus must remain identifiable');
+assert(!/password/i.test(publicStatusSource), 'saved iCloud password must not be exposed by publicIcloudStatus');
 
 assert(!/require\(['"]fs['"]\)/.test(preload), 'preload must not expose direct filesystem access');
 assert(!/child_process/.test(preload), 'preload must not expose child_process');
