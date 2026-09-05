@@ -332,29 +332,6 @@ h3 {  font-weight: 700; }
 .new-project-button { margin-top: 8px;  border: 1px dashed var(--action-border); border-radius: 8px; color: var(--action-primary); background: var(--action-soft);  font-weight: 700; }
 .new-project-button:hover { color: var(--action-primary-strong); border-color: var(--action-focus-ring); background: var(--action-soft-hover); }
 
-.upcoming-card {
-  margin-top: 7px;
-  padding: 10px 5px 2px;
-  border-radius: 0;
-  border-top: 1px solid rgba(255,255,255,.075);
-  background: transparent;
-  box-shadow: none;
-}
-.upcoming-card header { margin-bottom: 7px; padding: 0 2px; }
-.upcoming-card .eyebrow { color: rgba(232,235,242,.68); }
-.upcoming-card .text-button { color: var(--action-primary); }
-.upcoming-list { gap: 2px; }
-.upcoming-item { grid-template-columns: 31px 1fr auto; gap: 7px; min-height: 35px; padding: 3px 2px; }
-.upcoming-item { border-radius: 7px; cursor: pointer; outline: none; transition: background 140ms ease; }
-.upcoming-item:hover, .upcoming-item:focus-visible { background: rgba(255,255,255,.07); }
-.upcoming-date { width: 28px; min-height: 29px; border-radius: 6px; background: rgba(255,255,255,.055); }
-.upcoming-date strong {  font-weight: 600; }
-.upcoming-project { color: rgba(232,235,242,.68); font-size: 10px; }
-.upcoming-project::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: var(--upcoming-project-color); vertical-align: 1px; }
-.upcoming-time { color: rgba(239,242,248,.74); font-size: 11px; }
-.text-button { color: var(--action-primary); font-size: 11px; }
-.empty-note { color: rgba(232,235,242,.68); font-size: 11px; }
-
 .calendar-header { padding: 17px 18px 11px; }
 .calendar-header .soft-button, .month-controls .soft-button { padding: 6px 9px; border-radius: 7px;  background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.07); }
 .calendar-grid {
@@ -489,12 +466,6 @@ h3 { font-size: 19px; }
 .task-time:hover { color: var(--action-primary-strong); border-color: var(--action-border); background: var(--action-soft-hover); }
 .completed-toggle { color: rgba(239,242,248,.74);  }
 .new-project-button { padding: 12px; font-size: 14px; }
-
-.upcoming-date strong { font-size: 14px; }
-.upcoming-date span { color: rgba(239,242,248,.76); font-size: 10px; }
-.upcoming-title { color: white; font-size: 15px; }
-.upcoming-project, .upcoming-time, .text-button, .empty-note { font-size: 12px; }
-.upcoming-project, .empty-note { color: rgba(239,242,248,.74); }
 
 .calendar-header { align-items: flex-start; flex-wrap: wrap; gap: 10px; }
 .month-controls { flex-wrap: wrap; justify-content: flex-end; }
@@ -764,8 +735,6 @@ html[data-theme="light"] .project-progress,
 html[data-theme="light"] .task-meta,
 html[data-theme="light"] .task-date-label,
 html[data-theme="light"] .completed-toggle,
-html[data-theme="light"] .upcoming-project,
-html[data-theme="light"] .empty-note,
 html[data-theme="light"] .calendar-footer,
 html[data-theme="light"] .settings-section small,
 html[data-theme="light"] .account-card small,
@@ -799,7 +768,6 @@ html[data-theme="light"] .summary-card {
 html[data-theme="light"] .quick-input-wrap input,
 html[data-theme="light"] .task-title,
 html[data-theme="light"] .project-title,
-html[data-theme="light"] .upcoming-title,
 html[data-theme="light"] .schedule-task-title { color: #202938; }
 html[data-theme="light"] .quick-input-wrap input::placeholder,
 html[data-theme="light"] .project-quick-input::placeholder { color: #8a94a3; }
@@ -2394,7 +2362,6 @@ html[data-theme="light"] h2,
 html[data-theme="light"] h3,
 html[data-theme="light"] .project-title,
 html[data-theme="light"] .task-title,
-html[data-theme="light"] .upcoming-title,
 html[data-theme="light"] .schedule-task-title,
 html[data-theme="light"] .calendar-detail-task-title {
   color: var(--luma-fg-1);
@@ -2405,8 +2372,6 @@ html[data-theme="light"] .project-progress,
 html[data-theme="light"] .task-meta,
 html[data-theme="light"] .task-date-label,
 html[data-theme="light"] .completed-toggle,
-html[data-theme="light"] .upcoming-project,
-html[data-theme="light"] .empty-note,
 html[data-theme="light"] .calendar-footer,
 html[data-theme="light"] .month-lunar,
 html[data-theme="light"] .settings-section small,
