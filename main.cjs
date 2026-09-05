@@ -1757,6 +1757,48 @@ function createWindow() {
     else await revealMainWindow();
     if (process.env.LUMA_SCREENSHOT_DIR) {
       await new Promise((resolve) => setTimeout(resolve, 800));
+      if (!app.isPackaged && process.env.LUMA_SYNC_PROTOCOL_SMOKE === '1') {
+        if (!DEMO_MODE) {
+          console.error('[Luma Todo] Sync protocol smoke requires demo mode');
+          app.isQuitting = true;
+          app.exit(1);
+          return;
+        }
+        try {
+          const runSyncProtocolSmokeTests = require(path.join(__dirname, 'qa', 'sync-protocol-smoke.cjs'));
+          const tested = runSyncProtocolSmokeTests({
+            taskToIcloudIcs,
+            parseIcloudEvent,
+            calendarBody,
+            applyCalendarEvent,
+          });
+          console.log('[Luma Todo] Sync protocol smoke: ' + tested.join(', '));
+        } catch (error) {
+          console.error('[Luma Todo] Sync protocol smoke failed: ' + (error?.stack || error?.message || error));
+          app.isQuitting = true;
+          app.exit(1);
+          return;
+        }
+      }
+      if (!app.isPackaged && process.env.LUMA_BEHAVIOR_SMOKE === '1') {
+        if (!DEMO_MODE) {
+          console.error('[Luma Todo] Behavior smoke requires demo mode');
+          app.isQuitting = true;
+          app.exit(1);
+          return;
+        }
+        try {
+          const smokeScript = fs.readFileSync(path.join(__dirname, 'qa', 'renderer-behavior-smoke.js'), 'utf8');
+          const smokeResult = await mainWindow.webContents.executeJavaScript(smokeScript);
+          if (!smokeResult?.ok) throw new Error('Behavior smoke returned no success result');
+          console.log('[Luma Todo] Behavior smoke: ' + smokeResult.tested.join(', '));
+        } catch (error) {
+          console.error('[Luma Todo] Behavior smoke failed: ' + (error?.stack || error?.message || error));
+          app.isQuitting = true;
+          app.exit(1);
+          return;
+        }
+      }
       if (process.env.LUMA_SCREENSHOT_LIGHT === '1') {
         await mainWindow.webContents.executeJavaScript("applyColorMode(true); render()");
         await new Promise((resolve) => setTimeout(resolve, 120));

@@ -4,11 +4,11 @@
 ![Luma Todo](./assets/Lumatodo.png)
 
 
-## 下载 当前版本：v1.0.0
+## 下载 当前版本：v1.1.0
 
 **[下载最新版 Luma Todo](https://github.com/kfanbelinda-commits/luma-todo/releases/latest)**
 
-推荐下载 `Luma-Todo-Setup-1.0.0.zip`，解压后运行其中的 `Luma-Todo-Setup-1.0.0.exe`；也可以直接下载 `.exe` 安装。其他 Assets 无需手动下载。
+推荐下载 `Luma-Todo-Setup-1.1.0.zip`，解压后运行其中的 `Luma-Todo-Setup-1.1.0.exe`；也可以直接下载 `.exe` 安装。其他 Assets 无需手动下载。
 
 
 
@@ -25,6 +25,8 @@
 - 今日任务与逾期顺延
 - Google Tasks 双向同步
 - Google Calendar 日程同步
+- Apple / iCloud Calendar 双向日程同步
+- 有日期的 Todo 可镜像到 Apple Calendar
 - 深色 / 浅色模式
 - 透明度、桌面层常驻、Pin 窗口置顶、开机启动
 - 本地保存、每日备份、手动导出
@@ -45,7 +47,7 @@ iPhone 可以使用 **Google Tasks** 查看全部待办，也可以使用 **Goog
 
 Luma Todo 的任务和备份保存在本机。
 
-Google 登录令牌使用本地安全存储保存，项目不收集遥测数据，个人任务、日历数据和登录信息不会上传到 GitHub。
+Google 登录令牌与 Apple/iCloud 登录凭据均使用本地安全存储保存。项目不收集遥测数据，个人任务、日历数据和登录信息不会上传到 GitHub。
 
 ## 使用说明
 

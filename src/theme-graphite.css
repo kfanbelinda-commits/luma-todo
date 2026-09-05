@@ -332,29 +332,6 @@ h3 {  font-weight: 700; }
 .new-project-button { margin-top: 8px;  border: 1px dashed var(--action-border); border-radius: 8px; color: var(--action-primary); background: var(--action-soft);  font-weight: 700; }
 .new-project-button:hover { color: var(--action-primary-strong); border-color: var(--action-focus-ring); background: var(--action-soft-hover); }
 
-.upcoming-card {
-  margin-top: 7px;
-  padding: 10px 5px 2px;
-  border-radius: 0;
-  border-top: 1px solid rgba(255,255,255,.075);
-  background: transparent;
-  box-shadow: none;
-}
-.upcoming-card header { margin-bottom: 7px; padding: 0 2px; }
-.upcoming-card .eyebrow { color: rgba(232,235,242,.68); }
-.upcoming-card .text-button { color: var(--action-primary); }
-.upcoming-list { gap: 2px; }
-.upcoming-item { grid-template-columns: 31px 1fr auto; gap: 7px; min-height: 35px; padding: 3px 2px; }
-.upcoming-item { border-radius: 7px; cursor: pointer; outline: none; transition: background 140ms ease; }
-.upcoming-item:hover, .upcoming-item:focus-visible { background: rgba(255,255,255,.07); }
-.upcoming-date { width: 28px; min-height: 29px; border-radius: 6px; background: rgba(255,255,255,.055); }
-.upcoming-date strong {  font-weight: 600; }
-.upcoming-project { color: rgba(232,235,242,.68); font-size: 10px; }
-.upcoming-project::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: var(--upcoming-project-color); vertical-align: 1px; }
-.upcoming-time { color: rgba(239,242,248,.74); font-size: 11px; }
-.text-button { color: var(--action-primary); font-size: 11px; }
-.empty-note { color: rgba(232,235,242,.68); font-size: 11px; }
-
 .calendar-header { padding: 17px 18px 11px; }
 .calendar-header .soft-button, .month-controls .soft-button { padding: 6px 9px; border-radius: 7px;  background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.07); }
 .calendar-grid {
@@ -489,12 +466,6 @@ h3 { font-size: 19px; }
 .task-time:hover { color: var(--action-primary-strong); border-color: var(--action-border); background: var(--action-soft-hover); }
 .completed-toggle { color: rgba(239,242,248,.74);  }
 .new-project-button { padding: 12px; font-size: 14px; }
-
-.upcoming-date strong { font-size: 14px; }
-.upcoming-date span { color: rgba(239,242,248,.76); font-size: 10px; }
-.upcoming-title { color: white; font-size: 15px; }
-.upcoming-project, .upcoming-time, .text-button, .empty-note { font-size: 12px; }
-.upcoming-project, .empty-note { color: rgba(239,242,248,.74); }
 
 .calendar-header { align-items: flex-start; flex-wrap: wrap; gap: 10px; }
 .month-controls { flex-wrap: wrap; justify-content: flex-end; }
@@ -726,9 +697,6 @@ h3 { font-size: 19px; }
 /* Optional light glass theme. Structural sizing stays shared with graphite. */
 :root[data-theme="light"] {
   color-scheme: light;
-  --ink: #202938;
-  --muted: #667085;
-  --line: rgba(51,65,85,.14);
   --action-primary: #111318;
   --action-primary-strong: #000000;
   --action-on-primary: #ffffff;
@@ -737,8 +705,6 @@ h3 { font-size: 19px; }
   --action-soft-pressed: rgba(17, 19, 24, .20);
   --action-border: rgba(17, 19, 24, .24);
   --action-focus-ring: rgba(17, 19, 24, .28);
-  --control-deep: rgba(32, 41, 56, .09);
-  --control-deep-hover: rgba(32, 41, 56, .15);
 }
 
 html[data-theme="light"] .panel {
@@ -764,8 +730,6 @@ html[data-theme="light"] .project-progress,
 html[data-theme="light"] .task-meta,
 html[data-theme="light"] .task-date-label,
 html[data-theme="light"] .completed-toggle,
-html[data-theme="light"] .upcoming-project,
-html[data-theme="light"] .empty-note,
 html[data-theme="light"] .calendar-footer,
 html[data-theme="light"] .settings-section small,
 html[data-theme="light"] .account-card small,
@@ -799,7 +763,6 @@ html[data-theme="light"] .summary-card {
 html[data-theme="light"] .quick-input-wrap input,
 html[data-theme="light"] .task-title,
 html[data-theme="light"] .project-title,
-html[data-theme="light"] .upcoming-title,
 html[data-theme="light"] .schedule-task-title { color: #202938; }
 html[data-theme="light"] .quick-input-wrap input::placeholder,
 html[data-theme="light"] .project-quick-input::placeholder { color: #8a94a3; }
@@ -829,12 +792,6 @@ html[data-theme="light"] .day-event.google-calendar-event {
 }
 html[data-theme="light"] .task-time:hover,
 html[data-theme="light"] .edit-project-button:hover { color: var(--action-primary); border-color: var(--action-border); background: var(--action-soft-hover); }
-html[data-theme="light"] .new-project-button {
-  border-color: var(--action-border);
-  color: var(--action-primary);
-  background: var(--action-soft);
-}
-html[data-theme="light"] .new-project-button:hover { color: var(--action-primary-strong); border-color: var(--action-focus-ring); background: var(--action-soft-hover); }
 
 html[data-theme="light"] .calendar-header .soft-button,
 html[data-theme="light"] .month-controls .soft-button {
@@ -862,8 +819,6 @@ html[data-theme="light"] .modal {
   box-shadow: 0 22px 60px rgba(45,55,72,.20);
 }
 html[data-theme="light"] .modal { box-shadow: 0 12px 32px rgba(45,55,72,.16); }
-html[data-theme="light"] .modal::backdrop { background: transparent; }
-html[data-theme="light"] .modal label { color: #4f5b6c; }
 html[data-theme="light"] .modal label > input,
 html[data-theme="light"] .calendar-task-modal select,
 html[data-theme="light"] .project-quick-input {
@@ -1145,7 +1100,6 @@ html[data-theme="light"] .task-item.menu-open .task-more {
 .settings-modal {
   position: fixed;
   inset: auto;
-  width: 332px;
   max-width: calc(100vw - 24px);
   max-height: calc(100vh - 24px);
   margin: 0;
@@ -1242,7 +1196,6 @@ html[data-theme="light"] .task-item.menu-open .task-more {
 .settings-modal .settings-export {
   align-self: flex-start;
   width: auto;
-  margin-top: 7px;
   padding: 5px 2px;
   border: 0;
   color: rgba(232,236,244,.64);
@@ -2362,11 +2315,6 @@ html[data-theme="light"] .calendar-panel.calendar-detail-open .calendar-detail {
 
 /* Fluent-inspired light surface system: neutral, coherent, restrained. */
 :root[data-theme="light"] {
-  --luma-bg-app: #f5f5f5;
-  --luma-bg-app-rgb: 245,245,245;
-  --luma-bg-raised: #fafafa;
-  --luma-bg-control: #ffffff;
-  --luma-bg-subtle: #f0f0f0;
   --luma-fg-1: #242424;
   --luma-fg-2: #424242;
   --luma-fg-3: #616161;
@@ -2394,7 +2342,6 @@ html[data-theme="light"] h2,
 html[data-theme="light"] h3,
 html[data-theme="light"] .project-title,
 html[data-theme="light"] .task-title,
-html[data-theme="light"] .upcoming-title,
 html[data-theme="light"] .schedule-task-title,
 html[data-theme="light"] .calendar-detail-task-title {
   color: var(--luma-fg-1);
@@ -2405,8 +2352,6 @@ html[data-theme="light"] .project-progress,
 html[data-theme="light"] .task-meta,
 html[data-theme="light"] .task-date-label,
 html[data-theme="light"] .completed-toggle,
-html[data-theme="light"] .upcoming-project,
-html[data-theme="light"] .empty-note,
 html[data-theme="light"] .calendar-footer,
 html[data-theme="light"] .month-lunar,
 html[data-theme="light"] .settings-section small,
@@ -3728,12 +3673,6 @@ html[data-theme="light"] .calendar-detail-check.is-checked {
 }
 
 /* Experimental iCloud CalDAV connection. */
-.settings-modal form {
-  max-height: calc(100vh - 26px);
-  overflow-y: auto;
-  scrollbar-gutter: stable;
-}
-
 .settings-modal .apple-account-card {
   margin-top: 9px;
 }
@@ -3765,9 +3704,6 @@ html[data-theme="light"] .calendar-detail-check.is-checked {
 
 .icloud-credentials {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  margin-top: 6px;
 }
 
 .icloud-credentials[hidden] {
@@ -3777,14 +3713,11 @@ html[data-theme="light"] .calendar-detail-check.is-checked {
 .icloud-credentials input {
   width: 100%;
   min-width: 0;
-  height: 31px;
   padding: 0 8px;
   border: 1px solid rgba(255,255,255,.08);
-  border-radius: 8px;
   outline: none;
   color: var(--ink);
   background: rgba(255,255,255,.045);
-  font-size: 10px;
   box-sizing: border-box;
 }
 
@@ -3816,10 +3749,7 @@ html[data-theme="light"] .icloud-credentials input:focus {
 
 .icloud-calendar-target {
   display: grid;
-  grid-template-columns: 54px minmax(0, 1fr);
   align-items: center;
-  gap: 6px;
-  margin-top: 6px;
 }
 
 .icloud-calendar-target[hidden] {
@@ -3829,20 +3759,16 @@ html[data-theme="light"] .icloud-credentials input:focus {
 .icloud-calendar-target label {
   margin: 0;
   color: rgba(239,242,248,.66);
-  font-size: 10px;
   line-height: 1;
 }
 
 .icloud-calendar-target select {
   min-width: 0;
-  height: 31px;
   padding: 0 28px 0 8px;
   border: 1px solid rgba(255,255,255,.08);
-  border-radius: 8px;
   outline: none;
   color: var(--ink);
   background: rgba(255,255,255,.045);
-  font-size: 10px;
 }
 
 .icloud-calendar-target select:focus {

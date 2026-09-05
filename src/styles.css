@@ -265,23 +265,9 @@ h3 { font-size: 17px; }
 .completed-list { margin-top: 5px; display: grid; gap: 5px; }
 .completed-list.collapsed { display: none; }
 
-.new-project-button, .text-button { border: 0; background: transparent; color: #6976ce; font-size: 11px; cursor: pointer; }
+.new-project-button { border: 0; background: transparent; color: #6976ce; font-size: 11px; cursor: pointer; }
 .new-project-button { width: 100%; padding: 14px; color: var(--muted); }
 .new-project-button:hover { color: var(--ink); }
-
-.upcoming-card { margin-top: 10px; padding: 15px; border-radius: 20px; background: rgba(29,34,55,.88); color: white; box-shadow: 0 15px 30px rgba(34,40,66,.18); }
-.upcoming-card header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.upcoming-card .eyebrow { color: #aab1c2; }
-.upcoming-card .text-button { color: #bbc4ff; }
-.upcoming-list { display: grid; gap: 8px; }
-.upcoming-item { display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 9px; }
-.upcoming-date { width: 38px; min-height: 38px; display: grid; place-items: center; align-content: center; border-radius: 12px; background: rgba(255,255,255,.09); }
-.upcoming-date strong { font-size: 14px; line-height: 1; }
-.upcoming-date span { font-size: 8px; color: #aeb5c8; }
-.upcoming-title { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.upcoming-project { font-size: 8px; color: #aeb5c8; margin-top: 2px; }
-.upcoming-time { font-size: 9px; color: #bec6ff; }
-.empty-note { font-size: 10px; color: #aeb5c8; padding: 5px 0; }
 
 .calendar-header { padding: 25px 26px 18px; }
 .soft-button, .primary-button, .secondary-button {

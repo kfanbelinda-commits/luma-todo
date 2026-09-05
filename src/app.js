@@ -313,10 +313,6 @@ function daysLate(task) {
   return Math.max(0, Math.round((today - due) / 86400000));
 }
 
-function isTodayTask(task) {
-  return !task.completed && (!task.dueDate || task.dueDate <= dayOffset(0));
-}
-
 function taskSort(a, b) {
   const rank = (task) => {
     const externalCalendar = task.googleCalendarExternal || task.syncTarget === 'external-calendar';
@@ -389,28 +385,6 @@ function renderHeader() {
   dateSummary.setAttribute('aria-expanded', String(expanded));
   dateSummary.title = `${displayDate.getFullYear()}年${dateText}${lunar ? ` · ${lunar}` : ''}`;
   dateSummary.setAttribute('aria-label', expanded ? '收起日历' : '展开日历');
-}
-
-function setTaskDateFilter(dateKey) {
-  taskDateFilter = dateKey || null;
-  if (taskDateFilter) {
-    const selectedDate = fromDateKey(taskDateFilter);
-    calendarCursor = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
-  }
-  activeQuickProjectId = null;
-  renderHeader();
-  renderProjects();
-  renderCalendar();
-}
-
-function stepTaskDateFilter(offset) {
-  const date = taskDateFilter ? fromDateKey(taskDateFilter) : fromDateKey(dayOffset(0));
-  date.setDate(date.getDate() + offset);
-  setTaskDateFilter(toDateKey(date));
-}
-
-function toggleTodayOrAll() {
-  setTaskDateFilter(taskDateFilter ? null : dayOffset(0));
 }
 
 async function toggleAlwaysOnTop() {
@@ -699,53 +673,6 @@ function renderProjects() {
 function formatShortDate(key) {
   const date = fromDateKey(key);
   return `${date.getMonth() + 1}/${date.getDate()}`;
-}
-
-function renderUpcoming() {
-  const upcoming = state.tasks
-    .filter((task) => !isCalendarEvent(task) && !task.completed && task.dueDate > dayOffset(0))
-    .sort((a, b) => `${a.dueDate}${a.time}`.localeCompare(`${b.dueDate}${b.time}`))
-    .slice(0, 3);
-  const host = $('#upcomingList');
-  host.innerHTML = '';
-  if (!upcoming.length) {
-    host.innerHTML = '<p class="empty-note">未来还没有安排，留一点呼吸的空间。</p>';
-    return;
-  }
-  upcoming.forEach((task) => {
-    const date = fromDateKey(task.dueDate);
-    const project = projectById(task.projectId);
-    const row = document.createElement('div');
-    row.className = 'upcoming-item';
-    row.style.setProperty('--upcoming-project-color', project.color);
-    row.setAttribute('role', 'button');
-    row.setAttribute('tabindex', '0');
-    row.setAttribute('title', '在月历中查看');
-    row.innerHTML = `
-      <div class="upcoming-date"><strong>${date.getDate()}</strong><span>${date.getMonth() + 1} 月</span></div>
-      <div><div class="upcoming-title">${escapeAttribute(task.title)}</div><div class="upcoming-project">${project.name}</div></div>
-      <span class="upcoming-time">${task.time || '待办'}</span>`;
-    row.addEventListener('click', () => openTaskInCalendar(task));
-    row.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        openTaskInCalendar(task);
-      }
-    });
-    host.appendChild(row);
-  });
-}
-
-async function openTaskInCalendar(task) {
-  if (!task?.dueDate) return;
-  highlightedTaskId = task.id;
-  taskDateFilter = task.dueDate;
-  calendarCursor = fromDateKey(task.dueDate);
-  calendarCursor.setDate(1);
-  renderHeader();
-  renderProjects();
-  renderCalendar();
-  await toggleExpanded(true);
 }
 
 function animateCalendarMonth(direction = 0) {
@@ -1642,65 +1569,6 @@ function render() {
   renderProjects();
   renderCalendar();
   renderCalendarDetail();
-}
-
-function parseQuickInput(raw) {
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  let date = new Date(now);
-  let hasDate = false;
-  let matchedDateText = '';
-
-  const relative = [
-    { regex: /后天/, offset: 2 },
-    { regex: /明天/, offset: 1 },
-    { regex: /今天|今日/, offset: 0 },
-  ].find((item) => item.regex.test(raw));
-  if (relative) {
-    date.setDate(date.getDate() + relative.offset);
-    hasDate = true;
-    matchedDateText = raw.match(relative.regex)?.[0] || '';
-  }
-
-  const weekdayMatch = raw.match(/(?:周|星期)([一二三四五六日天])/);
-  if (weekdayMatch) {
-    const target = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 日: 0, 天: 0 }[weekdayMatch[1]];
-    let diff = (target - now.getDay() + 7) % 7;
-    if (diff === 0) diff = 7;
-    date.setDate(date.getDate() + diff);
-    hasDate = true;
-    matchedDateText = weekdayMatch[0];
-  }
-
-  const absoluteMatch = raw.match(/(?:(\d{4})[年/-])?(\d{1,2})[月/-](\d{1,2})日?/);
-  if (absoluteMatch) {
-    const year = Number(absoluteMatch[1] || now.getFullYear());
-    date = new Date(year, Number(absoluteMatch[2]) - 1, Number(absoluteMatch[3]));
-    if (!absoluteMatch[1] && date < now) date.setFullYear(date.getFullYear() + 1);
-    hasDate = true;
-    matchedDateText = absoluteMatch[0];
-  }
-
-  let time = '';
-  let matchedTimeText = '';
-  const colonTime = raw.match(/(?:上午|早上|中午|下午|晚上|凌晨)?\s*(\d{1,2}):(\d{2})/);
-  const chineseTime = raw.match(/(上午|早上|中午|下午|晚上|凌晨)?\s*(\d{1,2})\s*点(?:(半)|(\d{1,2})\s*分?)?/);
-  if (colonTime || chineseTime) {
-    const match = colonTime || chineseTime;
-    const period = match[0].match(/上午|早上|中午|下午|晚上|凌晨/)?.[0] || '';
-    let hour = Number(colonTime ? colonTime[1] : chineseTime[2]);
-    const minute = Number(colonTime ? colonTime[2] : (chineseTime[3] ? 30 : chineseTime[4] || 0));
-    if (['下午', '晚上'].includes(period) && hour < 12) hour += 12;
-    if (period === '中午' && hour < 11) hour += 12;
-    if (period === '凌晨' && hour === 12) hour = 0;
-    time = `${pad(hour)}:${pad(minute)}`;
-    matchedTimeText = match[0].trim();
-    if (!hasDate) hasDate = true;
-  }
-
-  let title = raw.replace(matchedDateText, '').replace(matchedTimeText, '').replace(/加入(?:谷歌|Google)?日历/gi, '').trim();
-  title = title.replace(/^[，,。\s]+|[，,。\s]+$/g, '') || raw.trim();
-  return { title, dueDate: hasDate ? toDateKey(date) : dayOffset(0), time };
 }
 
 async function addTaskToProject(projectId, input) {
