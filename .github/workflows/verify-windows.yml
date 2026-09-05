@@ -1,0 +1,93 @@
+name: Verify Windows
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  verify-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check source and invariants
+        run: npm run check
+
+      - name: Run dark UI smoke
+        shell: pwsh
+        run: |
+          $env:LUMA_SCREENSHOT_DIR = Join-Path $PWD "qa-screenshots\dark"
+          $env:LUMA_SCREENSHOT_DARK = "1"
+          npm run start:demo
+
+      - name: Run light settings UI smoke
+        shell: pwsh
+        run: |
+          $env:LUMA_SCREENSHOT_DIR = Join-Path $PWD "qa-screenshots\light-settings"
+          $env:LUMA_SCREENSHOT_LIGHT = "1"
+          $env:LUMA_SCREENSHOT_SETTINGS = "1"
+          npm run start:demo
+
+      - name: Validate smoke screenshots
+        shell: pwsh
+        run: |
+          $expected = @(
+            "qa-screenshots\dark\compact.png",
+            "qa-screenshots\dark\expanded.png",
+            "qa-screenshots\light-settings\compact.png",
+            "qa-screenshots\light-settings\expanded.png"
+          )
+          foreach ($file in $expected) {
+            if (-not (Test-Path $file)) { throw "Missing screenshot: $file" }
+            $size = (Get-Item $file).Length
+            if ($size -lt 10000) { throw "Screenshot looks invalid or empty: $file ($size bytes)" }
+            Write-Host "$file : $size bytes"
+          }
+
+      - name: Create harmless Google OAuth build placeholder
+        shell: pwsh
+        run: |
+          @'
+          {
+            "installed": {
+              "client_id": "ci-placeholder.apps.googleusercontent.com",
+              "client_secret": "ci-placeholder",
+              "auth_uri": "https://accounts.google.com/o/oauth2/v2/auth",
+              "token_uri": "https://oauth2.googleapis.com/token"
+            }
+          }
+          '@ | Set-Content -Path credentials.json -Encoding utf8
+
+      - name: Build Windows installer
+        run: npm run dist
+
+      - name: Validate installer output
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem -Path dist -Filter "Luma-Todo-Setup-*.exe" | Select-Object -First 1
+          if (-not $installer) { throw "Windows installer was not produced" }
+          if ($installer.Length -lt 50000000) { throw "Installer is unexpectedly small: $($installer.Length) bytes" }
+          Write-Host "Installer: $($installer.Name) / $($installer.Length) bytes"
+
+      - name: Upload UI smoke screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: luma-ui-smoke
+          path: qa-screenshots/
+          if-no-files-found: warn
+          retention-days: 7
