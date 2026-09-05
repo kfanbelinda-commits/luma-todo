@@ -3767,10 +3767,7 @@ html[data-theme="light"] .icloud-credentials input:focus {
 
 .icloud-calendar-target {
   display: grid;
-  grid-template-columns: 54px minmax(0, 1fr);
   align-items: center;
-  gap: 6px;
-  margin-top: 6px;
 }
 
 .icloud-calendar-target[hidden] {
@@ -3780,20 +3777,16 @@ html[data-theme="light"] .icloud-credentials input:focus {
 .icloud-calendar-target label {
   margin: 0;
   color: rgba(239,242,248,.66);
-  font-size: 10px;
   line-height: 1;
 }
 
 .icloud-calendar-target select {
   min-width: 0;
-  height: 31px;
   padding: 0 28px 0 8px;
   border: 1px solid rgba(255,255,255,.08);
-  border-radius: 8px;
   outline: none;
   color: var(--ink);
   background: rgba(255,255,255,.045);
-  font-size: 10px;
 }
 
 .icloud-calendar-target select:focus {
