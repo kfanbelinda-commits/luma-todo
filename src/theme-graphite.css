@@ -2539,10 +2539,23 @@ html[data-theme="light"] .calendar-panel.calendar-detail-open .calendar-detail {
   --luma-bg-subtle: #f5f5f5;
 }
 
-/* Main Luma surfaces should read as white, not gray. */
+/* Main Luma surfaces stay translucent white with a quiet pearl-spectrum edge. */
 html[data-theme="light"] .todo-panel,
 html[data-theme="light"] .calendar-panel {
-  background: rgba(255,255,255,calc(var(--panel-opacity) + .03));
+  border-color: transparent;
+  background:
+    linear-gradient(
+      rgba(255,255,255,calc(var(--panel-opacity) + .03)),
+      rgba(255,255,255,calc(var(--panel-opacity) + .03))
+    ) padding-box,
+    linear-gradient(
+      135deg,
+      rgba(246,221,130,.72) 0%,
+      rgba(244,194,212,.52) 27%,
+      rgba(209,196,246,.52) 52%,
+      rgba(178,218,242,.58) 76%,
+      rgba(246,221,130,.72) 100%
+    ) border-box;
 }
 
 /* Keep structure visible through very light neutral separators. */
