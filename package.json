@@ -35,6 +35,7 @@
     },
     "files": [
       "main.cjs",
+      "main/**/*",
       "preload.cjs",
       "index.html",
       "src/**/*",
