@@ -1113,7 +1113,6 @@ html[data-theme="light"] .task-item.menu-open .task-more {
 .settings-modal {
   position: fixed;
   inset: auto;
-  width: 332px;
   max-width: calc(100vw - 24px);
   max-height: calc(100vh - 24px);
   margin: 0;
@@ -1210,7 +1209,6 @@ html[data-theme="light"] .task-item.menu-open .task-more {
 .settings-modal .settings-export {
   align-self: flex-start;
   width: auto;
-  margin-top: 7px;
   padding: 5px 2px;
   border: 0;
   color: rgba(232,236,244,.64);
@@ -3693,11 +3691,6 @@ html[data-theme="light"] .calendar-detail-check.is-checked {
 }
 
 /* Experimental iCloud CalDAV connection. */
-.settings-modal form {
-  max-height: calc(100vh - 26px);
-  scrollbar-gutter: stable;
-}
-
 .settings-modal .apple-account-card {
   margin-top: 9px;
 }
@@ -3729,8 +3722,6 @@ html[data-theme="light"] .calendar-detail-check.is-checked {
 
 .icloud-credentials {
   display: grid;
-  gap: 6px;
-  margin-top: 6px;
 }
 
 .icloud-credentials[hidden] {
@@ -3742,11 +3733,9 @@ html[data-theme="light"] .calendar-detail-check.is-checked {
   min-width: 0;
   padding: 0 8px;
   border: 1px solid rgba(255,255,255,.08);
-  border-radius: 8px;
   outline: none;
   color: var(--ink);
   background: rgba(255,255,255,.045);
-  font-size: 10px;
   box-sizing: border-box;
 }
 
