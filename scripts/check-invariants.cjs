@@ -8,6 +8,7 @@ const main = read('main.cjs');
 const preload = read('preload.cjs');
 const app = read('src/app.js');
 const html = read('index.html');
+const icloudIcs = read('main/icloud-ics.cjs');
 const gitignore = read('.gitignore');
 
 assert.strictEqual(pkg.scripts.start, 'electron .', 'npm start must use real Luma data');
@@ -15,7 +16,7 @@ assert.strictEqual(pkg.version, lock.version, 'package and lockfile versions mus
 assert.strictEqual(pkg.version, lock.packages?.['']?.version, 'root lockfile package version must match');
 
 const packagedFiles = new Set(pkg.build?.files || []);
-for (const required of ['main.cjs', 'preload.cjs', 'index.html', 'src/**/*', 'assets/icon.png', 'assets/icon.ico', 'package.json']) {
+for (const required of ['main.cjs', 'main/**/*', 'preload.cjs', 'index.html', 'src/**/*', 'assets/icon.png', 'assets/icon.ico', 'package.json']) {
   assert(packagedFiles.has(required), `packaged files must include ${required}`);
 }
 assert(!packagedFiles.has('assets/**/*'), 'package must not include every asset');
@@ -47,6 +48,10 @@ assert(html.includes('http-equiv="Content-Security-Policy"'), 'renderer must kee
 assert(html.includes("script-src 'self'"), 'CSP must restrict scripts to local files');
 assert(html.includes("connect-src 'none'"), 'renderer must not make direct network connections');
 assert(/safeStorage\.encryptString/.test(main), 'local credentials/tokens must use safeStorage encryption');
+assert(main.includes("require('./main/icloud-ics.cjs')"), 'main process must use the isolated iCloud ICS codec');
+assert(!/function\s+taskToIcloudIcs\s*\(/.test(main), 'iCloud ICS generator must not be duplicated in main.cjs');
+assert(!/function\s+parseIcloudEvent\s*\(/.test(main), 'iCloud ICS parser must not be duplicated in main.cjs');
+assert(/module\.exports\s*=\s*\{[\s\S]*taskToIcloudIcs[\s\S]*parseIcloudEvent/.test(icloudIcs), 'iCloud ICS codec exports are incomplete');
 
 const publicStatusStart = main.indexOf('function publicIcloudStatus');
 const publicStatusEnd = main.indexOf('function icsEscapeText', publicStatusStart);
