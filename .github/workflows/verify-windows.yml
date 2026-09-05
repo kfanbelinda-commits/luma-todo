@@ -27,11 +27,12 @@ jobs:
       - name: Check source and invariants
         run: npm run check
 
-      - name: Run dark UI smoke
+      - name: Run dark UI and Todo behavior smoke
         shell: pwsh
         run: |
           $env:LUMA_SCREENSHOT_DIR = Join-Path $PWD "qa-screenshots\dark"
           $env:LUMA_SCREENSHOT_DARK = "1"
+          $env:LUMA_BEHAVIOR_SMOKE = "1"
           npm run start:demo
 
       - name: Run light settings UI smoke
