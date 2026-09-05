@@ -2543,37 +2543,12 @@ html[data-theme="light"] .calendar-panel.calendar-detail-open .calendar-detail {
   --luma-bg-subtle: rgba(245,245,245,calc(var(--panel-opacity) * .62));
 }
 
-/* Main Luma surfaces use a neutral translucent fill.
-   Pearl color is isolated to the 1px edge so it never tints the panel body. */
+/* Main Luma surfaces use a neutral translucent fill with no visible outer edge. */
 html[data-theme="light"] .todo-panel,
 html[data-theme="light"] .calendar-panel {
   position: relative;
   border-color: transparent;
   background: rgba(255,255,255,var(--panel-opacity));
-}
-
-html[data-theme="light"] .todo-panel::before,
-html[data-theme="light"] .calendar-panel::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 30;
-  padding: 1px;
-  border-radius: inherit;
-  pointer-events: none;
-  background: linear-gradient(
-    135deg,
-    rgba(246,221,130,calc(var(--panel-opacity) * .56)) 0%,
-    rgba(244,194,212,calc(var(--panel-opacity) * .42)) 27%,
-    rgba(209,196,246,calc(var(--panel-opacity) * .42)) 52%,
-    rgba(178,218,242,calc(var(--panel-opacity) * .46)) 76%,
-    rgba(246,221,130,calc(var(--panel-opacity) * .56)) 100%
-  );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
 }
 
 /* Keep structure visible through very light neutral separators. */
