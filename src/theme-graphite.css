@@ -3695,7 +3695,6 @@ html[data-theme="light"] .calendar-detail-check.is-checked {
 /* Experimental iCloud CalDAV connection. */
 .settings-modal form {
   max-height: calc(100vh - 26px);
-  overflow-y: auto;
   scrollbar-gutter: stable;
 }
 
@@ -3730,7 +3729,6 @@ html[data-theme="light"] .calendar-detail-check.is-checked {
 
 .icloud-credentials {
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 6px;
   margin-top: 6px;
 }
@@ -3742,7 +3740,6 @@ html[data-theme="light"] .calendar-detail-check.is-checked {
 .icloud-credentials input {
   width: 100%;
   min-width: 0;
-  height: 31px;
   padding: 0 8px;
   border: 1px solid rgba(255,255,255,.08);
   border-radius: 8px;
