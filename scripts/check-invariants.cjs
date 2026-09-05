@@ -35,6 +35,7 @@ for (const ignored of [
 
 assert(/contextIsolation:\s*true/.test(main), 'BrowserWindow must keep contextIsolation enabled');
 assert(/nodeIntegration:\s*false/.test(main), 'BrowserWindow must keep nodeIntegration disabled');
+assert(/sandbox:\s*true/.test(main), 'BrowserWindow renderer sandbox must remain enabled');
 assert(main.includes("setWindowOpenHandler(() => ({ action: 'deny' }))"), 'renderer-created windows must remain blocked');
 assert(main.includes("webContents.on('will-navigate'"), 'unexpected renderer navigation must remain blocked');
 assert(html.includes('http-equiv="Content-Security-Policy"'), 'renderer must keep a Content Security Policy');
