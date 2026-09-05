@@ -1360,7 +1360,7 @@ html[data-theme="light"] .calendar-day.muted:focus-visible {
 html[data-theme="light"] .date-summary {
   border-color: rgba(57,70,92,.13);
   color: #5d6879;
-  background: rgba(255,255,255,.42);
+  background: rgba(255,255,255,calc(var(--panel-opacity) * .72));
 }
 html[data-theme="light"] .date-summary-chevron {
   color: rgba(58,71,92,.42);
@@ -1370,7 +1370,7 @@ html[data-theme="light"] .date-summary:focus-visible,
 html[data-theme="light"] .date-summary.expanded {
   border-color: rgba(57,70,92,.19);
   color: #263244;
-  background: rgba(255,255,255,.78);
+  background: rgba(255,255,255,calc(var(--panel-opacity) * .92));
 }
 
 
@@ -2380,14 +2380,18 @@ html[data-theme="light"] .quick-input-wrap {
 }
 html[data-theme="light"] .quick-input-wrap:hover,
 html[data-theme="light"] .summary-card:hover,
-html[data-theme="light"] .date-summary:hover,
-html[data-theme="light"] .date-summary:focus-visible,
-html[data-theme="light"] .date-summary.expanded,
 html[data-theme="light"] .icon-button:hover,
 html[data-theme="light"] .secondary-button:hover,
 html[data-theme="light"] .soft-button:hover {
   color: var(--luma-fg-1);
   background: #fff;
+}
+
+html[data-theme="light"] .date-summary:hover,
+html[data-theme="light"] .date-summary:focus-visible,
+html[data-theme="light"] .date-summary.expanded {
+  color: var(--luma-fg-1);
+  background: rgba(255,255,255,calc(var(--panel-opacity) * .92));
 }
 
 /* Calendar grid stays on the application base with very quiet separators. */
@@ -2534,15 +2538,17 @@ html[data-theme="light"] .calendar-panel.calendar-detail-open .calendar-detail {
 :root[data-theme="light"] {
   --luma-bg-app: #ffffff;
   --luma-bg-app-rgb: 255,255,255;
-  --luma-bg-raised: #ffffff;
-  --luma-bg-control: #ffffff;
-  --luma-bg-subtle: #f5f5f5;
+  --luma-bg-raised: rgba(255,255,255,calc(var(--panel-opacity) * .96));
+  --luma-bg-control: rgba(255,255,255,calc(var(--panel-opacity) * .82));
+  --luma-bg-subtle: rgba(245,245,245,calc(var(--panel-opacity) * .62));
 }
 
-/* Main Luma surfaces should read as white, not gray. */
+/* Main Luma surfaces use a neutral translucent fill with no visible outer edge. */
 html[data-theme="light"] .todo-panel,
 html[data-theme="light"] .calendar-panel {
-  background: rgba(255,255,255,calc(var(--panel-opacity) + .03));
+  position: relative;
+  border-color: transparent;
+  background: rgba(255,255,255,var(--panel-opacity));
 }
 
 /* Keep structure visible through very light neutral separators. */
@@ -2553,14 +2559,14 @@ html[data-theme="light"] .task-item {
 }
 
 html[data-theme="light"] .calendar-panel .calendar-day.muted {
-  background: #fafafa;
+  background: rgba(250,250,250,calc(var(--panel-opacity) * .58));
 }
 html[data-theme="light"] .calendar-panel .calendar-day:hover,
 html[data-theme="light"] .calendar-panel .calendar-day:focus-visible,
 html[data-theme="light"] .task-item:hover,
 html[data-theme="light"] .task-item:focus-within,
 html[data-theme="light"] .task-item.menu-open {
-  background: #f7f7f7;
+  background: rgba(247,247,247,calc(var(--panel-opacity) * .66));
 }
 
 /* Raised surfaces stay white; depth comes from shadow and border rather than tint. */
@@ -2570,13 +2576,13 @@ html[data-theme="light"] .task-menu,
 html[data-theme="light"] .time-picker,
 html[data-theme="light"] .calendar-detail,
 html[data-theme="light"] .settings-modal {
-  background: #ffffff;
+  background: var(--luma-bg-raised);
 }
 
 /* Secondary cards remain only slightly gray so the whole UI stays bright. */
 html[data-theme="light"] .summary-card,
 html[data-theme="light"] .new-project-button {
-  background: #fafafa;
+  background: rgba(250,250,250,calc(var(--panel-opacity) * .72));
 }
 
 html[data-theme="light"] .quick-input-wrap,
@@ -2587,7 +2593,7 @@ html[data-theme="light"] .task-time,
 html[data-theme="light"] .edit-project-button,
 html[data-theme="light"] .secondary-button,
 html[data-theme="light"] .soft-button {
-  background: #ffffff;
+  background: var(--luma-bg-control);
 }
 
 
@@ -2897,7 +2903,7 @@ html[data-theme="light"] .calendar-span-event.google-calendar-event:hover {
 /* Light Fluent-style segmented control. */
 html[data-theme="light"] .calendar-item-type-switch {
   border-color: #e5e5e5;
-  background: #f5f5f5;
+  background: var(--luma-bg-subtle);
 }
 
 html[data-theme="light"] .calendar-mode-button {
@@ -2926,7 +2932,7 @@ html[data-theme="light"] .calendar-mode-button.active[data-calendar-mode="event"
 html[data-theme="light"] #calendarTaskEndTime:disabled {
   color: #8a8a8a;
   border-color: #e1e1e1;
-  background: #f7f7f7;
+  background: rgba(247,247,247,calc(var(--panel-opacity) * .62));
   opacity: 1;
 }
 
@@ -3296,7 +3302,7 @@ html[data-theme="light"] .calendar-editor-body select,
 html[data-theme="light"] .calendar-editor-body .time-text-input {
   border-color: var(--luma-stroke-1);
   color: var(--luma-fg-1);
-  background: #fff;
+  background: var(--luma-bg-control);
   box-shadow: none;
 }
 
@@ -3370,7 +3376,7 @@ html[data-theme="light"] .calendar-editor-body .time-text-input:focus {
 /* Light mode: neutral Fluent-like tray, active state carried by fill only. */
 html[data-theme="light"] .calendar-editor-body .calendar-item-type-switch {
   border: 0;
-  background: #f3f4f4;
+  background: rgba(243,244,244,calc(var(--panel-opacity) * .62));
   box-shadow: inset 0 0 0 1px rgba(32,41,56,.05);
 }
 
@@ -3739,7 +3745,7 @@ html[data-theme="light"] .experimental-badge {
 html[data-theme="light"] .icloud-credentials input {
   color: var(--luma-fg-1);
   border-color: var(--luma-stroke-1);
-  background: #fff;
+  background: var(--luma-bg-control);
 }
 
 html[data-theme="light"] .icloud-credentials input:focus {
@@ -3783,7 +3789,7 @@ html[data-theme="light"] .icloud-calendar-target label {
 html[data-theme="light"] .icloud-calendar-target select {
   color: var(--luma-fg-1);
   border-color: var(--luma-stroke-1);
-  background: #fff;
+  background: var(--luma-bg-control);
 }
 
 html[data-theme="light"] .icloud-calendar-target select:focus {
@@ -3987,7 +3993,7 @@ html[data-theme="light"] .settings-modal .reminders-bridge-logo {
 /* Light mode: white cards, shallow separators, no gray slabs. */
 html[data-theme="light"] .sync-card {
   border-color: rgba(32,41,56,.09);
-  background: #ffffff;
+  background: var(--luma-bg-control);
 }
 
 html[data-theme="light"] .apple-sync-heading {
@@ -4010,6 +4016,30 @@ html[data-theme="light"] .apple-sync-kind small {
 html[data-theme="light"] .sync-note,
 html[data-theme="light"] .apple-sync-note {
   color: #707070 !important;
+}
+
+/* Settings is a stable control surface. Adjusting window opacity only previews
+   the Todo/Calendar surfaces behind it; the settings dialog itself stays opaque. */
+html[data-theme="light"] .settings-modal {
+  background: #ffffff;
+}
+
+html[data-theme="light"] .settings-modal .sync-card {
+  background: #ffffff;
+}
+
+html[data-theme="light"] .settings-modal .icloud-credentials input,
+html[data-theme="light"] .settings-modal .icloud-calendar-target select {
+  background: #ffffff;
+}
+
+html[data-theme="light"] .settings-modal .soft-button {
+  background: #ffffff;
+}
+
+html[data-theme="light"] .settings-modal .soft-button:hover,
+html[data-theme="light"] .settings-modal .soft-button:focus-visible {
+  background: #f5f5f5;
 }
 
 /* Completed Todo rows keep the same readable rhythm as active rows when space allows. */
