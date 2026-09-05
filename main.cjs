@@ -1751,6 +1751,15 @@ function createWindow() {
     },
   });
 
+  // The renderer is a local application surface. It must not create arbitrary
+  // child windows or replace itself with remote/local content.
+  mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    const currentUrl = mainWindow.webContents.getURL();
+    if (!currentUrl || url === currentUrl) return;
+    event.preventDefault();
+  });
+
   mainWindow.loadFile('index.html');
   mainWindow.once('ready-to-show', async () => {
     if (process.env.LUMA_SCREENSHOT_DIR) mainWindow.showInactive();
