@@ -1,7 +1,10 @@
 # Luma Todo
 
+![Luma Todo](./assets/cover.jpg)
+
 一个轻量的 Windows 桌面待办与月历工具。
-![Luma Todo](./assets/Lumatodo.png)
+
+![界面预览](./assets/Lumatodo.png)
 
 
 ## 下载 当前版本：v1.2.0
