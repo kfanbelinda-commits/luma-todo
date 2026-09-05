@@ -75,12 +75,42 @@
   assertQa(task.itemType === 'todo' && !isCalendarEvent(task), 'Restored Todo changed type');
 
   // Exercise the real expand/collapse path, including main-process resize IPC.
+  // Window background transparency must survive the native resize unchanged.
+  const previousLightMode = Boolean(state.settings.lightMode);
+  const previousPanelOpacity = Number(state.settings.panelOpacity);
+  applyColorMode(true);
+  applyPanelOpacity(20);
+
+  const todoPanel = document.querySelector('.todo-panel');
+  const calendarPanel = document.querySelector('.calendar-panel');
+  const compactTodoBackground = getComputedStyle(todoPanel).backgroundColor;
+  assertQa(
+    getComputedStyle(document.documentElement).getPropertyValue('--panel-opacity').trim() === '0.2',
+    'Low-opacity QA setup did not apply'
+  );
+
   await toggleExpanded(true);
   assertQa(expanded, 'Calendar did not enter expanded state');
   assertQa(document.querySelector('#app').classList.contains('expanded'), 'Expanded class missing');
+  assertQa(
+    getComputedStyle(document.documentElement).getPropertyValue('--panel-opacity').trim() === '0.2',
+    'Expanding Calendar changed panel opacity'
+  );
+  assertQa(
+    getComputedStyle(todoPanel).backgroundColor === compactTodoBackground,
+    'Expanding Calendar changed Todo panel background'
+  );
+  assertQa(
+    getComputedStyle(calendarPanel).backgroundColor === compactTodoBackground,
+    'Expanded Calendar does not use the same translucent panel background as Todo'
+  );
+
   await toggleExpanded(false);
   assertQa(!expanded, 'Calendar did not return to compact state');
   assertQa(!document.querySelector('#app').classList.contains('expanded'), 'Expanded class remained');
+
+  applyPanelOpacity(previousPanelOpacity);
+  applyColorMode(previousLightMode);
 
   // Cleanup is demo-only and keeps repeated CI runs deterministic.
   state.tasks = state.tasks.filter((item) => item.id !== task.id);
@@ -95,7 +125,8 @@
       'completion grace undo',
       'completed todo stays on calendar',
       'restore completed todo',
-      'expand collapse'
+      'expand collapse',
+      'opacity survives calendar expand'
     ]
   };
 })()
