@@ -34,6 +34,8 @@ for (const ignored of [
 
 assert(/contextIsolation:\s*true/.test(main), 'BrowserWindow must keep contextIsolation enabled');
 assert(/nodeIntegration:\s*false/.test(main), 'BrowserWindow must keep nodeIntegration disabled');
+assert(main.includes("setWindowOpenHandler(() => ({ action: 'deny' }))"), 'renderer-created windows must remain blocked');
+assert(main.includes("webContents.on('will-navigate'"), 'unexpected renderer navigation must remain blocked');
 assert(/safeStorage\.encryptString/.test(main), 'local credentials/tokens must use safeStorage encryption');
 
 const publicStatusStart = main.indexOf('function publicIcloudStatus');
