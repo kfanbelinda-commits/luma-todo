@@ -4,11 +4,11 @@
 ![Luma Todo](./assets/Lumatodo.png)
 
 
-## 下载 当前版本：v1.1.0
+## 下载 当前版本：v1.2.0
 
 **[下载最新版 Luma Todo](https://github.com/kfanbelinda-commits/luma-todo/releases/latest)**
 
-推荐下载 `Luma-Todo-Setup-1.1.0.zip`，解压后运行其中的 `Luma-Todo-Setup-1.1.0.exe`；也可以直接下载 `.exe` 安装。其他 Assets 无需手动下载。
+推荐下载 `Luma-Todo-Setup-1.2.0.zip`，解压后运行其中的 `Luma-Todo-Setup-1.2.0.exe`；也可以直接下载 `.exe` 安装。其他 Assets 无需手动下载。
 
 
 
@@ -28,7 +28,7 @@
 - Apple / iCloud Calendar 双向日程同步
 - 有日期的 Todo 可镜像到 Apple Calendar
 - 深色 / 浅色模式
-- 透明度、桌面层常驻、Pin 窗口置顶、开机启动
+- 0%–100% 窗口背景透明度、桌面层常驻、Pin 窗口置顶、开机启动
 - 本地保存、每日备份、手动导出
 - 自动检查并安装新版本
 
