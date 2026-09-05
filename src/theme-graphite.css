@@ -1360,7 +1360,7 @@ html[data-theme="light"] .calendar-day.muted:focus-visible {
 html[data-theme="light"] .date-summary {
   border-color: rgba(57,70,92,.13);
   color: #5d6879;
-  background: rgba(255,255,255,.42);
+  background: rgba(255,255,255,calc(var(--panel-opacity) * .72));
 }
 html[data-theme="light"] .date-summary-chevron {
   color: rgba(58,71,92,.42);
@@ -1370,7 +1370,7 @@ html[data-theme="light"] .date-summary:focus-visible,
 html[data-theme="light"] .date-summary.expanded {
   border-color: rgba(57,70,92,.19);
   color: #263244;
-  background: rgba(255,255,255,.78);
+  background: rgba(255,255,255,calc(var(--panel-opacity) * .92));
 }
 
 
@@ -2380,14 +2380,18 @@ html[data-theme="light"] .quick-input-wrap {
 }
 html[data-theme="light"] .quick-input-wrap:hover,
 html[data-theme="light"] .summary-card:hover,
-html[data-theme="light"] .date-summary:hover,
-html[data-theme="light"] .date-summary:focus-visible,
-html[data-theme="light"] .date-summary.expanded,
 html[data-theme="light"] .icon-button:hover,
 html[data-theme="light"] .secondary-button:hover,
 html[data-theme="light"] .soft-button:hover {
   color: var(--luma-fg-1);
   background: #fff;
+}
+
+html[data-theme="light"] .date-summary:hover,
+html[data-theme="light"] .date-summary:focus-visible,
+html[data-theme="light"] .date-summary.expanded {
+  color: var(--luma-fg-1);
+  background: rgba(255,255,255,calc(var(--panel-opacity) * .92));
 }
 
 /* Calendar grid stays on the application base with very quiet separators. */
