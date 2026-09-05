@@ -50,7 +50,6 @@ button { color: inherit; }
 
 .app-shell.calendar-transition .calendar-panel {
   visibility: hidden;
-  opacity: 0;
   transform: none;
   pointer-events: none;
 }
@@ -72,13 +71,12 @@ button { color: inherit; }
 .calendar-panel {
   min-width: 0;
   visibility: hidden;
-  opacity: 0;
   transform: translateX(26px) scale(.98);
   pointer-events: none;
-  transition: opacity 220ms ease, transform 300ms cubic-bezier(.2,.8,.2,1);
+  transition: transform 300ms cubic-bezier(.2,.8,.2,1);
 }
 
-.expanded .calendar-panel { visibility: visible; opacity: 1; transform: none; pointer-events: auto; }
+.expanded .calendar-panel { visibility: visible; transform: none; pointer-events: auto; }
 
 .drag-region { -webkit-app-region: drag; }
 .no-drag, button, input, label { -webkit-app-region: no-drag; }
