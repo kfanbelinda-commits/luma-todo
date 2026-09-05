@@ -697,9 +697,6 @@ h3 { font-size: 19px; }
 /* Optional light glass theme. Structural sizing stays shared with graphite. */
 :root[data-theme="light"] {
   color-scheme: light;
-  --ink: #202938;
-  --muted: #667085;
-  --line: rgba(51,65,85,.14);
   --action-primary: #111318;
   --action-primary-strong: #000000;
   --action-on-primary: #ffffff;
@@ -708,8 +705,6 @@ h3 { font-size: 19px; }
   --action-soft-pressed: rgba(17, 19, 24, .20);
   --action-border: rgba(17, 19, 24, .24);
   --action-focus-ring: rgba(17, 19, 24, .28);
-  --control-deep: rgba(32, 41, 56, .09);
-  --control-deep-hover: rgba(32, 41, 56, .15);
 }
 
 html[data-theme="light"] .panel {
@@ -2320,11 +2315,6 @@ html[data-theme="light"] .calendar-panel.calendar-detail-open .calendar-detail {
 
 /* Fluent-inspired light surface system: neutral, coherent, restrained. */
 :root[data-theme="light"] {
-  --luma-bg-app: #f5f5f5;
-  --luma-bg-app-rgb: 245,245,245;
-  --luma-bg-raised: #fafafa;
-  --luma-bg-control: #ffffff;
-  --luma-bg-subtle: #f0f0f0;
   --luma-fg-1: #242424;
   --luma-fg-2: #424242;
   --luma-fg-3: #616161;
