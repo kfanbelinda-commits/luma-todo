@@ -33,6 +33,7 @@ jobs:
           $env:LUMA_SCREENSHOT_DIR = Join-Path $PWD "qa-screenshots\dark"
           $env:LUMA_SCREENSHOT_DARK = "1"
           $env:LUMA_BEHAVIOR_SMOKE = "1"
+          $env:LUMA_SYNC_PROTOCOL_SMOKE = "1"
           npm run start:demo
 
       - name: Run light settings UI smoke
