@@ -2550,11 +2550,11 @@ html[data-theme="light"] .calendar-panel {
     ) padding-box,
     linear-gradient(
       135deg,
-      rgba(246,221,130,.72) 0%,
-      rgba(244,194,212,.52) 27%,
-      rgba(209,196,246,.52) 52%,
-      rgba(178,218,242,.58) 76%,
-      rgba(246,221,130,.72) 100%
+      rgba(246,221,130,calc(var(--panel-opacity) * .56)) 0%,
+      rgba(244,194,212,calc(var(--panel-opacity) * .42)) 27%,
+      rgba(209,196,246,calc(var(--panel-opacity) * .42)) 52%,
+      rgba(178,218,242,calc(var(--panel-opacity) * .46)) 76%,
+      rgba(246,221,130,calc(var(--panel-opacity) * .56)) 100%
     ) border-box;
 }
 
