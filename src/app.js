@@ -89,7 +89,10 @@ function normalizeState(input) {
   input.settings.collapsedProjectIds = Array.isArray(input.settings.collapsedProjectIds)
     ? input.settings.collapsedProjectIds.map(String)
     : [];
-  input.settings.panelOpacity = Math.min(100, Math.max(45, Number(input.settings.panelOpacity) || 88));
+  {
+    const savedOpacity = Number(input.settings.panelOpacity);
+    input.settings.panelOpacity = Math.min(100, Math.max(0, Number.isFinite(savedOpacity) ? savedOpacity : 88));
+  }
   input.projects.forEach((project, index) => {
     project.order ??= index;
     project.updatedAt = Number(project.updatedAt || 0);
@@ -401,7 +404,8 @@ async function toggleAlwaysOnTop() {
 }
 
 function applyPanelOpacity(value) {
-  const opacity = Math.min(100, Math.max(45, Number(value) || 88));
+  const numericValue = Number(value);
+  const opacity = Math.min(100, Math.max(0, Number.isFinite(numericValue) ? numericValue : 88));
   document.documentElement.style.setProperty('--panel-opacity', String(opacity / 100));
   $('#opacityValue').textContent = `${opacity}%`;
   $('#opacitySlider').value = String(opacity);
