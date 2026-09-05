@@ -1930,6 +1930,29 @@ function setupAutoUpdates() {
   updateCheckTimer = setInterval(check, 6 * 60 * 60 * 1000);
 }
 
+function isTrustedIpcSender(event) {
+  if (!mainWindow || mainWindow.isDestroyed()) return false;
+  if (!event || event.sender !== mainWindow.webContents) return false;
+
+  const frameUrl = String(event.senderFrame?.url || '');
+  const pageUrl = String(mainWindow.webContents.getURL() || '');
+  return Boolean(frameUrl && pageUrl && frameUrl === pageUrl && frameUrl.startsWith('file:'));
+}
+
+function trustedHandle(channel, handler) {
+  ipcMain.handle(channel, (event, ...args) => {
+    if (!isTrustedIpcSender(event)) throw new Error('Blocked untrusted IPC sender');
+    return handler(event, ...args);
+  });
+}
+
+function trustedOn(channel, handler) {
+  ipcMain.on(channel, (event, ...args) => {
+    if (!isTrustedIpcSender(event)) return;
+    return handler(event, ...args);
+  });
+}
+
 app.on('second-instance', () => {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   revealMainWindow();
@@ -1950,7 +1973,7 @@ app.on('before-quit', () => {
   if (updateCheckTimer) clearInterval(updateCheckTimer);
 });
 
-ipcMain.handle('window:set-expanded', (_event, expanded) => {
+trustedHandle('window:set-expanded', (_event, expanded) => {
   const current = mainWindow.getBounds();
   if (isExpanded) expandedBounds = current;
   else compactBounds = current;
@@ -1974,18 +1997,18 @@ ipcMain.handle('window:set-expanded', (_event, expanded) => {
   return mainWindow.getBounds();
 });
 
-ipcMain.handle('window:set-always-on-top', async (_event, enabled) => {
+trustedHandle('window:set-always-on-top', async (_event, enabled) => {
   return setPinnedState(enabled);
 });
 
-ipcMain.on('window:activate', () => {
+trustedOn('window:activate', () => {
   cancelDesktopAttach();
   if (!isPinnedAlwaysOnTop && (!mainWindow?.isFocused() || isDesktopHosted)) {
     activateMainWindow();
   }
 });
 
-ipcMain.on('window:resize-start', (_event, payload) => {
+trustedOn('window:resize-start', (_event, payload) => {
   if (!payload?.edge) return;
   resizeSession = {
     edge: payload.edge,
@@ -1995,7 +2018,7 @@ ipcMain.on('window:resize-start', (_event, payload) => {
   };
 });
 
-ipcMain.on('window:resize-move', (_event, payload) => {
+trustedOn('window:resize-move', (_event, payload) => {
   if (!resizeSession) return;
   const { edge, startX, startY, bounds } = resizeSession;
   const dx = Number(payload.x) - startX;
@@ -2018,19 +2041,19 @@ ipcMain.on('window:resize-move', (_event, payload) => {
   mainWindow.setBounds(next);
 });
 
-ipcMain.on('window:resize-end', () => {
+trustedOn('window:resize-end', () => {
   if (!resizeSession) return;
   resizeSession = null;
   saveWindowState();
 });
 
-ipcMain.on('window:hide', () => {
+trustedOn('window:hide', () => {
   isExplicitlyHidden = true;
   cancelDesktopAttach();
   mainWindow.hide();
 });
 
-ipcMain.handle('data:load', () => {
+trustedHandle('data:load', () => {
   try {
     return JSON.parse(fs.readFileSync(dataPath(), 'utf8'));
   } catch {
@@ -2038,7 +2061,7 @@ ipcMain.handle('data:load', () => {
   }
 });
 
-ipcMain.handle('data:save', (_event, payload) => {
+trustedHandle('data:save', (_event, payload) => {
   const target = dataPath();
   fs.mkdirSync(path.dirname(target), { recursive: true });
   const temp = `${target}.tmp`;
@@ -2047,7 +2070,7 @@ ipcMain.handle('data:save', (_event, payload) => {
   return true;
 });
 
-ipcMain.handle('data:export', async (_event, payload) => {
+trustedHandle('data:export', async (_event, payload) => {
   nativeModalDepth += 1;
   cancelDesktopAttach();
   try {
@@ -2065,7 +2088,7 @@ ipcMain.handle('data:export', async (_event, payload) => {
   }
 });
 
-ipcMain.handle('google:status', () => {
+trustedHandle('google:status', () => {
   if (DEMO_MODE) {
     return {
       connected: false,
@@ -2084,13 +2107,13 @@ ipcMain.handle('google:status', () => {
   };
 });
 
-ipcMain.handle('google:connect', async () => {
+trustedHandle('google:connect', async () => {
   if (DEMO_MODE) throw new Error('演示模式不会连接真实 Google 账户');
   if (!fs.existsSync(googleCredentialsPath())) throw new Error('项目目录中没有找到 credentials.json');
   return connectGoogle();
 });
 
-ipcMain.handle('google:disconnect', async () => {
+trustedHandle('google:disconnect', async () => {
   const token = loadGoogleToken();
   const revocationToken = token?.refresh_token || token?.access_token;
   if (revocationToken) {
@@ -2105,19 +2128,19 @@ ipcMain.handle('google:disconnect', async () => {
   return { connected: false, credentialsAvailable: fs.existsSync(googleCredentialsPath()) };
 });
 
-ipcMain.handle('google:sync', (_event, payload) => {
+trustedHandle('google:sync', (_event, payload) => {
   if (DEMO_MODE) return { state: payload, summary: { uploaded: 0, downloaded: 0, deleted: 0, externalCalendarDownloaded: 0, projectsUploaded: 0, projectsDownloaded: 0 } };
   return syncGoogleState(payload);
 });
-ipcMain.handle('google:delete-task', (_event, task) => DEMO_MODE ? false : deleteGoogleTask(task));
+trustedHandle('google:delete-task', (_event, task) => DEMO_MODE ? false : deleteGoogleTask(task));
 
 
-ipcMain.handle('icloud:status', () => {
+trustedHandle('icloud:status', () => {
   if (DEMO_MODE) return { connected: false, email: '', calendars: [], demo: true };
   return publicIcloudStatus(loadIcloudCredentials());
 });
 
-ipcMain.handle('icloud:connect', async (_event, payload) => {
+trustedHandle('icloud:connect', async (_event, payload) => {
   if (DEMO_MODE) throw new Error('演示模式不会连接真实 iCloud 账户');
   const email = String((payload && payload.email) || '').trim();
   const password = String((payload && payload.password) || '').trim();
@@ -2136,20 +2159,20 @@ ipcMain.handle('icloud:connect', async (_event, payload) => {
   return publicIcloudStatus(stored);
 });
 
-ipcMain.handle('icloud:disconnect', () => {
+trustedHandle('icloud:disconnect', () => {
   clearIcloudCredentials();
   return { connected: false, email: '', calendars: [], selectedCalendarUrl: '' };
 });
 
-ipcMain.handle('icloud:sync', (_event, payload) => {
+trustedHandle('icloud:sync', (_event, payload) => {
   if (DEMO_MODE) return { state: payload?.state, summary: { created: 0, updated: 0, unchanged: 0, calendarName: '' } };
   return syncIcloudEvents(payload?.state || {}, String(payload?.calendarUrl || ''));
 });
 
-ipcMain.handle('settings:auto-start', (_event, enabled) => {
+trustedHandle('settings:auto-start', (_event, enabled) => {
   if (DEMO_MODE) return false;
   app.setLoginItemSettings({ openAtLogin: Boolean(enabled) });
   return app.getLoginItemSettings().openAtLogin;
 });
 
-ipcMain.handle('settings:get-auto-start', () => DEMO_MODE ? false : app.getLoginItemSettings().openAtLogin);
+trustedHandle('settings:get-auto-start', () => DEMO_MODE ? false : app.getLoginItemSettings().openAtLogin);
