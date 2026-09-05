@@ -7,6 +7,7 @@ const lock = JSON.parse(read('package-lock.json'));
 const main = read('main.cjs');
 const preload = read('preload.cjs');
 const app = read('src/app.js');
+const html = read('index.html');
 const gitignore = read('.gitignore');
 
 assert.strictEqual(pkg.scripts.start, 'electron .', 'npm start must use real Luma data');
@@ -36,6 +37,9 @@ assert(/contextIsolation:\s*true/.test(main), 'BrowserWindow must keep contextIs
 assert(/nodeIntegration:\s*false/.test(main), 'BrowserWindow must keep nodeIntegration disabled');
 assert(main.includes("setWindowOpenHandler(() => ({ action: 'deny' }))"), 'renderer-created windows must remain blocked');
 assert(main.includes("webContents.on('will-navigate'"), 'unexpected renderer navigation must remain blocked');
+assert(html.includes('http-equiv="Content-Security-Policy"'), 'renderer must keep a Content Security Policy');
+assert(html.includes("script-src 'self'"), 'CSP must restrict scripts to local files');
+assert(html.includes("connect-src 'none'"), 'renderer must not make direct network connections');
 assert(/safeStorage\.encryptString/.test(main), 'local credentials/tokens must use safeStorage encryption');
 
 const publicStatusStart = main.indexOf('function publicIcloudStatus');
