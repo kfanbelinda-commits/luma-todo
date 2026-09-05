@@ -4039,6 +4039,30 @@ html[data-theme="light"] .apple-sync-note {
   color: #707070 !important;
 }
 
+/* Settings is a stable control surface. Adjusting window opacity only previews
+   the Todo/Calendar surfaces behind it; the settings dialog itself stays opaque. */
+html[data-theme="light"] .settings-modal {
+  background: #ffffff;
+}
+
+html[data-theme="light"] .settings-modal .sync-card {
+  background: #ffffff;
+}
+
+html[data-theme="light"] .settings-modal .icloud-credentials input,
+html[data-theme="light"] .settings-modal .icloud-calendar-target select {
+  background: #ffffff;
+}
+
+html[data-theme="light"] .settings-modal .soft-button {
+  background: #ffffff;
+}
+
+html[data-theme="light"] .settings-modal .soft-button:hover,
+html[data-theme="light"] .settings-modal .soft-button:focus-visible {
+  background: #f5f5f5;
+}
+
 /* Completed Todo rows keep the same readable rhythm as active rows when space allows. */
 .completed-toggle {
   flex: 0 0 auto;
