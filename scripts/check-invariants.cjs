@@ -38,6 +38,11 @@ assert(/nodeIntegration:\s*false/.test(main), 'BrowserWindow must keep nodeInteg
 assert(/sandbox:\s*true/.test(main), 'BrowserWindow renderer sandbox must remain enabled');
 assert(main.includes("setWindowOpenHandler(() => ({ action: 'deny' }))"), 'renderer-created windows must remain blocked');
 assert(main.includes("webContents.on('will-navigate'"), 'unexpected renderer navigation must remain blocked');
+assert(main.includes('function isTrustedIpcSender(event)'), 'IPC sender validation helper must remain present');
+assert(main.includes('event.sender !== mainWindow.webContents'), 'IPC must verify the sending webContents');
+assert(main.includes('frameUrl === pageUrl'), 'IPC must verify the sending frame URL');
+assert.strictEqual((main.match(/ipcMain\.handle\(/g) || []).length, 1, 'all IPC invoke handlers must use trustedHandle');
+assert.strictEqual((main.match(/ipcMain\.on\(/g) || []).length, 1, 'all IPC event listeners must use trustedOn');
 assert(html.includes('http-equiv="Content-Security-Policy"'), 'renderer must keep a Content Security Policy');
 assert(html.includes("script-src 'self'"), 'CSP must restrict scripts to local files');
 assert(html.includes("connect-src 'none'"), 'renderer must not make direct network connections');
