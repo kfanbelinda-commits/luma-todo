@@ -12,7 +12,7 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "check": "node --check main.cjs && node --check preload.cjs && node --check src/app.js",
+    "check": "node --check main.cjs && node --check preload.cjs && node --check src/app.js && node scripts/check-invariants.cjs",
     "dist": "electron-builder --win --publish never",
     "release": "electron-builder --win --publish always",
     "start:demo": "electron . --demo",
