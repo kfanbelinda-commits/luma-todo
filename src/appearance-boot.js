@@ -56,4 +56,72 @@
   });
 
   window.LumaAppearanceApply = applyPalette;
+
+  function relocateOverdueChip(item) {
+    const chip = item.querySelector('.task-meta .overdue-chip');
+    if (!chip) return item;
+    const match = chip.textContent.match(/(\d+)/);
+    const days = match ? match[1] : '';
+    chip.textContent = days ? `顺延${days}天` : '顺延';
+    chip.title = days ? `已过期 ${days} 天` : '已过期';
+
+    const date = item.querySelector('.task-date-label');
+    if (date) {
+      const dueText = date.textContent.trim();
+      date.classList.add('is-overdue');
+      date.title = chip.title + (dueText ? `，原日期 ${dueText}` : '');
+      date.textContent = '';
+      if (dueText) {
+        const due = document.createElement('span');
+        due.className = 'task-due';
+        due.textContent = dueText;
+        date.append(chip, due);
+      } else {
+        date.append(chip);
+      }
+    }
+
+    const meta = item.querySelector('.task-meta');
+    if (meta && !meta.children.length) meta.remove();
+    return item;
+  }
+
+  function bindProgressToggle(group) {
+    const hiddenToggle = group.querySelector('.completed-toggle');
+    const progress = group.querySelector('.project-progress');
+    if (!hiddenToggle || !progress || progress.dataset.boundToggle === '1') return;
+
+    const button = progress.tagName === 'BUTTON' ? progress : document.createElement('button');
+    if (button !== progress) {
+      button.type = 'button';
+      button.className = `${progress.className} is-toggle`.trim();
+      button.textContent = progress.textContent;
+      progress.replaceWith(button);
+    } else {
+      button.classList.add('is-toggle');
+    }
+    button.dataset.boundToggle = '1';
+    button.setAttribute('aria-expanded', hiddenToggle.getAttribute('aria-expanded') || 'false');
+    button.title = button.getAttribute('aria-expanded') === 'true' ? '收起已完成任务' : '查看已完成任务';
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      hiddenToggle.click();
+    });
+  }
+
+  const originalTaskElement = typeof taskElement === 'function' ? taskElement : null;
+  if (originalTaskElement) {
+    taskElement = function patchedTaskElement(task) {
+      return relocateOverdueChip(originalTaskElement(task));
+    };
+  }
+
+  const originalRenderProjects = typeof renderProjects === 'function' ? renderProjects : null;
+  if (originalRenderProjects) {
+    renderProjects = function patchedRenderProjects() {
+      originalRenderProjects();
+      document.querySelectorAll('.project-group').forEach(bindProgressToggle);
+    };
+  }
 })();
