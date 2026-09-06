@@ -8,6 +8,8 @@
   margin: 0 12px 12px;
   padding: 0;
   overflow: hidden;
+  /* Same fill contract as .calendar-grid so rows stretch with the window. */
+  height: calc(100% - 145px);
 }
 .lifelog-board.hidden { display: none; }
 .calendar-panel.is-lifelog .weekdays,
