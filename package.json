@@ -42,7 +42,10 @@
       "src/**/*",
       "assets/icon.png",
       "assets/icon.ico",
-      "package.json"
+      "package.json",
+      "!demo/**",
+      "!scripts/**",
+      "!qa/**"
     ],
     "extraResources": [
       {
