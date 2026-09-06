@@ -110,18 +110,24 @@
     });
   }
 
-  const originalTaskElement = typeof taskElement === 'function' ? taskElement : null;
-  if (originalTaskElement) {
-    taskElement = function patchedTaskElement(task) {
-      return relocateOverdueChip(originalTaskElement(task));
-    };
+  function installRowPatches() {
+    if (typeof taskElement === 'function' && taskElement.name !== 'patchedTaskElement') {
+      const originalTaskElement = taskElement;
+      taskElement = function patchedTaskElement(task) {
+        return relocateOverdueChip(originalTaskElement(task));
+      };
+    }
+    if (typeof renderProjects === 'function' && renderProjects.name !== 'patchedRenderProjects') {
+      const originalRenderProjects = renderProjects;
+      renderProjects = function patchedRenderProjects() {
+        originalRenderProjects();
+        document.querySelectorAll('.project-group').forEach(bindProgressToggle);
+      };
+    }
+    document.querySelectorAll('.project-group').forEach(bindProgressToggle);
+    document.querySelectorAll('.task-item').forEach(relocateOverdueChip);
   }
 
-  const originalRenderProjects = typeof renderProjects === 'function' ? renderProjects : null;
-  if (originalRenderProjects) {
-    renderProjects = function patchedRenderProjects() {
-      originalRenderProjects();
-      document.querySelectorAll('.project-group').forEach(bindProgressToggle);
-    };
-  }
+  installRowPatches();
+  document.addEventListener('DOMContentLoaded', installRowPatches);
 })();
