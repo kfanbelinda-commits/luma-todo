@@ -86,6 +86,8 @@ function normalizeState(input) {
   input.settings.alwaysOnTop = Boolean(input.settings.alwaysOnTop ?? input.settings.desktopPinned);
   delete input.settings.desktopPinned;
   input.settings.lightMode = Boolean(input.settings.lightMode);
+  if (typeof LumaAppearance !== 'undefined') Object.assign(input.settings, LumaAppearance.normalize(input.settings));
+  else if (input.settings.palette != null) input.settings.palette = String(input.settings.palette);
   input.settings.collapsedProjectIds = Array.isArray(input.settings.collapsedProjectIds)
     ? input.settings.collapsedProjectIds.map(String)
     : [];

@@ -48,11 +48,17 @@
     const input = event.target;
     if (!(input instanceof HTMLInputElement) || input.name !== 'palette' || !input.checked) return;
     const appearance = applyPalette(input.value);
+    if (typeof state !== 'undefined' && state?.settings) Object.assign(state.settings, appearance);
     const toggle = document.querySelector('#lightModeToggle');
     if (toggle && toggle.checked !== appearance.lightMode) {
+      // Cross light/dark: app.js lightMode handler persists for us.
       toggle.checked = appearance.lightMode;
       toggle.dispatchEvent(new Event('change', { bubbles: true }));
+      return;
     }
+    // Same-side swaps (paper↔warm, graphite↔dusk) never flip lightMode — persist here.
+    if (typeof persist === 'function') persist().catch((error) => console.error('无法保存外观', error));
+    else if (typeof state !== 'undefined') window.luma?.save?.(state);
   });
 
   window.LumaAppearanceApply = applyPalette;
