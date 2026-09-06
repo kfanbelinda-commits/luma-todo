@@ -150,6 +150,39 @@
   function hourLabels() {
     return Array.from({ length: DAY_END - DAY_START }, (_, index) => DAY_START + index);
   }
+  function monthKeyBounds(year, month) {
+    const startKey = `${year}-${pad(month + 1)}-01`;
+    const end = new Date(year, month + 1, 0);
+    return { startKey, endKey: toKey(end) };
+  }
+  function monthTodos(year, month) {
+    const { startKey, endKey } = monthKeyBounds(year, month);
+    const tasks = (typeof state !== 'undefined' && Array.isArray(state.tasks)) ? state.tasks : [];
+    return tasks.filter((task) => {
+      if (!task || (typeof isCalendarEvent === 'function' && isCalendarEvent(task))) return false;
+      if (!task.dueDate) return false;
+      return task.dueDate >= startKey && task.dueDate <= endKey;
+    });
+  }
+  function monthStats(year, month) {
+    const items = monthTodos(year, month);
+    const today = todayKey();
+    const done = items.filter((task) => task.completed);
+    const active = items.filter((task) => !task.completed && task.dueDate <= today);
+    const upcoming = items.filter((task) => !task.completed && task.dueDate > today);
+    const total = items.length;
+    const pct = (count) => (total ? `${((count / total) * 100).toFixed(1)}%` : '0%');
+    return {
+      total,
+      rows: [
+        { key: 'done', label: '已完成', count: done.length, ratio: pct(done.length), tone: 'done' },
+        { key: 'active', label: '进行中', count: active.length, ratio: pct(active.length), tone: 'active' },
+        { key: 'upcoming', label: '未开始', count: upcoming.length, ratio: pct(upcoming.length), tone: 'upcoming' },
+      ],
+      open: items.filter((task) => !task.completed).sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)) || String(a.title).localeCompare(String(b.title))),
+      notes: done.slice().sort((a, b) => String(b.updatedAt || 0) - String(a.updatedAt || 0)).slice(0, 8),
+    };
+  }
   function renderMini(host, keys) {
     const focus = parseKey(anchorKey);
     const year = focus.getFullYear();
@@ -165,7 +198,58 @@
       const muted = date.getMonth() !== month;
       cells.push(`<button type="button" class="week-mini-day${muted ? ' is-muted' : ''}${weekSet.has(key) ? ' is-week' : ''}${key === today ? ' is-today' : ''}${key === anchorKey ? ' is-anchor' : ''}" data-date="${key}">${date.getDate()}</button>`);
     }
-    host.innerHTML = `<div class="week-mini-label">${year} 年 ${month + 1} 月</div><div class="week-mini-weekdays">${WEEKDAY_LABELS.map((label) => `<span>${label}</span>`).join('')}</div><div class="week-mini-grid">${cells.join('')}</div>`;
+    const stats = monthStats(year, month);
+    const dayNum = pad(focus.getDate());
+    const monthLabel = `${month + 1}月 / ${year}`;
+    const statRows = stats.rows.map((row) => (
+      `<tr class="week-rail-stat is-${row.tone}"><td><i aria-hidden="true"></i></td><td>${row.label}</td><td>${row.count}</td><td>${row.ratio}</td></tr>`
+    )).join('');
+    const todoItems = stats.open.slice(0, 12).map((task, index) => (
+      `<li class="week-rail-todo" data-id="${escapeText(task.id)}">`
+      + `<span class="week-rail-todo-index">${index + 1}</span>`
+      + `<button type="button" class="week-rail-todo-title" data-date="${escapeText(task.dueDate || '')}">${escapeText(task.title)}</button>`
+      + `<button type="button" class="week-rail-check" data-id="${escapeText(task.id)}" aria-label="完成待办"></button>`
+      + `</li>`
+    )).join('') || '<li class="week-rail-empty">本月暂无待办</li>';
+    const noteItems = stats.notes.map((task, index) => (
+      `<li><span>${index + 1}.</span><span>${escapeText(task.title)}</span></li>`
+    )).join('') || '<li class="week-rail-empty">完成待办后会出现在这里</li>';
+    host.innerHTML = [
+      `<div class="week-rail-date"><strong>${dayNum}</strong><span>${monthLabel}</span></div>`,
+      `<div class="week-rail-cal">`
+      + `<div class="week-mini-label">${year} 年 ${month + 1} 月</div>`
+      + `<div class="week-mini-weekdays">${WEEKDAY_LABELS.map((label) => `<span>${label}</span>`).join('')}</div>`
+      + `<div class="week-mini-grid">${cells.join('')}</div>`
+      + `</div>`,
+      `<section class="week-rail-section">`
+      + `<h3>Stats <em>本月计划统计</em></h3>`
+      + `<table class="week-rail-stats"><thead><tr><th></th><th>状态</th><th>数量</th><th>比例</th></tr></thead><tbody>${statRows}`
+      + `<tr class="week-rail-stat-total"><td></td><td>总计划</td><td>${stats.total}</td><td>100%</td></tr></tbody></table>`
+      + `</section>`,
+      `<section class="week-rail-section week-rail-todos">`
+      + `<h3>To Do <em>本月待办</em></h3>`
+      + `<ol class="week-rail-list">${todoItems}</ol>`
+      + `</section>`,
+      `<section class="week-rail-section week-rail-notes">`
+      + `<h3>Notes <em>本月成果</em></h3>`
+      + `<ol class="week-rail-notes-list">${noteItems}</ol>`
+      + `</section>`
+    ].join('');
+    host.querySelectorAll('.week-rail-check').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const id = button.dataset.id;
+        if (id && typeof toggleTask === 'function') toggleTask(id).then(() => renderBoard());
+      });
+    });
+    host.querySelectorAll('.week-rail-todo-title').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (button.dataset.date) jumpTo(button.dataset.date);
+      });
+    });
   }
   function blockMarkup(task, key, rangeStart, rangeMinutes) {
     const begin = minutes(task.time);
@@ -241,7 +325,7 @@
     const todayIndex = keys.indexOf(todayKey()) + 1;
     const nowLine = nowLineMarkup(keys, rangeStart, rangeMinutes);
     const gutter = labels.map((hour) => `<span>${pad(hour)}:00</span>`).join('');
-    board.innerHTML = `<aside class="week-mini" aria-label="本周在月历中的位置"></aside><section class="week-main"><div class="week-main-head"><span class="week-gutter-spacer"></span><div class="week-col-heads${todayIndex ? ' has-today' : ''}" style="--today-index:${todayIndex}">${header}</div></div><div class="week-hairline" aria-hidden="true"></div><div class="week-allday"><span class="week-gutter-label">全天</span><div class="week-allday-cols${todayIndex ? ' has-today' : ''}" style="--today-index:${todayIndex}">${allDayCols}</div></div><div class="week-hairline" aria-hidden="true"></div><div class="week-scroll"><div class="week-gutter" style="--hour-h:${HOUR_PX}px;--hours:${labels.length}">${gutter}</div><div class="week-days${todayIndex ? ' has-today' : ''}" data-start-hour="${DAY_START}" data-hours="${labels.length}" style="--hour-h:${HOUR_PX}px;--hours:${labels.length};--today-index:${todayIndex}">${dayCols}${nowLine}</div></div></section>`;
+    board.innerHTML = `<aside class="week-mini" aria-label="周视图侧栏"></aside><section class="week-main"><div class="week-main-head"><span class="week-gutter-spacer"></span><div class="week-col-heads${todayIndex ? ' has-today' : ''}" style="--today-index:${todayIndex}">${header}</div></div><div class="week-hairline" aria-hidden="true"></div><div class="week-allday"><span class="week-gutter-label">全天</span><div class="week-allday-cols${todayIndex ? ' has-today' : ''}" style="--today-index:${todayIndex}">${allDayCols}</div></div><div class="week-hairline" aria-hidden="true"></div><div class="week-scroll"><div class="week-gutter" style="--hour-h:${HOUR_PX}px;--hours:${labels.length}">${gutter}</div><div class="week-days${todayIndex ? ' has-today' : ''}" data-start-hour="${DAY_START}" data-hours="${labels.length}" style="--hour-h:${HOUR_PX}px;--hours:${labels.length};--today-index:${todayIndex}">${dayCols}${nowLine}</div></div></section>`;
     renderMini(board.querySelector('.week-mini'), keys);
     restoreScroll(board);
     placeNowLine();
