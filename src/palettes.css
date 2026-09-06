@@ -143,11 +143,11 @@ html[data-theme="light"][data-palette="warm"] .settings-modal {
   border-color: rgba(203, 191, 172, .7);
 }
 html[data-palette="graphite"] .brand-mark {
-  color: #b7c8e6;
-  background: rgba(121, 167, 255, .18);
-  border-color: rgba(137, 177, 255, .45);
+  color: #c5ccd8;
+  background: rgba(255, 255, 255, .06);
+  border-color: rgba(180, 190, 205, .28);
 }
-html[data-palette="graphite"] .luma-bulb .bulb-glow { stroke: rgba(232, 240, 255, .92); }
+html[data-palette="graphite"] .luma-bulb .bulb-glow { stroke: rgba(240, 244, 250, .88); }
 html[data-palette="paper"] .brand-mark {
   color: #2c3340;
   background: rgba(28, 34, 44, .06);
@@ -194,8 +194,7 @@ html[data-palette="dusk"] .settings-modal {
 html[data-palette="dusk"] .settings-modal .settings-section {
   background: transparent;
 }
-html[data-palette="dusk"] .account-card,
-html[data-palette="dusk"] .sync-card {
+html[data-palette="dusk"] .account-card {
   background: rgba(42, 32, 24, .88);
   border-color: rgba(176, 137, 72, .22);
 }
@@ -260,8 +259,6 @@ html[data-palette="dusk"] .opacity-control output {
   font-size: 11px;
 }
 
-/* Things/Todoist: heading metadata stays with the title;
-   + is an icon rail; dates belong only to task rows. */
 .project-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 20px;
@@ -367,4 +364,83 @@ button.project-progress.is-toggle[aria-expanded="true"] {
   width: 132px;
   min-width: 132px;
   grid-template-columns: minmax(0, 104px) 24px;
+}
+
+/* Settings sync: same row language as 开机/透明度, not app-store tiles. */
+.settings-modal .sync-settings {
+  margin-top: 2px;
+  background: transparent;
+}
+.settings-modal .sync-card,
+.settings-modal .google-sync-card,
+.settings-modal .apple-sync-card,
+html[data-theme="light"] .settings-modal .sync-card,
+html[data-palette="dusk"] .settings-modal .sync-card {
+  margin: 0;
+  padding: 10px 2px 12px;
+  border: 0;
+  border-top: 1px solid rgba(128, 128, 128, .14);
+  border-radius: 0;
+  background: transparent;
+}
+.settings-modal .sync-card-header,
+.settings-modal .apple-sync-heading {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+}
+.settings-modal .google-logo,
+.settings-modal .apple-logo,
+html[data-theme="light"] .settings-modal .apple-logo,
+html[data-theme="light"] .settings-modal .google-logo {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border: 0;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+.settings-modal .apple-logo svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+.settings-modal .apple-sync-heading .sync-copy small {
+  display: none;
+}
+.settings-modal .experimental-badge,
+html[data-theme="light"] .experimental-badge {
+  margin-left: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted, #6b7380);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  vertical-align: 0;
+}
+.settings-modal .sync-note,
+.settings-modal .apple-sync-note,
+html[data-theme="light"] .sync-note,
+html[data-theme="light"] .apple-sync-note {
+  margin: 6px 0 0 28px !important;
+}
+.settings-modal .apple-sync-row {
+  margin-top: 8px;
+  padding-left: 28px;
+}
+.settings-modal .icloud-credentials,
+.settings-modal .icloud-calendar-target {
+  margin-left: 28px;
 }
