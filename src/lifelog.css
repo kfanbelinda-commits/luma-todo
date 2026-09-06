@@ -345,3 +345,25 @@ html:not([data-theme="light"]) .lifelog-note { background: rgba(0, 0, 0, .18); }
 .lifelog-photo-add.is-overlay:hover {
   background: rgba(20, 24, 32, .72);
 }
+
+/* Taller day detail when Lifelog is present; scroll the whole panel instead of crushing todos. */
+.calendar-detail:has(#lifeLogDetail) {
+  top: 52px;
+  bottom: 12px;
+  width: min(400px, 48%);
+}
+.calendar-detail-view:has(#lifeLogDetail) {
+  overflow-y: auto;
+}
+.calendar-detail-view:has(#lifeLogDetail) > .calendar-detail-header,
+.calendar-detail-view:has(#lifeLogDetail) > .calendar-detail-section,
+.calendar-detail-view:has(#lifeLogDetail) > .calendar-detail-add,
+.calendar-detail-view:has(#lifeLogDetail) > #lifeLogDetail {
+  flex-shrink: 0;
+}
+.calendar-detail-view:has(#lifeLogDetail) > .calendar-detail-todos {
+  flex: 0 0 auto;
+  max-height: none;
+  min-height: 0;
+  overflow: visible;
+}
