@@ -58,16 +58,39 @@
   window.LumaAppearanceApply = applyPalette;
 
   function relocateOverdueChip(item) {
-    const chip = item.querySelector('.overdue-chip');
     const date = item.querySelector('.task-date-label');
-    const source = (chip && chip.textContent) || (date && date.title) || '';
-    const match = source.match(/(\d+)/);
-    const days = match ? match[1] : '';
-    const title = days ? `已过期 ${days} 天` : '已过期';
-    if (date) {
-      date.classList.add('is-overdue');
-      date.title = title;
+    const chip = item.querySelector('.overdue-chip');
+    if (!date) {
+      chip?.remove();
+      return item;
     }
+    if (date.querySelector('.overdue-mark')) {
+      chip?.remove();
+      return item;
+    }
+
+    const source = (chip && chip.textContent) || '';
+    const match = source.match(/(\d+)/);
+    const days = match ? Number(match[1]) : 0;
+    if (!chip && !days) return item;
+
+    const dueNode = date.querySelector('.task-due');
+    const dueText = (dueNode ? dueNode.textContent : date.textContent).replace(/\s*\+\d+\s*$/, '').trim();
+
+    date.classList.add('is-overdue');
+    date.removeAttribute('title');
+    date.textContent = '';
+    if (dueText) {
+      const due = document.createElement('span');
+      due.className = 'task-due';
+      due.textContent = dueText;
+      date.append(due);
+    }
+    const mark = document.createElement('span');
+    mark.className = 'overdue-mark';
+    mark.textContent = `+${days || 1}`;
+    date.append(mark);
+
     chip?.remove();
     const meta = item.querySelector('.task-meta');
     if (meta && !meta.children.length) meta.remove();
