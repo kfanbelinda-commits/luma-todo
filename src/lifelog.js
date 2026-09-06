@@ -236,21 +236,22 @@
     return section;
   }
 
-  function pickerButton(kind, entry) {
+  function pickerField(kind, entry) {
     const list = kind === "weather" ? WEATHER : MOODS;
     const selected = list.find((item) => item.id === entry[kind]);
     const label = kind === "weather" ? "天气" : "心情";
-    const icon = selected ? selected.emoji : (kind === "weather" ? "🌤" : "🙂");
-    const text = selected ? selected.emoji + " " + selected.label : "点击图标选择";
+    const icon = selected ? selected.emoji : "＋";
     const options = list.map((item) => (
-      '<button type="button" class="lifelog-chip' + (entry[kind] === item.id ? " is-active" : "") + '" data-id="' + item.id + '" role="option">' + item.emoji + " " + item.label + "</button>"
+      '<button type="button" class="lifelog-chip' + (entry[kind] === item.id ? " is-active" : "") + '" data-id="' + item.id + '" role="option">'
+      + '<span class="lifelog-chip-emoji">' + item.emoji + '</span>'
+      + '<span class="lifelog-chip-label">' + item.label + "</span>"
+      + "</button>"
     )).join("");
     return ""
       + '<div class="lifelog-field" data-kind="' + kind + '">'
       + '<span class="lifelog-field-label">' + label + "</span>"
-      + '<button type="button" class="lifelog-pick' + (selected ? " has-value" : "") + '" data-kind="' + kind + '" aria-haspopup="listbox" aria-expanded="false">'
+      + '<button type="button" class="lifelog-pick' + (selected ? " has-value" : "") + '" data-kind="' + kind + '" aria-label="' + label + '" aria-haspopup="listbox" aria-expanded="false">'
       + '<span class="lifelog-pick-icon">' + icon + "</span>"
-      + '<span class="lifelog-pick-text">' + text + "</span>"
       + "</button>"
       + '<div class="lifelog-menu hidden" role="listbox" hidden>' + options + "</div>"
       + "</div>";
@@ -263,8 +264,10 @@
     const cover = await coverUrl(entry);
     section.innerHTML = ""
       + '<div class="calendar-detail-section-title"><span>Lifelog</span><span class="calendar-detail-count">生活记录</span></div>'
-      + pickerButton("weather", entry)
-      + pickerButton("mood", entry)
+      + '<div class="lifelog-pick-row">'
+      + pickerField("weather", entry)
+      + pickerField("mood", entry)
+      + "</div>"
       + '<label class="lifelog-note-label" for="lifeLogNote">一两句话</label>'
       + '<textarea id="lifeLogNote" class="lifelog-note" rows="3" maxlength="280" placeholder="今天发生了什么…">' + (entry.note || "").replace(/</g, "&lt;") + "</textarea>"
       + '<div class="lifelog-photos">'
@@ -290,9 +293,9 @@
       pick?.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
-        const open = menu?.classList.contains("hidden");
+        const willOpen = menu?.classList.contains("hidden");
         closeMenus(field);
-        if (open) {
+        if (willOpen) {
           menu.classList.remove("hidden");
           menu.removeAttribute("hidden");
           pick.classList.add("is-open");
@@ -313,10 +316,9 @@
       });
     });
 
-    const onDoc = (event) => {
+    document.addEventListener("click", (event) => {
       if (!section.contains(event.target)) closeMenus();
-    };
-    document.addEventListener("click", onDoc, { once: true });
+    }, { once: true });
 
     const note = section.querySelector("#lifeLogNote");
     note?.addEventListener("input", () => {
@@ -331,7 +333,7 @@
     });
   }
 
-  async function setView(next) {
+async function setView(next) {
     if (next !== "lifelog") return;
     view = "lifelog";
     syncChrome();

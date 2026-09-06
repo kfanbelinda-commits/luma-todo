@@ -44,7 +44,7 @@ function buildDemoLifelog(now = new Date()) {
     if (seed >= 3 || d % 2 === 0) {
       const file = key + "-cover.svg";
       const color = COVER_COLORS[d % COVER_COLORS.length];
-            const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="' + color + '"/><stop offset="100%" stop-color="#1c222c"/></linearGradient></defs><rect width="640" height="640" fill="url(#g)"/><circle cx="520" cy="120" r="160" fill="rgba(255,255,255,.12)"/><circle cx="120" cy="520" r="220" fill="rgba(0,0,0,.18)"/><rect x="0" y="0" width="640" height="160" fill="rgba(0,0,0,.18)"/></svg>';
+            const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="' + color + '"/><stop offset="100%" stop-color="#1c222c"/></linearGradient></defs><rect width="640" height="640" fill="url(#g)"/><circle cx="520" cy="140" r="180" fill="rgba(255,255,255,.14)"/><circle cx="140" cy="520" r="240" fill="rgba(0,0,0,.16)"/></svg>';
       media.push({ relativePath: file, svg });
       photos.push({ id: "demo-" + key + "-1", path: file, addedAt: date.getTime() });
     }

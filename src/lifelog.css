@@ -143,33 +143,28 @@
   pointer-events: none;
 }
 
-.calendar-detail-view:has(#lifeLogDetail) {
-  overflow-y: auto;
-}
-.calendar-detail-view:has(#lifeLogDetail) > .calendar-detail-header,
-.calendar-detail-view:has(#lifeLogDetail) > .calendar-detail-section,
-.calendar-detail-view:has(#lifeLogDetail) > .calendar-detail-add,
-.calendar-detail-view:has(#lifeLogDetail) > #lifeLogDetail {
-  flex-shrink: 0;
-}
-.calendar-detail-view:has(#lifeLogDetail) > .calendar-detail-todos {
-  flex: 0 1 auto;
-  max-height: 28%;
-  min-height: 72px;
-}
-
 .lifelog-detail {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  margin-top: 4px;
+  padding-top: 10px;
   border-top: 1px solid rgba(128, 128, 128, .12);
+}
+
+.lifelog-pick-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: start;
 }
 .lifelog-field {
   position: relative;
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
+  grid-template-columns: auto auto;
   gap: 8px;
   align-items: center;
+  justify-content: start;
 }
 .lifelog-field-label {
   color: var(--muted, rgba(90, 96, 108, .72));
@@ -177,44 +172,35 @@
   font-weight: 600;
 }
 .lifelog-pick {
-  display: inline-flex;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 0;
   border: 1px solid rgba(128, 128, 128, .22);
   border-radius: 10px;
   background: rgba(128, 128, 128, .06);
   color: inherit;
   font: inherit;
-  font-size: 12px;
-  text-align: left;
   cursor: pointer;
 }
 .lifelog-pick:hover { background: rgba(128, 128, 128, .1); }
 .lifelog-pick.is-open {
-  border-color: rgba(123, 141, 191, .4);
+  border-color: rgba(123, 141, 191, .45);
   box-shadow: inset 0 0 0 1px rgba(123, 141, 191, .18);
 }
-.lifelog-pick-icon { font-size: 16px; line-height: 1; }
-.lifelog-pick-text {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--muted, rgba(90, 96, 108, .7));
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.lifelog-pick.has-value .lifelog-pick-text { color: inherit; font-weight: 600; }
+.lifelog-pick-icon { font-size: 18px; line-height: 1; }
 
 .lifelog-menu {
   position: absolute;
-  top: calc(100% + 4px);
-  left: 42px;
-  right: 0;
-  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  min-width: 168px;
+  max-width: 220px;
   padding: 8px;
   border: 1px solid rgba(128, 128, 128, .2);
   border-radius: 12px;
@@ -227,6 +213,9 @@ html:not([data-theme="light"]) .lifelog-menu {
 }
 .lifelog-menu.hidden { display: none; }
 .lifelog-menu .lifelog-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 8px;
   border: 1px solid rgba(128, 128, 128, .2);
   border-radius: 999px;
@@ -240,6 +229,30 @@ html:not([data-theme="light"]) .lifelog-menu {
   border-color: rgba(123, 141, 191, .45);
   background: rgba(123, 141, 191, .16);
   font-weight: 700;
+}
+.lifelog-chip-emoji { font-size: 14px; line-height: 1; }
+.lifelog-chip-label { line-height: 1; }
+
+/* Taller day detail when Lifelog is present; scroll the whole panel instead of crushing todos. */
+.calendar-detail:has(#lifeLogDetail) {
+  top: 52px;
+  bottom: 12px;
+  width: min(400px, 48%);
+}
+.calendar-detail-view:has(#lifeLogDetail) {
+  overflow-y: auto;
+}
+.calendar-detail-view:has(#lifeLogDetail) > .calendar-detail-header,
+.calendar-detail-view:has(#lifeLogDetail) > .calendar-detail-section,
+.calendar-detail-view:has(#lifeLogDetail) > .calendar-detail-add,
+.calendar-detail-view:has(#lifeLogDetail) > #lifeLogDetail {
+  flex-shrink: 0;
+}
+.calendar-detail-view:has(#lifeLogDetail) > .calendar-detail-todos {
+  flex: 0 0 auto;
+  max-height: none;
+  min-height: 0;
+  overflow: visible;
 }
 
 .lifelog-note-label {
