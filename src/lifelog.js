@@ -524,6 +524,19 @@ async function setView(next) {
         return original(offset, animate);
       };
     }
+    if (typeof goToCurrentCalendarMonth === "function" && goToCurrentCalendarMonth.name !== "lifelogAwareToday") {
+      const original = goToCurrentCalendarMonth;
+      goToCurrentCalendarMonth = function lifelogAwareToday() {
+        if (view === "lifelog") {
+          const now = new Date();
+          cursor = new Date(now.getFullYear(), now.getMonth(), 1);
+          if (typeof calendarCursor !== "undefined") calendarCursor = new Date(cursor);
+          renderBoard();
+          return;
+        }
+        return original();
+      };
+    }
   }
 
   async function boot() {
