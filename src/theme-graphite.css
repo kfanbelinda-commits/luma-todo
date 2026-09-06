@@ -1455,13 +1455,20 @@ html[data-theme="light"] .month-lunar {
 .calendar-detail-header {
   flex: 0 0 auto;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 16px 17px 12px;
+  gap: 10px;
+  padding: 10px 14px 9px;
   border-bottom: 1px solid rgba(255,255,255,.08);
   background: rgba(34,37,44,.98);
   z-index: 3;
+}
+.calendar-detail-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  min-width: 0;
 }
 .calendar-detail-body {
   flex: 1 1 auto;
@@ -1498,13 +1505,17 @@ html[data-theme="light"] .month-lunar {
 }
 .calendar-detail-header h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1.2;
+  font-weight: 700;
 }
 .calendar-detail-lunar {
-  margin: 4px 0 0;
-  color: rgba(232,236,244,.58);
+  margin: 0;
+  color: rgba(232,236,244,.55);
   font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 .calendar-detail-close {
   width: 25px;

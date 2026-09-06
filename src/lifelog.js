@@ -217,7 +217,7 @@
         '<button type="button" class="lifelog-cell ' + cls + '" data-date="' + key + '">'
         + (cover ? '<img class="lifelog-cell-img" src="' + cover + '" alt="">' : "")
         + '<span class="lifelog-day-num">' + d + "</span>"
-        + (has && !cover ? '<span class="lifelog-cell-footer"><span>' + (weather ? iconImg(weather, 16) : "") + "</span><span>" + (mood ? iconImg(mood, 16) : "") + "</span></span>" : "")
+        + ((weather || mood) ? '<span class="lifelog-cell-footer' + (cover ? " on-photo" : "") + '"><span>' + (weather ? iconImg(weather, 16) : "") + "</span><span>" + (mood ? iconImg(mood, 16) : "") + "</span></span>" : "")
         + "</button>"
       );
     }
@@ -352,7 +352,7 @@ async function renderDetail(dateKey) {
     const coverPhoto = (entry.photos || []).find((photo) => photo.id === entry.coverPhotoId) || (entry.photos || [])[0] || null;
     const cover = coverPhoto ? await mediaUrl(coverPhoto.path) : null;
     section.innerHTML = ""
-      + '<div class="calendar-detail-section-title"><span>Lifelog</span><span class="calendar-detail-count">生活记录</span></div>'
+      + '<div class="lifelog-block-title">生活记录</div>'
       + '<div class="lifelog-pick-row">'
       + pickerField("weather", entry)
       + pickerField("mood", entry)
