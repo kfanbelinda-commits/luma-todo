@@ -136,10 +136,6 @@
 .week-rail-stat.is-active i::before { content: '!'; }
 .week-rail-stat.is-upcoming i { background: rgba(196, 92, 120, .14); color: #b04b6a; }
 .week-rail-stat.is-upcoming i::before { content: '×'; }
-.week-rail-stat-total td {
-  border-bottom: 0;
-  font-weight: 700;
-}
 .week-rail-list,
 .week-rail-notes-list {
   margin: 0;

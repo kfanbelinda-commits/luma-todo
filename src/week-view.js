@@ -218,7 +218,7 @@
       + `<section class="week-rail-section">`
       + `<h3>Stats <em>本月计划统计</em></h3>`
       + `<table class="week-rail-stats"><thead><tr><th></th><th>状态</th><th>数量</th><th>比例</th></tr></thead><tbody>${statRows}`
-      + `<tr class="week-rail-stat-total"><td></td><td>总计划</td><td>${stats.total}</td><td>100%</td></tr></tbody></table>`
+      + `</tbody></table>`
       + `</section>`
       + `<section class="week-rail-section week-rail-todos">`
       + `<h3>To Do <em>本月待办</em></h3>`
