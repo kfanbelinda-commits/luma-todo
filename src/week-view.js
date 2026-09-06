@@ -11,29 +11,25 @@
   const WEEKDAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
   function weekLunarParts(date) {
     try {
-      if (typeof formatLunarDate === 'function') {
-        const full = formatLunarDate(date).replace(/^农历/, '');
-        const match = full.match(/^(.+?)((?:初|十|廿|三十).+)$/);
-        if (match) return { month: match[1], day: match[2], text: full };
-        return { month: '', day: full, text: full };
-      }
       const parts = new Intl.DateTimeFormat('zh-CN-u-ca-chinese', { month: 'long', day: 'numeric' }).formatToParts(date);
       const month = parts.find((part) => part.type === 'month')?.value || '';
       const rawDay = parts.find((part) => part.type === 'day')?.value || '';
       const day = /^\d+$/.test(rawDay) && typeof formatChineseLunarDay === 'function'
         ? formatChineseLunarDay(rawDay)
-        : rawDay;
-      return { month, day, text: `${month}${day}` };
+        : (typeof formatLunarDate === 'function'
+          ? formatLunarDate(date).replace(/^农历/, '').replace(month, '')
+          : rawDay);
+      return { month, day, text: `${month}${day}`, isFirst: day === '初一' || rawDay === '1' };
     } catch {
-      return { month: '', day: '', text: '' };
+      return { month: '', day: '', text: '', isFirst: false };
     }
   }
-  function weekLunarLabel(date, previous) {
+  function weekLunarLabel(date, { isMonday = false } = {}) {
     const current = weekLunarParts(date);
     if (!current.text) return '';
-    if (!previous) return current.text;
-    const prev = weekLunarParts(previous);
-    return current.month && current.month === prev.month ? current.day : current.text;
+    // Monday anchors the week; 初一 marks a lunar month change.
+    if (isMonday || current.isFirst) return current.text;
+    return current.day || current.text;
   }
   let view = 'month';
   let anchorKey = todayKey();
@@ -316,8 +312,7 @@
       const date = parseKey(key);
       const dow = date.getDay();
       const weekend = dow === 0 || dow === 6;
-      const prev = index > 0 ? parseKey(keys[index - 1]) : null;
-      const lunar = weekLunarLabel(date, prev);
+      const lunar = weekLunarLabel(date, { isMonday: index === 0 });
       return `<button type="button" class="week-col-head${key === todayKey() ? ' is-today' : ''}${weekend ? ' is-weekend' : ''}" data-date="${key}"><span class="week-col-primary"><strong>${date.getDate()}</strong> 周${WEEKDAY_LABELS[(dow + 6) % 7]}</span>${lunar ? `<span class="week-col-lunar">${lunar}</span>` : ''}</button>`;
     }).join('');
     const allDayCols = keys.map((key) => {
