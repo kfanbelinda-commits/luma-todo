@@ -10,11 +10,11 @@
   ];
   const MOODS = [
     { id: "great", label: "超棒", color: "#E8C547", file: "mood-great.svg" },
-    { id: "good", label: "不错", color: "#E5D08A", file: "mood-good.svg" },
-    { id: "okay", label: "还行", color: "#C9B896", file: "mood-okay.svg" },
-    { id: "calm", label: "平静", color: "#A8B89A", file: "mood-calm.svg" },
-    { id: "low", label: "低落", color: "#8FA4B8", file: "mood-low.svg" },
-    { id: "awful", label: "糟糕", color: "#C4897A", file: "mood-bad.svg" },
+    { id: "good", label: "不错", color: "#D4C07A", file: "mood-good.svg" },
+    { id: "okay", label: "还行", color: "#B8A88A", file: "mood-okay.svg" },
+    { id: "calm", label: "平静", color: "#8FA896", file: "mood-calm.svg" },
+    { id: "low", label: "低落", color: "#7E93A8", file: "mood-low.svg" },
+    { id: "awful", label: "糟糕", color: "#B87A72", file: "mood-bad.svg" },
   ];
   const ICON_BASE = "src/lifelog-icons/";
   const MOOD_EMPTY = ICON_BASE + "mood-empty.svg";

@@ -1,3 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="空态">
-<path fill="none" stroke="#C5CCD4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M32.2 8.5c8.2-1 16 2.6 20.2 9.6 4.2 6.8 4 15.4.2 22.2-3.8 6.8-11.8 11.6-20.2 11.8-8.6.2-17-4-21.2-11.4C6.8 33.5 6.4 24.6 10.6 17.8 14.8 11 23.2 9.2 32.2 8.5Z"/>
+  <!-- no stroke: pale soft stamp only -->
+  <path fill="#D8DCE2" d="M13 15h38c5 0 8 3.5 8 8.5v23c0 5-3 8.5-8 8.5H13c-5 0-8-3.5-8-8.5v-23c0-5 3-8.5 8-8.5Z"/>
 </svg>

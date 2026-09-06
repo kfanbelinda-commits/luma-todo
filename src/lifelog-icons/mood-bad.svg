@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="糟糕">
-  <path fill="#C4897A" d="M31.6 6c9.4-1.2 18 2.6 22.4 10.2 4.4 7.6 3.6 17.4-1.6 24.4-5.2 7-14.4 11.8-23.4 11.4-9.2-.4-17.8-5.8-22-13.8C2.8 30.6 5.2 20.2 12 13.6 18.2 7.6 23.4 6.8 31.6 6Z"/>
-  <path d="M19.5 24.5l8.2 3" fill="none" stroke="#2F2F2F" stroke-width="2.5" stroke-linecap="round"/>
-  <path d="M44.5 24l-8.2 3.2" fill="none" stroke="#2F2F2F" stroke-width="2.5" stroke-linecap="round"/>
-  <circle cx="24.2" cy="30.2" r="2" fill="#2F2F2F"/>
-  <circle cx="39.8" cy="30.2" r="2" fill="#2F2F2F"/>
-  <path d="M22.5 44c4-5.4 10.2-6.8 18.2-5.2" fill="none" stroke="#2F2F2F" stroke-width="2.5" stroke-linecap="round"/>
+  <path fill="#B87A72" d="M20 10l20 3.5 12 15-3.5 19.5-17.5 9.5-20-5.5-8.5-17.5 3.5-17.5Z"/>
+  <path fill="#2A2A2A" d="M17 25.2l12 4.5-1.6 3.6-12-4.5z"/>
+  <path fill="#2A2A2A" d="M47 24.5l-12 4.8 1.7 3.5 12-4.8z"/>
+  <circle cx="24" cy="34" r="2.2" fill="#2A2A2A"/>
+  <circle cx="40" cy="34" r="2.2" fill="#2A2A2A"/>
+  <path fill="#2A2A2A" d="M20.5 48.5c5-8.5 18-8.5 23 0-1.4-1.7-3.2-3-5.5-3.8-3.8-1.4-8.2-1.4-12 0-2.2.8-4 2.1-5.5 3.8Z"/>
 </svg>
