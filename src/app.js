@@ -1070,6 +1070,7 @@ function bindCalendarDetailResize() {
   handle.addEventListener('pointerdown', (event) => {
     if (event.button != null && event.button !== 0) return;
     event.preventDefault();
+    event.stopPropagation();
     calendarDetailResizing = true;
     detail.classList.add('is-resizing');
     handle.setPointerCapture?.(event.pointerId);
@@ -2606,3 +2607,8 @@ async function init() {
 }
 
 init();
+
+/* calendar-detail-resize-boot */
+document.addEventListener('DOMContentLoaded', () => {
+  try { bindCalendarDetailResize(); } catch (_) {}
+});

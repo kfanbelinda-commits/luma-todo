@@ -1478,8 +1478,9 @@ html[data-theme="light"] .month-lunar {
   overscroll-behavior: contain;
 }
 .calendar-detail-resize {
-  flex: 0 0 14px;
+  flex: 0 0 18px;
   position: relative;
+  z-index: 6;
   cursor: ns-resize;
   touch-action: none;
   background: transparent;
@@ -1488,16 +1489,23 @@ html[data-theme="light"] .month-lunar {
   content: "";
   position: absolute;
   left: 50%;
-  top: 5px;
-  width: 36px;
+  top: 7px;
+  width: 40px;
   height: 4px;
   border-radius: 999px;
   transform: translateX(-50%);
-  background: rgba(255,255,255,.22);
+  background: rgba(255,255,255,.28);
 }
 .calendar-detail-resize:hover::before,
 .calendar-detail-resize:focus-visible::before {
-  background: rgba(255,255,255,.4);
+  background: rgba(255,255,255,.5);
+}
+html[data-theme="light"] .calendar-detail-resize::before {
+  background: rgba(50, 50, 48, .28);
+}
+html[data-theme="light"] .calendar-detail-resize:hover::before,
+html[data-theme="light"] .calendar-detail-resize:focus-visible::before {
+  background: rgba(50, 50, 48, .45);
 }
 .calendar-detail.is-resizing {
   transition: none;
@@ -3153,7 +3161,9 @@ html[data-theme="light"] .calendar-create-fields .calendar-event-color-label > s
 .calendar-detail-view,
 .calendar-editor-view {
   width: 100%;
-  height: 100%;
+  height: auto;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .calendar-detail-view.hidden,

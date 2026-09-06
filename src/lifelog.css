@@ -171,36 +171,41 @@ html:not([data-theme="light"]) .lifelog-pill {
   font-weight: 700;
   letter-spacing: 0;
 }
+
+.lifelog-block-title {
+  margin: 2px 0 8px;
+  color: var(--muted, rgba(90, 96, 108, .7));
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .lifelog-detail {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 4px;
-  padding-top: 10px;
+  gap: 8px;
+  margin-top: 2px;
+  padding-top: 12px;
   border-top: 1px solid rgba(128, 128, 128, .12);
 }
 
 .lifelog-pick-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: 12px;
   align-items: center;
 }
 .lifelog-field {
   position: relative;
   display: flex;
-  flex-wrap: nowrap;
-  gap: 10px;
   align-items: center;
+  gap: 10px;
   min-height: 40px;
 }
 .lifelog-field-label {
   flex: 0 0 auto;
-  color: var(--muted, rgba(90, 96, 108, .72));
+  color: var(--muted, rgba(90, 96, 108, .7));
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  line-height: 1;
+  font-weight: 650;
 }
 .lifelog-pick {
   width: 40px;
@@ -208,31 +213,233 @@ html:not([data-theme="light"]) .lifelog-pill {
   display: grid;
   place-items: center;
   padding: 0;
-  border: 1px solid transparent;
+  border: 1px solid rgba(128, 128, 128, .16);
   border-radius: 12px;
   background: rgba(128, 128, 128, .05);
   color: inherit;
   font: inherit;
   cursor: pointer;
-  transition: background .15s ease, box-shadow .15s ease, border-color .15s ease;
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
-.lifelog-pick:hover {
-  background: rgba(128, 128, 128, .09);
-}
+.lifelog-pick:hover { background: rgba(128, 128, 128, .09); }
 .lifelog-pick:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--mood, #7b8dbf) 70%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--mood, #7b8dbf) 65%, transparent);
   outline-offset: 2px;
 }
 .lifelog-pick.has-value {
-  border-color: color-mix(in srgb, var(--mood, #c5ccd4) 35%, transparent);
+  border-color: color-mix(in srgb, var(--mood, #c5ccd4) 40%, transparent);
   background: color-mix(in srgb, var(--mood, #c5ccd4) 12%, transparent);
 }
 .lifelog-pick.is-open {
-  border-color: color-mix(in srgb, var(--mood, #7b8dbf) 45%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--mood, #7b8dbf) 16%, transparent);
-  background: color-mix(in srgb, var(--mood, #7b8dbf) 10%, transparent);
+  border-color: color-mix(in srgb, var(--mood, #7b8dbf) 50%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--mood, #7b8dbf) 14%, transparent);
 }
 .lifelog-pick .lifelog-ico {
+  width: 28px;
+  height: 28px;
+  display: block;
+  object-fit: contain;
+  pointer-events: none;
+}
+.lifelog-pick-plus {
+  font-size: 18px;
+  line-height: 1;
+  opacity: .55;
+}
+
+.lifelog-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 60;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  width: max(220px, 100%);
+  min-width: 220px;
+  padding: 10px;
+  border: 1px solid rgba(128, 128, 128, .14);
+  border-radius: 14px;
+  background: rgba(252, 252, 253, .98);
+  box-shadow: 0 12px 28px rgba(30, 36, 48, .16);
+}
+.lifelog-field[data-kind="mood"] .lifelog-menu {
+  left: auto;
+  right: 0;
+}
+html[data-theme="dark"] .lifelog-menu,
+html:not([data-theme="light"]) .lifelog-menu {
+  border-color: rgba(255, 255, 255, .10);
+  background: rgba(40, 44, 52, .98);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .4);
+}
+.lifelog-menu.hidden { display: none; }
+
+.lifelog-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 58px;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.lifelog-opt:hover { background: rgba(128, 128, 128, .08); }
+.lifelog-opt:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--mood, #7b8dbf) 60%, transparent);
+  outline-offset: 1px;
+}
+.lifelog-opt .lifelog-ico {
+  width: 28px;
+  height: 28px;
+  display: block;
+  object-fit: contain;
+  pointer-events: none;
+}
+.lifelog-opt.is-active {
+  background: color-mix(in srgb, var(--mood, #7b8dbf) 12%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--mood, #7b8dbf) 40%, transparent);
+}
+.lifelog-opt-lbl {
+  color: var(--muted, rgba(90, 96, 108, .68));
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.lifelog-opt.is-active .lifelog-opt-lbl {
+  color: inherit;
+  font-weight: 650;
+}
+
+.lifelog-note-label {
+  margin-top: 4px;
+  color: var(--muted, rgba(90, 96, 108, .7));
+  font-size: 13px;
+  font-weight: 700;
+}
+.lifelog-note {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 72px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(128, 128, 128, .16);
+  border-radius: 10px;
+  background: rgba(128, 128, 128, .045);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.lifelog-note::placeholder {
+  color: var(--muted, rgba(90, 96, 108, .5));
+}
+.lifelog-note:focus {
+  border-color: color-mix(in srgb, #7b8dbf 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, #7b8dbf 14%, transparent);
+  background: rgba(255, 255, 255, .55);
+}
+html[data-theme="light"] .lifelog-note {
+  background: rgba(255, 255, 255, .72);
+  border-color: rgba(57, 70, 92, .12);
+}
+html[data-theme="dark"] .lifelog-note,
+html:not([data-theme="light"]) .lifelog-note {
+  background: rgba(0, 0, 0, .18);
+  border-color: rgba(255, 255, 255, .10);
+}
+html[data-theme="dark"] .lifelog-note:focus,
+html:not([data-theme="light"]) .lifelog-note:focus {
+  background: rgba(0, 0, 0, .28);
+}
+
+.lifelog-photos {
+  position: relative;
+  margin-top: 2px;
+  outline: none;
+}
+.lifelog-photo-thumb {
+  display: block;
+  width: 100%;
+  max-height: 140px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+.lifelog-photo-empty {
+  width: 100%;
+  min-height: 88px;
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  padding: 14px;
+  border: 1px dashed rgba(128, 128, 128, .26);
+  border-radius: 12px;
+  background: rgba(128, 128, 128, .03);
+  color: var(--muted, rgba(90, 96, 108, .62));
+  font: inherit;
+  cursor: pointer;
+}
+.lifelog-photo-empty:hover {
+  border-color: rgba(123, 141, 191, .4);
+  background: rgba(123, 141, 191, .06);
+}
+.lifelog-photo-plus {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(128, 128, 128, .1);
+  font-size: 18px;
+  line-height: 1;
+}
+.lifelog-photo-hint { font-size: 11px; }
+.lifelog-photo-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(20, 24, 32, .55);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.lifelog-photo-remove:hover { background: rgba(180, 48, 48, .82); }
+.lifelog-photo-add.is-overlay {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(20, 24, 32, .55);
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lifelog-ico {
   display: block;
   flex: 0 0 auto;
   object-fit: contain;
@@ -242,7 +449,7 @@ html:not([data-theme="light"]) .lifelog-pill {
 .lifelog-cell-footer .lifelog-ico {
   width: 16px;
   height: 16px;
-  filter: drop-shadow(0 1px 1px rgba(0,0,0,.22));
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.35));
 }
 .lifelog-pill-ico {
   display: inline-grid;
@@ -253,10 +460,8 @@ html:not([data-theme="light"]) .lifelog-pill {
   height: 14px;
 }
 
-/* Taller day detail when Lifelog is present; scroll the whole panel instead of crushing todos. */
 .calendar-detail:has(#lifeLogDetail) {
   width: min(400px, 48%);
-  /* height comes from --calendar-detail-height / resize; keep room under panel */
   max-height: calc(100% - 52px);
 }
 .calendar-detail:has(#lifeLogDetail) .calendar-detail-body {
@@ -268,38 +473,3 @@ html:not([data-theme="light"]) .lifelog-pill {
   overflow: visible;
 }
 
-.lifelog-ico {
-  display: block;
-  flex: 0 0 auto;
-  object-fit: contain;
-  pointer-events: none;
-}
-.lifelog-pick-plus {
-  font-size: 16px;
-  line-height: 1;
-  opacity: .7;
-}
-.lifelog-pick .lifelog-ico {
-  width: 28px;
-  height: 28px;
-}
-.lifelog-emoji-opt .lifelog-ico {
-  width: 32px;
-  height: 32px;
-  opacity: .92;
-}
-.lifelog-emoji-opt.is-active {
-  border-radius: 14px;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--mood, #7b8dbf) 55%, transparent);
-  background: color-mix(in srgb, var(--mood, #7b8dbf) 14%, transparent);
-}
-.lifelog-emoji-opt.is-active .lifelog-ico { opacity: 1; }
-.lifelog-cell-footer .lifelog-ico {
-  width: 16px;
-  height: 16px;
-  filter: drop-shadow(0 1px 1px rgba(0,0,0,.25));
-}
-.lifelog-pill-ico .lifelog-ico {
-  width: 14px;
-  height: 14px;
-}
