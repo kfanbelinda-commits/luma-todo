@@ -1,1 +1,489 @@
-PLACEHOLDER
+/* Additive palettes only. Graphite and Paper keep theme-graphite.css as-is.
+   Warm/Dusk override visible surfaces after that file, without rewriting it.
+
+   Dark pair follows Impeccable's split:
+   Graphite = cool mineral chrome (current Luma dark).
+   Dusk = warm lacquer ground + champagne text + kinpaku gold marks. */
+
+.settings-modal fieldset.palette-setting {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  justify-content: stretch;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 8px 2px 10px;
+  border: 0;
+}
+.settings-modal .palette-setting legend {
+  display: block;
+  float: none;
+  width: 100%;
+  padding: 0;
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--ink);
+}
+.settings-modal .palette-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+  margin: 0;
+}
+.settings-modal .palette-option {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 4px 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 10px;
+  line-height: 1.2;
+  color: var(--muted);
+  cursor: pointer;
+}
+.palette-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.palette-option:has(input:checked) {
+  border-color: var(--action-border);
+  background: var(--action-soft);
+  color: var(--ink);
+}
+.palette-option:has(input:focus-visible) {
+  outline: 2px solid var(--action-primary);
+  outline-offset: 2px;
+}
+.palette-swatch {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 22px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 650;
+}
+.swatch-graphite {
+  background: #2a2e38;
+  color: #d7deea;
+  border: 1px solid #6f7b90;
+}
+.swatch-paper {
+  background: #f7f8fa;
+  color: #1b2430;
+  border: 1px solid #c5cad3;
+}
+.swatch-warm {
+  background: #f3eadc;
+  color: #3a2c1c;
+  border: 1px solid #cbb79a;
+}
+.swatch-dusk {
+  background: #1a1410;
+  color: #e4c27a;
+  border: 1px solid #b08948;
+}
+
+html[data-theme="light"][data-palette="warm"] {
+  --ink: #2c2418;
+  --muted: #6e5f4e;
+  --line: rgba(92, 70, 42, .16);
+  --action-primary: #4a3724;
+  --action-primary-strong: #2c2418;
+  --action-on-primary: #fbf4e8;
+  --action-soft: rgba(74, 55, 36, .09);
+  --action-soft-hover: rgba(74, 55, 36, .14);
+  --action-soft-pressed: rgba(74, 55, 36, .20);
+  --action-border: rgba(74, 55, 36, .24);
+  --action-focus-ring: rgba(74, 55, 36, .36);
+}
+
+html[data-theme="light"][data-palette="warm"] .todo-panel,
+html[data-theme="light"][data-palette="warm"] .calendar-panel {
+  background: rgba(243, 234, 220, var(--panel-opacity));
+}
+html[data-theme="light"][data-palette="warm"] .quick-input-wrap,
+html[data-theme="light"][data-palette="warm"] .date-summary,
+html[data-theme="light"][data-palette="warm"] .icon-button,
+html[data-theme="light"][data-palette="warm"] .soft-button {
+  border-color: rgba(92, 70, 42, .18);
+  background: rgba(255, 248, 236, .55);
+  color: #2c2418;
+}
+html[data-theme="light"][data-palette="warm"] .calendar-day {
+  border-color: rgba(92, 70, 42, .12);
+}
+html[data-theme="light"][data-palette="warm"] .calendar-day:hover,
+html[data-theme="light"][data-palette="warm"] .calendar-day:focus-visible {
+  background: rgba(255, 248, 236, .42);
+}
+html[data-theme="light"][data-palette="warm"] .calendar-day.today,
+html[data-theme="light"][data-palette="warm"] .calendar-day.today.focused-date {
+  background: rgba(176, 137, 72, .14);
+}
+html[data-theme="light"][data-palette="warm"] .day-event.calendar-event-item,
+html[data-theme="light"][data-palette="warm"] .day-event.google-calendar-event {
+  color: #4a3b2a;
+  background: rgba(92, 70, 42, .08);
+  border-color: rgba(92, 70, 42, .10);
+}
+html[data-theme="light"][data-palette="warm"] .weekdays,
+html[data-theme="light"][data-palette="warm"] .month-lunar,
+html[data-theme="light"][data-palette="warm"] .calendar-day.muted .day-number {
+  color: #7a6b59;
+}
+html[data-theme="light"][data-palette="warm"] .quick-input-wrap input,
+html[data-theme="light"][data-palette="warm"] .task-title,
+html[data-theme="light"][data-palette="warm"] .project-title,
+html[data-theme="light"][data-palette="warm"] .schedule-task-title,
+html[data-theme="light"][data-palette="warm"] .modal,
+html[data-theme="light"][data-palette="warm"] .popover {
+  color: #2c2418;
+}
+html[data-theme="light"][data-palette="warm"] .eyebrow,
+html[data-theme="light"][data-palette="warm"] .input-hint,
+html[data-theme="light"][data-palette="warm"] .project-progress,
+html[data-theme="light"][data-palette="warm"] .task-meta,
+html[data-theme="light"][data-palette="warm"] .task-date-label,
+html[data-theme="light"][data-palette="warm"] .completed-toggle,
+html[data-theme="light"][data-palette="warm"] .calendar-footer,
+html[data-theme="light"][data-palette="warm"] .settings-section small,
+html[data-theme="light"][data-palette="warm"] .settings-note,
+html[data-theme="light"][data-palette="warm"] .day-overflow {
+  color: #6e5f4e;
+}
+html[data-theme="light"][data-palette="warm"] .quick-input-wrap input::placeholder,
+html[data-theme="light"][data-palette="warm"] .project-quick-input::placeholder {
+  color: #8a7d6c;
+}
+html[data-theme="light"][data-palette="warm"] .popover,
+html[data-theme="light"][data-palette="warm"] .modal,
+html[data-theme="light"][data-palette="warm"] .settings-modal {
+  background: rgba(250, 245, 236, .98);
+  border-color: rgba(203, 191, 172, .7);
+}
+html[data-palette="graphite"] .brand-mark {
+  color: #c5ccd8;
+  background: rgba(255, 255, 255, .06);
+  border-color: rgba(180, 190, 205, .28);
+}
+html[data-palette="graphite"] .luma-bulb .bulb-glow { stroke: rgba(240, 244, 250, .88); }
+html[data-palette="paper"] .brand-mark {
+  color: #2c3340;
+  background: rgba(28, 34, 44, .06);
+  border-color: rgba(80, 88, 100, .22);
+}
+html[data-palette="paper"] .luma-bulb .bulb-glow { stroke: rgba(255, 255, 255, .9); }
+html[data-theme="light"][data-palette="warm"] .brand-mark {
+  color: #8a692e;
+  background: rgba(169, 126, 48, .13);
+  border-color: rgba(169, 126, 48, .3);
+}
+html[data-theme="light"][data-palette="warm"] .luma-bulb .bulb-glow { stroke: rgba(255, 248, 230, .95); }
+html[data-theme="light"][data-palette="warm"] .calendar-panel .weekdays,
+html[data-theme="light"][data-palette="warm"] .calendar-panel .day-number {
+  color: #51483c;
+}
+
+html[data-palette="dusk"] {
+  --ink: #f4ead8;
+  --muted: #c6b49a;
+  --line: rgba(228, 194, 122, .16);
+  --action-primary: #e4c27a;
+  --action-primary-strong: #f3ddb0;
+  --action-on-primary: #1a1410;
+  --action-soft: rgba(228, 194, 122, .12);
+  --action-soft-hover: rgba(228, 194, 122, .20);
+  --action-soft-pressed: rgba(228, 194, 122, .28);
+  --action-border: rgba(228, 194, 122, .34);
+  --action-focus-ring: rgba(228, 194, 122, .46);
+}
+
+html[data-palette="dusk"] .todo-panel,
+html[data-palette="dusk"] .calendar-panel {
+  background: rgba(22, 18, 14, var(--panel-opacity));
+  border-color: rgba(176, 137, 72, .28);
+}
+html[data-palette="dusk"] .popover,
+html[data-palette="dusk"] .modal,
+html[data-palette="dusk"] .settings-modal {
+  background: rgba(28, 22, 17, .97);
+  color: #f4ead8;
+  border-color: rgba(176, 137, 72, .32);
+}
+html[data-palette="dusk"] .settings-modal .settings-section {
+  background: transparent;
+}
+html[data-palette="dusk"] .account-card {
+  background: rgba(42, 32, 24, .88);
+  border-color: rgba(176, 137, 72, .22);
+}
+html[data-palette="dusk"] .brand-mark {
+  color: #e4c27a;
+  background: rgba(176, 137, 72, .18);
+  border-color: rgba(176, 137, 72, .42);
+}
+html[data-palette="dusk"] .luma-bulb .bulb-glow { stroke: rgba(255, 236, 196, .92); }
+html[data-palette="dusk"] .eyebrow,
+html[data-palette="dusk"] .project-progress,
+html[data-palette="dusk"] .task-meta,
+html[data-palette="dusk"] .day-overflow,
+html[data-palette="dusk"] .month-lunar,
+html[data-palette="dusk"] .settings-section small,
+html[data-palette="dusk"] .settings-note {
+  color: #c6b49a;
+}
+html[data-palette="dusk"] .project-title,
+html[data-palette="dusk"] .quick-input-wrap input,
+html[data-palette="dusk"] .day-number,
+html[data-palette="dusk"] .task-title {
+  color: #f4ead8;
+}
+html[data-palette="dusk"] .quick-input-wrap,
+html[data-palette="dusk"] .icon-button,
+html[data-palette="dusk"] .soft-button,
+html[data-palette="dusk"] .secondary-button {
+  border-color: rgba(176, 137, 72, .26);
+  color: #ead7b3;
+  background: rgba(42, 32, 24, .55);
+}
+html[data-palette="dusk"] .opacity-control output {
+  color: #ead7b3;
+}
+
+.task-item .check { position: relative; }
+.task-item .check::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+}
+.day-event {
+  line-height: 16px;
+  min-height: 21px;
+}
+.calendar-day.crowded .day-event {
+  line-height: 16px;
+  min-height: 21px;
+}
+.day-event[hidden] { display: none !important; }
+.day-overflow {
+  display: block;
+  width: 100%;
+  flex: 0 0 auto;
+  min-height: 20px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+}
+
+.project-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 56px 24px;
+  align-items: center;
+  column-gap: 4px;
+  min-height: 28px;
+  padding: 0 6px 6px 2px;
+}
+.project-title {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 24px;
+}
+.project-header-actions {
+  display: contents;
+}
+.project-add-task {
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  justify-self: end;
+}
+.project-title .project-progress,
+button.project-progress,
+span.project-progress {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  justify-self: end;
+  width: 56px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  height: 24px;
+  background: transparent;
+  color: var(--muted, rgba(90, 96, 108, .62));
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 450;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  line-height: 24px;
+  text-align: right;
+  opacity: .7;
+}
+html[data-theme="light"] .project-title .project-progress,
+html[data-theme="light"] button.project-progress,
+html[data-theme="light"] span.project-progress {
+  color: rgba(90, 98, 110, .58);
+  opacity: 1;
+}
+button.project-progress.is-toggle {
+  cursor: pointer;
+}
+button.project-progress.is-toggle:hover,
+button.project-progress.is-toggle:focus-visible {
+  color: var(--muted, rgba(90, 96, 108, .88));
+  background: transparent;
+  outline: none;
+  opacity: 1;
+}
+button.project-progress.is-toggle[aria-expanded="true"] {
+  color: var(--muted);
+  background: transparent;
+  opacity: 1;
+}
+.completed-toggle {
+  display: none !important;
+}
+
+.task-item,
+.task-item:has(.task-date-label.is-overdue) {
+  grid-template-columns: 16px minmax(0, 1fr) 56px 24px;
+}
+.task-actions,
+.task-actions:has(.is-overdue) {
+  display: contents;
+  width: auto;
+  min-width: 0;
+  grid-template-columns: unset;
+}
+.task-date-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  justify-self: end;
+  gap: 4px;
+  width: 56px;
+  min-width: 0;
+  height: 24px;
+}
+.task-date-label .task-due {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.task-date-label.is-overdue .overdue-chip {
+  flex: 0 0 auto;
+  padding: 0;
+  border-radius: 0;
+  color: #c86b76;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  white-space: nowrap;
+}
+.task-time.task-more {
+  justify-self: end;
+}
+
+.settings-modal .sync-settings {
+  margin-top: 2px;
+  background: transparent;
+}
+.settings-modal .sync-card,
+.settings-modal .google-sync-card,
+.settings-modal .apple-sync-card,
+html[data-theme="light"] .settings-modal .sync-card,
+html[data-palette="dusk"] .settings-modal .sync-card {
+  margin: 0;
+  padding: 10px 2px 12px;
+  border: 0;
+  border-top: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.settings-modal .settings-list {
+  border-bottom: 0;
+}
+.settings-modal .sync-card + .sync-card {
+  border-top: 1px solid rgba(128, 128, 128, .16);
+}
+.settings-modal .sync-card-header,
+.settings-modal .apple-sync-heading {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+}
+.settings-modal .google-logo,
+.settings-modal .apple-logo,
+html[data-theme="light"] .settings-modal .apple-logo,
+html[data-theme="light"] .settings-modal .google-logo {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border: 0;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+.settings-modal .apple-logo svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+.settings-modal .apple-sync-heading .sync-copy small {
+  display: none;
+}
+.settings-modal .experimental-badge,
+html[data-theme="light"] .experimental-badge {
+  margin-left: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted, #6b7380);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  vertical-align: 0;
+}
+.settings-modal .sync-note,
+.settings-modal .apple-sync-note,
+html[data-theme="light"] .sync-note,
+html[data-theme="light"] .apple-sync-note {
+  margin: 6px 0 0 28px !important;
+}
+.settings-modal .apple-sync-row {
+  margin-top: 8px;
+  padding-left: 28px;
+}
+.settings-modal .icloud-credentials,
+.settings-modal .icloud-calendar-target {
+  margin-left: 28px;
+}
