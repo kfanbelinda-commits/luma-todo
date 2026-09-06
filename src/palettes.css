@@ -141,17 +141,29 @@ html[data-theme="light"][data-palette="warm"] .settings-modal {
   background: rgba(250, 245, 236, .98);
   border-color: rgba(203, 191, 172, .7);
 }
+html[data-palette="graphite"] .brand-mark {
+  color: #b7c8e6;
+  background: rgba(121, 167, 255, .18);
+  border-color: rgba(137, 177, 255, .45);
+}
+html[data-palette="graphite"] .luma-bulb .bulb-glow { stroke: rgba(232, 240, 255, .92); }
+html[data-palette="paper"] .brand-mark {
+  color: #2c3340;
+  background: rgba(28, 34, 44, .06);
+  border-color: rgba(80, 88, 100, .22);
+}
+html[data-palette="paper"] .luma-bulb .bulb-glow { stroke: rgba(255, 255, 255, .9); }
 html[data-theme="light"][data-palette="warm"] .brand-mark {
   color: #8a692e;
   background: rgba(169, 126, 48, .13);
   border-color: rgba(169, 126, 48, .3);
 }
+html[data-theme="light"][data-palette="warm"] .luma-bulb .bulb-glow { stroke: rgba(255, 248, 230, .95); }
 html[data-theme="light"][data-palette="warm"] .calendar-panel .weekdays,
 html[data-theme="light"][data-palette="warm"] .calendar-panel .day-number {
   color: #51483c;
 }
 
-/* Dusk: opaque lacquer at 100%, no leftover gradient wash. */
 html[data-palette="dusk"] {
   --ink: #f4ead8;
   --muted: #c6b49a;
@@ -191,6 +203,7 @@ html[data-palette="dusk"] .brand-mark {
   background: rgba(176, 137, 72, .18);
   border-color: rgba(176, 137, 72, .42);
 }
+html[data-palette="dusk"] .luma-bulb .bulb-glow { stroke: rgba(255, 236, 196, .92); }
 html[data-palette="dusk"] .eyebrow,
 html[data-palette="dusk"] .project-progress,
 html[data-palette="dusk"] .task-meta,
@@ -218,7 +231,6 @@ html[data-palette="dusk"] .opacity-control output {
   color: #ead7b3;
 }
 
-/* Shared polish for every palette. */
 .task-item .check { position: relative; }
 .task-item .check::before {
   content: "";
@@ -246,7 +258,28 @@ html[data-palette="dusk"] .opacity-control output {
   font: inherit;
   font-size: 11px;
 }
-.project-header-actions { gap: 3px; }
+.project-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.project-title {
+  min-width: 0;
+  flex: 1;
+}
+.project-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.project-header-actions .project-progress {
+  margin-left: 0;
+  min-width: 2.75em;
+  text-align: right;
+}
 
 .task-date-label {
   display: inline-flex;
