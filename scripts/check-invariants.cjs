@@ -21,6 +21,8 @@ for (const required of ['main.cjs', 'main/**/*', 'preload.cjs', 'index.html', 's
 }
 assert(!packagedFiles.has('assets/**/*'), 'package must not include every asset');
 assert(![...packagedFiles].some((entry) => entry.startsWith('demo/')), 'demo files must not be packaged');
+assert(packagedFiles.has('!demo/**'), 'installer file list must exclude demo/**');
+assert(main.includes("!app.isPackaged && process.argv.includes('--demo')"), 'demo mode must remain unpackaged-only');
 assert(![...packagedFiles].some((entry) => entry.startsWith('qa/')), 'QA files must not be packaged');
 
 for (const ignored of [
