@@ -33,6 +33,8 @@
   let cursor = new Date();
   let noteTimer = 0;
   let ready = false;
+  let currentDetailDate = null;
+  let detailSectionPasteBound = false;
 
   function pad(n) { return String(n).padStart(2, "0"); }
   function toKey(date) {
@@ -348,6 +350,7 @@
 async function renderDetail(dateKey) {
     const section = ensureDetailMount();
     if (!section || !dateKey) return;
+    currentDetailDate = dateKey;
     const entry = entryFor(dateKey);
     const coverPhoto = (entry.photos || []).find((photo) => photo.id === entry.coverPhotoId) || (entry.photos || [])[0] || null;
     const cover = coverPhoto ? await mediaUrl(coverPhoto.path) : null;
@@ -471,23 +474,28 @@ async function renderDetail(dateKey) {
         break;
       }
     });
-    // Also allow paste while focus is in the note/detail section
-    section.addEventListener("paste", async (event) => {
-      if (event.defaultPrevented) return;
-      const items = event.clipboardData && event.clipboardData.items;
-      if (!items) return;
-      for (const item of items) {
-        if (!item.type.startsWith("image/")) continue;
-        event.preventDefault();
-        const file = item.getAsFile();
-        if (!file) continue;
-        const dataUrl = await fileToDataUrl(file);
-        await addPhotoFromDataUrl(dateKey, dataUrl);
-        await renderDetail(dateKey);
-        if (view === "lifelog") await renderBoard();
-        break;
-      }
-    });
+    // Bind section paste once; always use currentDetailDate (not a stale closed-over key).
+    if (!detailSectionPasteBound) {
+      detailSectionPasteBound = true;
+      section.addEventListener("paste", async (event) => {
+        if (event.defaultPrevented) return;
+        const activeKey = currentDetailDate;
+        if (!activeKey) return;
+        const items = event.clipboardData && event.clipboardData.items;
+        if (!items) return;
+        for (const item of items) {
+          if (!item.type.startsWith("image/")) continue;
+          event.preventDefault();
+          const file = item.getAsFile();
+          if (!file) continue;
+          const dataUrl = await fileToDataUrl(file);
+          await addPhotoFromDataUrl(activeKey, dataUrl);
+          await renderDetail(activeKey);
+          if (view === "lifelog") await renderBoard();
+          break;
+        }
+      });
+    }
   }
 
 async function setView(next) {
