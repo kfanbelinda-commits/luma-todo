@@ -231,6 +231,7 @@ html[data-theme="light"] .week-mini-day.is-anchor {
 }
 .week-now {
   position: absolute;
+  grid-column: 1 / -1;
   right: 0;
   left: 0;
   z-index: 2;
@@ -241,7 +242,7 @@ html[data-theme="light"] .week-mini-day.is-anchor {
 .week-now span {
   position: absolute;
   top: -4px;
-  left: -5px;
+  left: -4px;
   width: 8px;
   height: 8px;
   border-radius: 50%;

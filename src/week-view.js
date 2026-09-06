@@ -165,8 +165,7 @@
     const rangeStart = Number(days.dataset.startHour || 0) * 60;
     const rangeMinutes = Number(days.dataset.hours || 24) * 60;
     line.style.top = `${((nowMinutes() - rangeStart) / rangeMinutes) * 100}%`;
-    const column = document.querySelector(`.week-day-col[data-date="${key}"]`);
-    if (column && line.parentElement !== column) column.appendChild(line);
+    if (line.parentElement !== days) days.appendChild(line);
   }
   function defaultScrollTop() {
     const keys = weekKeys(anchorKey);
@@ -207,11 +206,11 @@
     }).join('');
     const dayCols = keys.map((key) => {
       const blocks = splitDayTasks(key).timed.map((task) => blockMarkup(task, key, rangeStart, rangeMinutes)).join('');
-      const now = key === todayKey() ? nowLineMarkup(keys, rangeStart, rangeMinutes) : '';
-      return `<div class="week-day-col" data-date="${key}"><div class="week-hour-lines">${labels.map(() => '<i></i>').join('')}</div>${blocks}${now}</div>`;
+      return `<div class="week-day-col" data-date="${key}"><div class="week-hour-lines">${labels.map(() => '<i></i>').join('')}</div>${blocks}</div>`;
     }).join('');
+    const nowLine = nowLineMarkup(keys, rangeStart, rangeMinutes);
     const gutter = labels.map((hour) => `<span>${pad(hour)}:00</span>`).join('');
-    board.innerHTML = `<aside class="week-mini" aria-label="本周在月历中的位置"></aside><section class="week-main"><div class="week-main-head"><span class="week-gutter-spacer"></span><div class="week-col-heads">${header}</div></div><div class="week-allday"><span class="week-gutter-label">全天</span><div class="week-allday-cols">${allDayCols}</div></div><div class="week-scroll"><div class="week-gutter" style="--hour-h:${HOUR_PX}px;--hours:${labels.length}">${gutter}</div><div class="week-days" data-start-hour="${DAY_START}" data-hours="${labels.length}" style="--hour-h:${HOUR_PX}px;--hours:${labels.length}">${dayCols}</div></div></section>`;
+    board.innerHTML = `<aside class="week-mini" aria-label="本周在月历中的位置"></aside><section class="week-main"><div class="week-main-head"><span class="week-gutter-spacer"></span><div class="week-col-heads">${header}</div></div><div class="week-allday"><span class="week-gutter-label">全天</span><div class="week-allday-cols">${allDayCols}</div></div><div class="week-scroll"><div class="week-gutter" style="--hour-h:${HOUR_PX}px;--hours:${labels.length}">${gutter}</div><div class="week-days" data-start-hour="${DAY_START}" data-hours="${labels.length}" style="--hour-h:${HOUR_PX}px;--hours:${labels.length}">${dayCols}${nowLine}</div></div></section>`;
     renderMini(board.querySelector('.week-mini'), keys);
     restoreScroll(board);
     placeNowLine();
