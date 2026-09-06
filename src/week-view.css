@@ -111,15 +111,18 @@ html[data-theme="light"] .week-mini-day.is-anchor {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   min-width: 0;
-  background-image: linear-gradient(
-    to right,
-    rgba(128, 128, 128, .1),
-    rgba(128, 128, 128, .1) 1px,
-    transparent 1px
-  );
-  background-size: calc(100% / 7) 100%;
-  background-repeat: repeat-x;
-  background-position: 0 0;
+}
+/* Verticals on track edges only — never fragment a horizontal hairline. */
+.week-col-head:not(:first-child),
+.week-allday-col:not(:first-child),
+.week-day-col:not(:first-child) {
+  border-left: 1px solid rgba(128, 128, 128, .12);
+}
+.week-hairline {
+  height: 0;
+  border: 0;
+  border-top: 1px solid rgba(128, 128, 128, .16);
+  pointer-events: none;
 }
 .week-col-head {
   display: flex;
@@ -159,8 +162,6 @@ html[data-theme="light"] .week-mini-day.is-anchor {
 .week-gutter-label { display: grid; place-items: center; }
 .week-allday {
   min-height: 34px;
-  border-top: 1px solid rgba(128, 128, 128, .14);
-  border-bottom: 1px solid rgba(128, 128, 128, .14);
 }
 .week-allday-col {
   display: flex;
@@ -210,24 +211,16 @@ html[data-theme="light"] .week-mini-day.is-anchor {
 .week-days {
   position: relative;
   min-height: calc(var(--hours, 24) * var(--hour-h, 44px));
-  /* Continuous hour rails — one stroke across all columns, not 7 stubs. */
-  background-image:
-    repeating-linear-gradient(
-      to bottom,
-      transparent 0,
-      transparent calc(var(--hour-h, 44px) - 1px),
-      rgba(128, 128, 128, .08) calc(var(--hour-h, 44px) - 1px),
-      rgba(128, 128, 128, .08) var(--hour-h, 44px)
-    ),
-    linear-gradient(
-      to right,
-      rgba(128, 128, 128, .1),
-      rgba(128, 128, 128, .1) 1px,
-      transparent 1px
-    );
-  background-size: 100% var(--hour-h, 44px), calc(100% / 7) 100%;
-  background-repeat: repeat, repeat-x;
-  background-position: 0 0, 0 0;
+  /* One continuous hour stroke across the whole week, not per-column stubs. */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--hour-h, 44px) - 1px),
+    rgba(128, 128, 128, .1) calc(var(--hour-h, 44px) - 1px),
+    rgba(128, 128, 128, .1) var(--hour-h, 44px)
+  );
+  background-size: 100% var(--hour-h, 44px);
+  background-repeat: repeat;
 }
 .week-day-col {
   position: relative;
@@ -236,7 +229,7 @@ html[data-theme="light"] .week-mini-day.is-anchor {
 .week-col-head.is-today,
 .week-allday-col.is-today,
 .week-day-col.is-today {
-  background-color: color-mix(in srgb, var(--action-primary, #3d4654) 5.5%, transparent);
+  background-color: color-mix(in srgb, var(--action-primary, #3d4654) 9%, transparent);
 }
 .week-hour-lines {
   display: none;
