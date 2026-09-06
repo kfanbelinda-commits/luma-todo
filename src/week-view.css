@@ -517,16 +517,7 @@ body.week-dragging { cursor: grabbing; user-select: none; }
 body.week-dragging .week-block { pointer-events: none; }
 body.week-dragging .week-block.is-dragging { pointer-events: auto; }
 
-/* Week mode: controls only — left titles live in the rail. */
-.calendar-panel.is-week .calendar-header {
-  align-items: center;
-  justify-content: flex-end;
-  min-height: 0;
-  padding: 10px 16px 8px;
-}
-.calendar-panel.is-week .calendar-header > div:first-child {
+/* Week mode: keep the same header chrome as month to avoid jump. */
+.calendar-panel.is-week #monthLunar {
   display: none;
-}
-.calendar-panel.is-week .month-controls {
-  margin-left: auto;
 }

@@ -215,16 +215,8 @@
     const noteItems = stats.notes.map((task, index) => (
       `<li><span>${index + 1}.</span><span>${escapeText(task.title)}</span></li>`
     )).join('') || '<li class="week-rail-empty">完成待办后会出现在这里</li>';
-    const weekRange = (() => {
-      const a = parseKey(keys[0]);
-      const b = parseKey(keys[6]);
-      return a.getMonth() === b.getMonth()
-        ? `${a.getMonth() + 1}月${a.getDate()}日 – ${b.getDate()}日`
-        : `${a.getMonth() + 1}月${a.getDate()}日 – ${b.getMonth() + 1}月${b.getDate()}日`;
-    })();
     host.innerHTML = [
       `<div class="week-rail-top">`
-      + `<p class="week-rail-range">${weekRange}</p>`
       + `<div class="week-rail-date"><strong>${dayNum}</strong><span>${monthLabel}<small>${weekdayLabel}</small></span></div>`
       + `<div class="week-rail-cal">`
       + `<div class="week-mini-weekdays">${WEEKDAY_LABELS.map((label) => `<span>${label}</span>`).join('')}</div>`
