@@ -31,7 +31,8 @@
   let mediaCache = new Map();
   let view = "month";
   let cursor = new Date();
-  let noteTimer = 0;
+  let noteTimers = new Map(); // dateKey -> timeout id (never clear another day's pending write)
+  let notePersistChain = Promise.resolve();
   let ready = false;
   let currentDetailDate = null;
   let detailSectionPasteBound = false;
@@ -70,6 +71,44 @@
   async function saveStore() {
     await window.luma?.lifelogSave?.({ version: 1, entries: store.entries });
   }
+
+  function applyNoteDraft(dateKey, text) {
+    if (!dateKey) return;
+    const current = entryFor(dateKey);
+    current.note = String(text ?? "").trim();
+    current.updatedAt = Date.now();
+  }
+
+  function enqueueNotePersist() {
+    notePersistChain = notePersistChain
+      .then(async () => {
+        await saveStore();
+        if (view === "lifelog") await renderBoard();
+      })
+      .catch(() => {});
+    return notePersistChain;
+  }
+
+  function scheduleNotePersist(dateKey) {
+    if (!dateKey) return;
+    const prev = noteTimers.get(dateKey);
+    if (prev) window.clearTimeout(prev);
+    const timer = window.setTimeout(() => {
+      noteTimers.delete(dateKey);
+      enqueueNotePersist();
+    }, 350);
+    noteTimers.set(dateKey, timer);
+  }
+
+  async function flushNotePersist(dateKey) {
+    if (!dateKey) return;
+    const timer = noteTimers.get(dateKey);
+    if (!timer) return;
+    window.clearTimeout(timer);
+    noteTimers.delete(dateKey);
+    await enqueueNotePersist();
+  }
+
 
   async function mediaUrl(relativePath) {
     if (!relativePath) return null;
@@ -350,6 +389,22 @@
 async function renderDetail(dateKey) {
     const section = ensureDetailMount();
     if (!section || !dateKey) return;
+    // Capture live textarea into memory before DOM wipe / day switch.
+    const liveNote = section.querySelector("#lifeLogNote");
+    if (currentDetailDate && liveNote) {
+      applyNoteDraft(currentDetailDate, liveNote.value);
+    }
+    if (currentDetailDate && currentDetailDate !== dateKey) {
+      await flushNotePersist(currentDetailDate);
+    } else if (currentDetailDate === dateKey) {
+      // Same-day re-render (mood/weather): flush pending note so textarea matches store.
+      const t = noteTimers.get(dateKey);
+      if (t) {
+        window.clearTimeout(t);
+        noteTimers.delete(dateKey);
+        await enqueueNotePersist();
+      }
+    }
     currentDetailDate = dateKey;
     const entry = entryFor(dateKey);
     const coverPhoto = (entry.photos || []).find((photo) => photo.id === entry.coverPhotoId) || (entry.photos || [])[0] || null;
@@ -422,14 +477,9 @@ async function renderDetail(dateKey) {
 
     const note = section.querySelector("#lifeLogNote");
     note?.addEventListener("input", () => {
-      window.clearTimeout(noteTimer);
-      noteTimer = window.setTimeout(async () => {
-        const current = entryFor(dateKey);
-        current.note = note.value.trim();
-        current.updatedAt = Date.now();
-        await saveStore();
-        if (view === "lifelog") await renderBoard();
-      }, 350);
+      // Immediate in-memory draft for THIS date; debounce only disk persist.
+      applyNoteDraft(dateKey, note.value);
+      scheduleNotePersist(dateKey);
     });
 
     const photos = section.querySelector(".lifelog-photos");
@@ -519,6 +569,28 @@ async function setView(next) {
     openCalendarDetail.__lifelogWrapped = true;
   }
 
+  function wrapCloseDetail() {
+    if (typeof closeCalendarDetail !== "function") return;
+    if (closeCalendarDetail.__lifelogWrapped) return;
+    const original = closeCalendarDetail;
+    closeCalendarDetail = function lifelogAwareClose() {
+      const key = currentDetailDate;
+      const section = document.querySelector("#lifeLogDetail");
+      const liveNote = section?.querySelector("#lifeLogNote");
+      if (key && liveNote) applyNoteDraft(key, liveNote.value);
+      if (key) {
+        const timer = noteTimers.get(key);
+        if (timer) {
+          window.clearTimeout(timer);
+          noteTimers.delete(key);
+          enqueueNotePersist();
+        }
+      }
+      return original();
+    };
+    closeCalendarDetail.__lifelogWrapped = true;
+  }
+
   function wrapMonthNav() {
     if (typeof changeCalendarMonth === "function" && changeCalendarMonth.name !== "lifelogAwareChange") {
       const original = changeCalendarMonth;
@@ -551,6 +623,7 @@ async function setView(next) {
     ensureSwitcher();
     ensureBoard();
     wrapOpenDetail();
+    wrapCloseDetail();
     wrapMonthNav();
     await loadStore();
     syncChrome();
