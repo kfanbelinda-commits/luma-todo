@@ -1,21 +1,30 @@
 /* Lifelog: separate from todo state. Demo uses lifelog.json + lifelog-media. */
 (function () {
   const WEATHER = [
-    { id: "sunny", label: "晴", emoji: "☀️" },
-    { id: "cloudy", label: "云", emoji: "☁️" },
-    { id: "rainy", label: "雨", emoji: "🌧" },
-    { id: "windy", label: "风", emoji: "🌬" },
-    { id: "snowy", label: "雪", emoji: "❄️" },
-    { id: "storm", label: "雷", emoji: "⛈" },
+    { id: "sunny", label: "晴", color: "#E8C547", file: "weather-sunny.svg" },
+    { id: "cloudy", label: "云", color: "#A8B4C0", file: "weather-cloudy.svg" },
+    { id: "rainy", label: "雨", color: "#8FA4B8", file: "weather-rainy.svg" },
+    { id: "foggy", label: "雾", color: "#B0B6BE", file: "weather-foggy.svg" },
+    { id: "snowy", label: "雪", color: "#C5CCD4", file: "weather-snowy.svg" },
+    { id: "storm", label: "雷", color: "#6B7C8F", file: "weather-stormy.svg" },
   ];
   const MOODS = [
-    { id: "great", label: "超棒", emoji: "😄" },
-    { id: "good", label: "不错", emoji: "🙂" },
-    { id: "okay", label: "还行", emoji: "😐" },
-    { id: "calm", label: "平静", emoji: "😌" },
-    { id: "low", label: "低落", emoji: "😔" },
-    { id: "awful", label: "糟糕", emoji: "😣" },
+    { id: "great", label: "超棒", color: "#E8C547", file: "mood-great.svg" },
+    { id: "good", label: "不错", color: "#E5D08A", file: "mood-good.svg" },
+    { id: "okay", label: "还行", color: "#C9B896", file: "mood-okay.svg" },
+    { id: "calm", label: "平静", color: "#A8B89A", file: "mood-calm.svg" },
+    { id: "low", label: "低落", color: "#8FA4B8", file: "mood-low.svg" },
+    { id: "awful", label: "糟糕", color: "#C4897A", file: "mood-bad.svg" },
   ];
+  const ICON_BASE = "src/lifelog-icons/";
+  const MOOD_EMPTY = ICON_BASE + "mood-empty.svg";
+
+  function iconImg(item, size, extraClass) {
+    if (!item || !item.file) {
+      return '<img class="lifelog-ico ' + (extraClass || "") + '" src="' + MOOD_EMPTY + '" width="' + size + '" height="' + size + '" alt="" aria-hidden="true">';
+    }
+    return '<img class="lifelog-ico ' + (extraClass || "") + '" src="' + ICON_BASE + item.file + '" width="' + size + '" height="' + size + '" alt="' + (item.label || "") + '" style="--mood:' + (item.color || "#C5CCD4") + '">';
+  }
   const WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"];
 
   let store = { version: 1, entries: {} };
@@ -40,7 +49,10 @@
   }
   function entryFor(key) {
     if (!store.entries[key]) store.entries[key] = emptyEntry();
-    return store.entries[key];
+    const entry = store.entries[key];
+    if (entry.weather === "windy") entry.weather = "foggy";
+    if (entry.mood === "bad") entry.mood = "awful";
+    return entry;
   }
 
   async function loadStore() {
@@ -198,7 +210,7 @@
         '<button type="button" class="lifelog-cell ' + cls + '" data-date="' + key + '">'
         + (cover ? '<img class="lifelog-cell-img" src="' + cover + '" alt="">' : "")
         + '<span class="lifelog-day-num">' + d + "</span>"
-        + (has && !cover ? '<span class="lifelog-cell-footer"><span>' + (weather?.emoji || "") + "</span><span>" + (mood?.emoji || "") + "</span></span>" : "")
+        + (has && !cover ? '<span class="lifelog-cell-footer"><span>' + (weather ? iconImg(weather, 16) : "") + "</span><span>" + (mood ? iconImg(mood, 16) : "") + "</span></span>" : "")
         + "</button>"
       );
     }
@@ -242,10 +254,10 @@
     const list = kind === "weather" ? WEATHER : MOODS;
     const selected = list.find((item) => item.id === entry[kind]);
     const label = kind === "weather" ? "天气" : "心情";
-    const icon = selected ? selected.emoji : "＋";
+    const icon = selected ? iconImg(selected, 28) : (kind === "mood" ? iconImg(null, 28) : '<span class="lifelog-pick-plus">＋</span>');
     const options = list.map((item) => (
-      '<button type="button" class="lifelog-emoji-opt' + (entry[kind] === item.id ? " is-active" : "") + '" data-id="' + item.id + '" role="option" title="' + item.label + '">'
-      + '<span class="lifelog-emoji-opt-ico">' + item.emoji + "</span>"
+      '<button type="button" class="lifelog-emoji-opt' + (entry[kind] === item.id ? " is-active" : "") + '" data-id="' + item.id + '" role="option" title="' + item.label + '" style="--mood:' + item.color + '">'
+      + iconImg(item, 32)
       + '<span class="lifelog-emoji-opt-lbl">' + item.label + "</span>"
       + "</button>"
     )).join("");

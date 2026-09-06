@@ -387,3 +387,39 @@ html:not([data-theme="light"]) .lifelog-note { background: rgba(0, 0, 0, .18); }
   min-height: 0;
   overflow: visible;
 }
+
+.lifelog-ico {
+  display: block;
+  flex: 0 0 auto;
+  object-fit: contain;
+  pointer-events: none;
+}
+.lifelog-pick-plus {
+  font-size: 16px;
+  line-height: 1;
+  opacity: .7;
+}
+.lifelog-pick .lifelog-ico {
+  width: 28px;
+  height: 28px;
+}
+.lifelog-emoji-opt .lifelog-ico {
+  width: 32px;
+  height: 32px;
+  opacity: .92;
+}
+.lifelog-emoji-opt.is-active {
+  border-radius: 14px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--mood, #7b8dbf) 55%, transparent);
+  background: color-mix(in srgb, var(--mood, #7b8dbf) 14%, transparent);
+}
+.lifelog-emoji-opt.is-active .lifelog-ico { opacity: 1; }
+.lifelog-cell-footer .lifelog-ico {
+  width: 16px;
+  height: 16px;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.25));
+}
+.lifelog-pill-ico .lifelog-ico {
+  width: 14px;
+  height: 14px;
+}
