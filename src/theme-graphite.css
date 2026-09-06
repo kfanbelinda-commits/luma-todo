@@ -1429,8 +1429,11 @@ html[data-theme="light"] .month-lunar {
   z-index: 18;
   top: 86px;
   right: 20px;
-  bottom: 20px;
+  bottom: auto;
   width: min(350px, 43%);
+  height: var(--calendar-detail-height, min(560px, calc(100% - 90px)));
+  min-height: 280px;
+  max-height: calc(100% - 72px);
   display: flex;
   flex-direction: column;
   border: 1px solid rgba(255,255,255,.14);
@@ -1450,12 +1453,48 @@ html[data-theme="light"] .month-lunar {
   visibility: hidden;
 }
 .calendar-detail-header {
+  flex: 0 0 auto;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   padding: 16px 17px 12px;
   border-bottom: 1px solid rgba(255,255,255,.08);
+  background: rgba(34,37,44,.98);
+  z-index: 3;
+}
+.calendar-detail-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.calendar-detail-resize {
+  flex: 0 0 14px;
+  position: relative;
+  cursor: ns-resize;
+  touch-action: none;
+  background: transparent;
+}
+.calendar-detail-resize::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 5px;
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  transform: translateX(-50%);
+  background: rgba(255,255,255,.22);
+}
+.calendar-detail-resize:hover::before,
+.calendar-detail-resize:focus-visible::before {
+  background: rgba(255,255,255,.4);
+}
+.calendar-detail.is-resizing {
+  transition: none;
+  user-select: none;
 }
 .calendar-detail-header h3 {
   margin: 0;
@@ -1490,8 +1529,8 @@ html[data-theme="light"] .month-lunar {
 }
 .calendar-detail-todos {
   min-height: 0;
-  flex: 1 1 auto;
-  overflow: auto;
+  flex: 0 0 auto;
+  overflow: visible;
 }
 .calendar-detail-section-title {
   display: flex;
@@ -3113,13 +3152,15 @@ html[data-theme="light"] .calendar-create-fields .calendar-event-color-label > s
 
 .calendar-detail-view {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
+  min-height: 0;
   overflow: hidden;
   border-radius: inherit;
 }
 
 .calendar-detail-view .calendar-detail-todos {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
 }
 
 .calendar-detail-view .calendar-detail-list {

@@ -235,23 +235,16 @@ html:not([data-theme="light"]) .lifelog-pill {
 
 /* Taller day detail when Lifelog is present; scroll the whole panel instead of crushing todos. */
 .calendar-detail:has(#lifeLogDetail) {
-  top: 52px;
-  bottom: 12px;
   width: min(400px, 48%);
+  /* height comes from --calendar-detail-height / resize; keep room under panel */
+  max-height: calc(100% - 52px);
 }
-.calendar-detail-view:has(#lifeLogDetail) {
+.calendar-detail:has(#lifeLogDetail) .calendar-detail-body {
   overflow-y: auto;
 }
-.calendar-detail-view:has(#lifeLogDetail) > .calendar-detail-header,
-.calendar-detail-view:has(#lifeLogDetail) > .calendar-detail-section,
-.calendar-detail-view:has(#lifeLogDetail) > .calendar-detail-add,
-.calendar-detail-view:has(#lifeLogDetail) > #lifeLogDetail {
-  flex-shrink: 0;
-}
-.calendar-detail-view:has(#lifeLogDetail) > .calendar-detail-todos {
+.calendar-detail:has(#lifeLogDetail) .calendar-detail-todos {
   flex: 0 0 auto;
   max-height: none;
-  min-height: 0;
   overflow: visible;
 }
 
