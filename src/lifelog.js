@@ -18,31 +18,40 @@
   ];
   const ICON_BASE = "src/lifelog-icons/";
   const MOOD_EMPTY = ICON_BASE + "mood-empty.svg";
+  const WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"];
+  const WEEKDAYS_SUN = ["日", "一", "二", "三", "四", "五", "六"];
+  const MAX_PHOTOS = 9;
 
   function iconImg(item, size, extraClass) {
     if (!item || !item.file) {
       return '<img class="lifelog-ico ' + (extraClass || "") + '" src="' + MOOD_EMPTY + '" width="' + size + '" height="' + size + '" alt="" aria-hidden="true">';
     }
-    return '<img class="lifelog-ico ' + (extraClass || "") + '" src="' + ICON_BASE + item.file + '" width="' + size + '" height="' + size + '" alt="' + (item.label || "") + '" style="--mood:' + (item.color || "#C5CCD4") + '">';
+    return '<img class="lifelog-ico ' + (extraClass || "") + '" src="' + ICON_BASE + item.file + '" width="' + size + '" height="' + size + '" alt="' + escapeHtml(item.label || "") + '" style="--mood:' + (item.color || "#C5CCD4") + '">';
   }
-  const WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"];
 
   let store = { version: 1, entries: {} };
   let mediaCache = new Map();
   let view = "month";
   let cursor = new Date();
-  let noteTimers = new Map(); // dateKey -> timeout id (never clear another day's pending write)
+  let noteTimers = new Map();
   let notePersistChain = Promise.resolve();
   let ready = false;
   let currentDetailDate = null;
+  let viewingPhotoId = null;
   let detailSectionPasteBound = false;
+  let persistStatus = "idle";
+  let savedStatusTimer = 0;
+  let noticeTimer = 0;
+  let undo = null;
+  let menuDocBound = false;
 
   function pad(n) { return String(n).padStart(2, "0"); }
   function toKey(date) {
     return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate());
   }
+  function todayKey() { return toKey(new Date()); }
   function parseKey(key) {
-    const [y, m, d] = String(key || toKey(new Date())).split("-").map(Number);
+    const [y, m, d] = String(key || todayKey()).split("-").map(Number);
     return new Date(y, m - 1, d, 12, 0, 0, 0);
   }
   function weatherMeta(id) { return WEATHER.find((item) => item.id === id) || null; }
@@ -56,6 +65,22 @@
     if (entry.weather === "windy") entry.weather = "foggy";
     if (entry.mood === "bad") entry.mood = "awful";
     return entry;
+  }
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&" + "amp;")
+      .replace(/</g, "&" + "lt;")
+      .replace(/>/g, "&" + "gt;")
+      .replace(/"/g, "&" + "quot;");
+  }
+  function noteExcerpt(text) {
+    const compact = String(text || "").replace(/\s+/g, " ").trim();
+    if (!compact) return "";
+    return compact.length > 28 ? compact.slice(0, 28) + "…" : compact;
+  }
+  function dateSpoken(key) {
+    const date = parseKey(key);
+    return date.getFullYear() + "年" + (date.getMonth() + 1) + "月" + date.getDate() + "日 周" + WEEKDAYS_SUN[date.getDay()];
   }
 
   async function loadStore() {
@@ -75,17 +100,79 @@
   function applyNoteDraft(dateKey, text) {
     if (!dateKey) return;
     const current = entryFor(dateKey);
-    current.note = String(text ?? "").trim();
+    current.note = String(text ?? "");
     current.updatedAt = Date.now();
   }
 
-  function enqueueNotePersist() {
+  function paintPersistStatus() {
+    const el = document.querySelector("#lifeLogSaveStatus");
+    if (!el) return;
+    el.classList.remove("is-saving", "is-saved", "is-error");
+    if (persistStatus === "saving") {
+      el.hidden = false;
+      el.classList.add("is-saving");
+      el.textContent = "保存中";
+    } else if (persistStatus === "saved") {
+      el.hidden = false;
+      el.classList.add("is-saved");
+      el.textContent = "已保存";
+    } else if (persistStatus === "error") {
+      el.hidden = false;
+      el.classList.add("is-error");
+      el.innerHTML = '<button type="button" class="lifelog-save-retry" data-lifelog-act="retry">保存失败，重试</button>';
+    } else {
+      el.hidden = true;
+      el.textContent = "";
+    }
+  }
+
+  function showNotice(text) {
+    const el = document.querySelector("#lifeLogNotice");
+    if (!el) return;
+    el.hidden = false;
+    el.textContent = text;
+    window.clearTimeout(noticeTimer);
+    noticeTimer = window.setTimeout(() => {
+      if (el.textContent === text) {
+        el.hidden = true;
+        el.textContent = "";
+      }
+    }, 2800);
+  }
+
+  function paintUndo() {
+    const el = document.querySelector("#lifeLogUndo");
+    if (!el) return;
+    if (!undo) {
+      el.hidden = true;
+      el.innerHTML = "";
+      return;
+    }
+    el.hidden = false;
+    el.innerHTML = '已删除照片 <button type="button" class="lifelog-undo-btn" data-lifelog-act="undo">撤销</button>';
+  }
+
+  function enqueuePersist() {
+    persistStatus = "saving";
+    paintPersistStatus();
     notePersistChain = notePersistChain
       .then(async () => {
         await saveStore();
+        persistStatus = "saved";
+        paintPersistStatus();
+        window.clearTimeout(savedStatusTimer);
+        savedStatusTimer = window.setTimeout(() => {
+          if (persistStatus === "saved") {
+            persistStatus = "idle";
+            paintPersistStatus();
+          }
+        }, 1600);
         if (view === "lifelog") await renderBoard();
       })
-      .catch(() => {});
+      .catch(() => {
+        persistStatus = "error";
+        paintPersistStatus();
+      });
     return notePersistChain;
   }
 
@@ -95,7 +182,9 @@
     if (prev) window.clearTimeout(prev);
     const timer = window.setTimeout(() => {
       noteTimers.delete(dateKey);
-      enqueueNotePersist();
+      const entry = store.entries[dateKey];
+      if (entry) entry.note = String(entry.note || "").trim();
+      enqueuePersist();
     }, 350);
     noteTimers.set(dateKey, timer);
   }
@@ -103,19 +192,37 @@
   async function flushNotePersist(dateKey) {
     if (!dateKey) return;
     const timer = noteTimers.get(dateKey);
-    if (!timer) return;
-    window.clearTimeout(timer);
-    noteTimers.delete(dateKey);
-    await enqueueNotePersist();
+    if (timer) {
+      window.clearTimeout(timer);
+      noteTimers.delete(dateKey);
+    }
+    const entry = store.entries[dateKey];
+    if (entry) entry.note = String(entry.note || "").trim();
+    await enqueuePersist();
   }
 
+  async function flushAllNotes() {
+    const live = document.querySelector("#lifeLogNote");
+    if (currentDetailDate && live) applyNoteDraft(currentDetailDate, live.value);
+    for (const [key, timer] of [...noteTimers]) {
+      window.clearTimeout(timer);
+      noteTimers.delete(key);
+      const entry = store.entries[key];
+      if (entry) entry.note = String(entry.note || "").trim();
+    }
+    await enqueuePersist();
+  }
 
   async function mediaUrl(relativePath) {
     if (!relativePath) return null;
     if (mediaCache.has(relativePath)) return mediaCache.get(relativePath);
-    const url = await window.luma?.lifelogMediaDataUrl?.(relativePath);
-    if (url) mediaCache.set(relativePath, url);
-    return url || null;
+    try {
+      const url = await window.luma?.lifelogMediaDataUrl?.(relativePath);
+      if (url) mediaCache.set(relativePath, url);
+      return url || null;
+    } catch {
+      return null;
+    }
   }
 
   async function coverUrl(entry) {
@@ -132,12 +239,19 @@
       board = document.createElement("div");
       board.id = "lifeLogBoard";
       board.className = "lifelog-board hidden";
-      board.setAttribute("aria-label", "Lifelog");
+      board.setAttribute("aria-label", "生活记录");
       const grid = document.querySelector("#calendarGrid");
       if (grid?.parentElement) grid.parentElement.insertBefore(board, grid.nextSibling);
       else panel.appendChild(board);
     }
     return board;
+  }
+
+  function defaultEyebrow() {
+    const eyebrow = document.querySelector("#calendarPanel .eyebrow");
+    if (!eyebrow) return;
+    if (!eyebrow.dataset.defaultText) eyebrow.dataset.defaultText = eyebrow.textContent || "计划与时间节点";
+    return eyebrow;
   }
 
   function ensureSwitcher() {
@@ -174,7 +288,6 @@
           setView("lifelog");
           return;
         }
-        // Month/Week: hide Lifelog, close day detail, let week/month handlers continue.
         view = button.dataset.calendarView;
         syncChrome();
         if (typeof closeCalendarDetail === "function") closeCalendarDetail();
@@ -200,18 +313,35 @@
     const grid = document.querySelector("#calendarGrid");
     const weekdays = document.querySelector(".weekdays");
     const weekBoard = document.querySelector("#weekBoard");
+    const eyebrow = defaultEyebrow();
     if (view === "lifelog") {
       board?.classList.remove("hidden");
       if (grid) grid.hidden = true;
       if (weekdays) weekdays.hidden = true;
       weekBoard?.classList.add("hidden");
+      if (eyebrow) eyebrow.textContent = "日子与片刻";
     } else {
       board?.classList.add("hidden");
       if (view === "month") {
         if (grid) grid.hidden = false;
         if (weekdays) weekdays.hidden = false;
       }
+      if (eyebrow && eyebrow.dataset.defaultText) eyebrow.textContent = eyebrow.dataset.defaultText;
     }
+  }
+
+  function goLifelogMonth(date) {
+    cursor = new Date(date.getFullYear(), date.getMonth(), 1, 12);
+    if (typeof calendarCursor !== "undefined") calendarCursor = new Date(cursor);
+    return renderBoard();
+  }
+
+  function shiftLifelogMonth(offset) {
+    return goLifelogMonth(new Date(cursor.getFullYear(), cursor.getMonth() + offset, 1));
+  }
+
+  function goLifelogToday() {
+    return goLifelogMonth(new Date());
   }
 
   async function renderBoard() {
@@ -226,13 +356,13 @@
     for (let d = 1; d <= daysInMonth; d++) keys.push(toKey(new Date(year, month, d, 12)));
 
     let daysWith = 0;
-    let photos = 0;
+    let photoCount = 0;
     const moodCount = {};
     for (const key of keys) {
       const entry = store.entries[key];
       if (!entry) continue;
       if (entry.note || entry.mood || entry.weather || entry.photos?.length) daysWith += 1;
-      photos += entry.photos?.length || 0;
+      photoCount += entry.photos?.length || 0;
       if (entry.mood) moodCount[entry.mood] = (moodCount[entry.mood] || 0) + 1;
     }
     const topMoodId = Object.entries(moodCount).sort((a, b) => b[1] - a[1])[0]?.[0];
@@ -241,11 +371,14 @@
     const title = document.querySelector("#monthTitle");
     if (title) title.textContent = year + " 年 " + (month + 1) + " 月";
     const lunar = document.querySelector("#monthLunar");
-    if (lunar) lunar.textContent = "Lifelog";
+    if (lunar) lunar.textContent = "本月记录";
+    const eyebrow = defaultEyebrow();
+    if (eyebrow) eyebrow.textContent = "日子与片刻";
 
     const cells = [];
     for (let i = 0; i < firstOffset; i++) cells.push('<div class="lifelog-cell empty" aria-hidden="true"></div>');
 
+    const today = todayKey();
     for (let d = 1; d <= daysInMonth; d++) {
       const key = keys[d - 1];
       const entry = store.entries[key];
@@ -253,24 +386,40 @@
       const cover = entry ? await coverUrl(entry) : null;
       const weather = weatherMeta(entry?.weather);
       const mood = moodMeta(entry?.mood);
-      const cls = cover ? "has-img" : has ? "has-note" : "no-note";
+      const excerpt = !cover && entry?.note ? noteExcerpt(entry.note) : "";
+      let cls = cover ? "has-img" : has ? "has-note" : "no-note";
+      if (key === today) cls += " is-today";
+      if (key === currentDetailDate) cls += " is-selected";
+      const ariaCurrent = key === currentDetailDate ? ' aria-current="date"' : "";
       cells.push(
-        '<button type="button" class="lifelog-cell ' + cls + '" data-date="' + key + '">'
+        '<button type="button" class="lifelog-cell ' + cls + '" data-date="' + key + '" aria-label="' + escapeHtml(dateSpoken(key)) + '"' + ariaCurrent + ">"
         + (cover ? '<img class="lifelog-cell-img" src="' + cover + '" alt="">' : "")
+        + (excerpt ? '<span class="lifelog-cell-note">' + escapeHtml(excerpt) + "</span>" : (!cover && has && !weather && !mood ? '<span class="lifelog-cell-mark" aria-hidden="true">文</span>' : ""))
         + '<span class="lifelog-day-num">' + d + "</span>"
         + ((weather || mood) ? '<span class="lifelog-cell-footer' + (cover ? " on-photo" : "") + '"><span>' + (weather ? iconImg(weather, 16) : "") + "</span><span>" + (mood ? iconImg(mood, 16) : "") + "</span></span>" : "")
         + "</button>"
       );
     }
 
+    let stats = "记录 " + daysWith + " 天 · " + photoCount + " 张照片";
+    if (topMood) stats += " · 常见心情：" + topMood.label;
+
     board.innerHTML = ""
-      + '<div class="lifelog-pills" aria-label="本月 Lifelog 统计">'
-      + '<span class="lifelog-pill"><span class="lifelog-pill-ico" aria-hidden="true">📝</span><span class="lifelog-pill-text">' + daysWith + " Days</span></span>"
-      + '<span class="lifelog-pill"><span class="lifelog-pill-ico" aria-hidden="true">📷</span><span class="lifelog-pill-text">' + photos + " Photos</span></span>"
-      + (topMood ? '<span class="lifelog-pill"><span class="lifelog-pill-ico" aria-hidden="true">' + iconImg(topMood, 14) + '</span><span class="lifelog-pill-text">Most ' + topMood.label + "</span></span>" : "")
+      + '<div class="lifelog-pills" aria-label="本月记录">'
+      + '<span class="lifelog-pill"><span class="lifelog-pill-text">' + escapeHtml(stats) + "</span></span>"
       + "</div>"
       + '<div class="lifelog-weekdays">' + WEEKDAYS.map((label) => "<span>" + label + "</span>").join("") + "</div>"
-      + '<div class="lifelog-grid">' + cells.join("") + "</div>";
+      + '<div class="lifelog-grid">' + cells.join("") + "</div>"
+      + (daysWith === 0 ? '<p class="lifelog-empty-hint">点一个日期，留下一句今天</p>' : "");
+
+    const titleMonth = month + 1;
+    const mismatched = [...board.querySelectorAll(".lifelog-cell[data-date]")].filter((cell) => {
+      const parts = String(cell.dataset.date || "").split("-").map(Number);
+      return parts[0] !== year || parts[1] !== titleMonth;
+    });
+    if (mismatched.length) {
+      console.warn("[lifelog] title/grid month mismatch", title?.textContent, mismatched.map((cell) => cell.dataset.date));
+    }
 
     board.querySelectorAll(".lifelog-cell[data-date]").forEach((cell) => {
       cell.addEventListener("click", () => {
@@ -298,7 +447,6 @@
       || body.querySelector(".calendar-detail-todos");
 
     if (view === "lifelog") {
-      // Record-first: lifeLogDetail on top; schedule/todos/add in collapsed 「当天安排」.
       let plan = document.querySelector("#lifeLogDayPlan");
       if (!plan) {
         plan = document.createElement("details");
@@ -316,7 +464,6 @@
       if (body.firstElementChild !== section) body.insertBefore(section, body.firstChild);
       if (section.nextElementSibling !== plan) section.insertAdjacentElement("afterend", plan);
     } else {
-      // Month/week: restore schedule → todos → add → lifeLogDetail (unchanged order).
       const plan = document.querySelector("#lifeLogDayPlan");
       if (plan) {
         const insertBefore = plan;
@@ -335,6 +482,30 @@
     return section;
   }
 
+  function closeAllMenus(except) {
+    document.querySelectorAll("#lifeLogDetail .lifelog-field").forEach((field) => {
+      if (except && field === except) return;
+      const pick = field.querySelector(".lifelog-pick");
+      const menu = field.querySelector(".lifelog-menu");
+      pick?.classList.remove("is-open");
+      pick?.setAttribute("aria-expanded", "false");
+      menu?.classList.add("hidden");
+      menu?.setAttribute("hidden", "");
+    });
+  }
+
+  function bindMenuDismiss() {
+    if (menuDocBound) return;
+    menuDocBound = true;
+    document.addEventListener("click", (event) => {
+      const field = event.target.closest("#lifeLogDetail .lifelog-field");
+      closeAllMenus(field || null);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeAllMenus();
+    });
+  }
+
   function pickerField(kind, entry) {
     const list = kind === "weather" ? WEATHER : MOODS;
     const selected = list.find((item) => item.id === entry[kind]);
@@ -351,11 +522,11 @@
     )).join("");
     return ""
       + '<div class="lifelog-field" data-kind="' + kind + '">'
-      + '<span class="lifelog-field-label" id="lifelog-label-' + kind + '">' + label + "</span>"
-      + '<button type="button" class="lifelog-pick' + (selected ? " has-value" : "") + '" data-kind="' + kind + '" style="' + (swatch ? ("--mood:" + swatch) : "") + '" aria-labelledby="lifelog-label-' + kind + '" aria-label="' + label + (selected ? ("：" + selected.label) : "：未选") + '" aria-haspopup="listbox" aria-expanded="false">'
+      + '<span class="lifelog-field-label">' + label + "</span>"
+      + '<button type="button" class="lifelog-pick' + (selected ? " has-value" : "") + '" data-kind="' + kind + '" style="' + (swatch ? ("--mood:" + swatch) : "") + '" aria-label="' + label + (selected ? ("：" + selected.label) : "：未选") + '" aria-haspopup="listbox" aria-expanded="false" aria-controls="lifelog-menu-' + kind + '">'
       + icon
       + "</button>"
-      + '<div class="lifelog-menu hidden" role="listbox" hidden aria-label="' + label + '">' + options + "</div>"
+      + '<div id="lifelog-menu-' + kind + '" class="lifelog-menu hidden" role="listbox" hidden aria-label="' + label + '">' + options + "</div>"
       + "</div>";
   }
 
@@ -388,64 +559,139 @@
   }
 
   async function addPhotoFromDataUrl(dateKey, dataUrl) {
-    if (!dataUrl || !String(dataUrl).startsWith("data:image/")) return;
+    if (!dataUrl || !String(dataUrl).startsWith("data:image/")) {
+      showNotice("无法读取这张图片");
+      return false;
+    }
     const entry = entryFor(dateKey);
-    if ((entry.photos || []).length >= 9) return;
-    const resized = await resizeDataUrl(dataUrl);
-    const relativePath = await window.luma?.lifelogSaveMedia?.({
-      dataBase64: resized,
-      mime: "image/jpeg",
-    });
-    if (!relativePath) return;
-    const id = "photo-" + Date.now().toString(36);
-    entry.photos = entry.photos || [];
-    entry.photos.push({ id, path: relativePath, addedAt: Date.now() });
-    if (!entry.coverPhotoId) entry.coverPhotoId = id;
-    entry.updatedAt = Date.now();
-    mediaCache.delete(relativePath);
-    await saveStore();
+    if ((entry.photos || []).length >= MAX_PHOTOS) {
+      showNotice("最多 9 张照片");
+      return false;
+    }
+    try {
+      const resized = await resizeDataUrl(dataUrl);
+      const relativePath = await window.luma?.lifelogSaveMedia?.({
+        dataBase64: resized,
+        mime: "image/jpeg",
+      });
+      if (!relativePath) {
+        showNotice("保存失败，请重试");
+        persistStatus = "error";
+        paintPersistStatus();
+        return false;
+      }
+      const id = "photo-" + Date.now().toString(36);
+      entry.photos = entry.photos || [];
+      entry.photos.push({ id, path: relativePath, addedAt: Date.now() });
+      if (!entry.coverPhotoId) entry.coverPhotoId = id;
+      viewingPhotoId = id;
+      entry.updatedAt = Date.now();
+      mediaCache.delete(relativePath);
+      await enqueuePersist();
+      return true;
+    } catch {
+      showNotice("保存失败，请重试");
+      persistStatus = "error";
+      paintPersistStatus();
+      return false;
+    }
   }
 
-    async function removePhoto(dateKey, photoId) {
+  async function removePhoto(dateKey, photoId) {
     const entry = entryFor(dateKey);
     const photos = entry.photos || [];
     const target = photos.find((photo) => photo.id === photoId);
     if (!target) return;
+    if (undo?.timer) window.clearTimeout(undo.timer);
+    const prevPhotos = photos.slice();
+    const prevCover = entry.coverPhotoId;
     entry.photos = photos.filter((photo) => photo.id !== photoId);
     if (entry.coverPhotoId === photoId) {
       entry.coverPhotoId = entry.photos[0] ? entry.photos[0].id : "";
     }
+    if (viewingPhotoId === photoId) viewingPhotoId = entry.coverPhotoId || null;
     entry.updatedAt = Date.now();
-    if (target.path) {
-      mediaCache.delete(target.path);
-      try { await window.luma?.lifelogDeleteMedia?.(target.path); } catch (_) {}
-    }
-    await saveStore();
+    undo = {
+      dateKey,
+      prevPhotos,
+      prevCover,
+      path: target.path,
+      timer: window.setTimeout(async () => {
+        try { await window.luma?.lifelogDeleteMedia?.(target.path); } catch (_) {}
+        if (undo && undo.path === target.path) undo = null;
+        paintUndo();
+      }, 6000),
+    };
+    await enqueuePersist();
   }
 
-async function renderDetail(dateKey) {
+  async function undoRemove() {
+    if (!undo) return;
+    window.clearTimeout(undo.timer);
+    const entry = entryFor(undo.dateKey);
+    entry.photos = undo.prevPhotos;
+    entry.coverPhotoId = undo.prevCover;
+    entry.updatedAt = Date.now();
+    viewingPhotoId = undo.prevCover || (entry.photos[0] && entry.photos[0].id) || null;
+    const dateKey = undo.dateKey;
+    undo = null;
+    paintUndo();
+    await enqueuePersist();
+    await renderDetail(dateKey);
+  }
+
+  async function setCover(dateKey, photoId) {
+    const entry = entryFor(dateKey);
+    if (!(entry.photos || []).some((photo) => photo.id === photoId)) return;
+    entry.coverPhotoId = photoId;
+    entry.updatedAt = Date.now();
+    await enqueuePersist();
+  }
+
+  function captureLiveNote() {
+    const liveNote = document.querySelector("#lifeLogNote");
+    if (currentDetailDate && liveNote) applyNoteDraft(currentDetailDate, liveNote.value);
+  }
+
+  async function renderDetail(dateKey) {
     const section = ensureDetailMount();
     if (!section || !dateKey) return;
-    // Capture live textarea into memory before DOM wipe / day switch.
-    const liveNote = section.querySelector("#lifeLogNote");
-    if (currentDetailDate && liveNote) {
-      applyNoteDraft(currentDetailDate, liveNote.value);
-    }
+    const previousDate = currentDetailDate;
+    captureLiveNote();
     if (currentDetailDate && currentDetailDate !== dateKey) {
+      viewingPhotoId = null;
       await flushNotePersist(currentDetailDate);
     } else if (currentDetailDate === dateKey) {
-      // Same-day re-render (mood/weather): flush pending note so textarea matches store.
       const t = noteTimers.get(dateKey);
       if (t) {
         window.clearTimeout(t);
         noteTimers.delete(dateKey);
-        await enqueueNotePersist();
+        await enqueuePersist();
       }
     }
     currentDetailDate = dateKey;
     const entry = entryFor(dateKey);
-    const coverPhoto = (entry.photos || []).find((photo) => photo.id === entry.coverPhotoId) || (entry.photos || [])[0] || null;
-    const cover = coverPhoto ? await mediaUrl(coverPhoto.path) : null;
+    const photos = entry.photos || [];
+    const viewing = photos.find((photo) => photo.id === viewingPhotoId)
+      || photos.find((photo) => photo.id === entry.coverPhotoId)
+      || photos[0]
+      || null;
+    if (viewing) viewingPhotoId = viewing.id;
+    const viewingUrl = viewing ? await mediaUrl(viewing.path) : null;
+    const atLimit = photos.length >= MAX_PHOTOS;
+    const strip = photos.map((photo, index) => {
+      const current = viewing && photo.id === viewing.id;
+      const cover = photo.id === entry.coverPhotoId;
+      const label = "第" + (index + 1) + "张" + (cover ? "，封面" : "");
+      return '<button type="button" class="lifelog-strip-thumb'
+        + (current ? " is-current" : "")
+        + (cover ? " is-cover" : "")
+        + '" data-lifelog-act="view-photo" data-photo-id="' + photo.id
+        + '" aria-label="' + label + '"'
+        + (current ? ' aria-current="true"' : "")
+        + "></button>";
+    }).join("");
+
     section.innerHTML = ""
       + '<div class="lifelog-block-title">生活记录</div>'
       + '<div class="lifelog-pick-row">'
@@ -453,28 +699,36 @@ async function renderDetail(dateKey) {
       + pickerField("mood", entry)
       + "</div>"
       + '<label class="lifelog-note-label" for="lifeLogNote">今日絮语</label>'
-      + '<textarea id="lifeLogNote" class="lifelog-note" rows="3" maxlength="280" placeholder="写给今天的一句，不必很长…">' + (entry.note || "").replace(/</g, "&lt;") + "</textarea>"
-      + '<div class="lifelog-photos" tabindex="0" aria-label="添加图片，可粘贴">'
-            + (cover
-              ? '<img class="lifelog-photo-thumb" src="' + cover + '" alt="">'
-                + '<button type="button" class="lifelog-photo-remove" data-photo-id="' + coverPhoto.id + '" aria-label="删除图片">×</button>'
-                + '<button type="button" class="lifelog-photo-add is-overlay" aria-label="再加一张">＋</button>'
-              : '<button type="button" class="lifelog-photo-empty" aria-label="添加图片">'
-                + '<span class="lifelog-photo-plus">＋</span>'
-                + '<span class="lifelog-photo-hint">添加图片 · 也可粘贴</span>'
-                + "</button>")
-            + '<input class="lifelog-photo-file" type="file" accept="image/*" hidden>'
+      + '<textarea id="lifeLogNote" class="lifelog-note" rows="3" maxlength="280" placeholder="写给今天的一句，不必很长…">' + escapeHtml(entry.note || "") + "</textarea>"
+      + '<p id="lifeLogSaveStatus" class="lifelog-save-status" aria-live="polite" hidden></p>'
+      + '<p id="lifeLogNotice" class="lifelog-notice" hidden></p>'
+      + '<p id="lifeLogUndo" class="lifelog-undo" hidden></p>'
+      + '<div class="lifelog-photos" tabindex="0" aria-label="照片，可粘贴">'
+      + (viewing && viewingUrl
+        ? '<img class="lifelog-photo-thumb" src="' + viewingUrl + '" alt="">'
+          + '<div class="lifelog-photo-toolbar">'
+          + '<span class="lifelog-photo-count">' + photos.length + "/" + MAX_PHOTOS + "</span>"
+          + (viewing.id !== entry.coverPhotoId ? '<button type="button" class="lifelog-photo-textbtn" data-lifelog-act="set-cover" data-photo-id="' + viewing.id + '">设为封面</button>' : '<span class="lifelog-photo-cover-flag">封面</span>')
+          + '<button type="button" class="lifelog-photo-textbtn" data-lifelog-act="remove-photo" data-photo-id="' + viewing.id + '">删除</button>'
+          + '<button type="button" class="lifelog-photo-add is-overlay" data-lifelog-act="add-photo" aria-label="' + (atLimit ? "已达 9 张上限" : "再加一张") + '"' + (atLimit ? " aria-disabled=\"true\"" : "") + ">＋</button>"
+          + "</div>"
+          + (photos.length > 1 ? '<div class="lifelog-strip" role="list">' + strip + "</div>" : "")
+        : '<button type="button" class="lifelog-photo-empty" data-lifelog-act="add-photo" aria-label="添加图片">'
+          + '<span class="lifelog-photo-plus">＋</span>'
+          + '<span class="lifelog-photo-hint">添加图片 · 也可粘贴</span>'
+          + "</button>")
+      + '<input class="lifelog-photo-file" type="file" accept="image/*" hidden>'
       + "</div>";
 
-    function closeMenus(except) {
-      section.querySelectorAll(".lifelog-field").forEach((field) => {
-        if (except && field === except) return;
-        const pick = field.querySelector(".lifelog-pick");
-        const menu = field.querySelector(".lifelog-menu");
-        pick?.classList.remove("is-open");
-        pick?.setAttribute("aria-expanded", "false");
-        menu?.classList.add("hidden");
-        menu?.setAttribute("hidden", "");
+    paintPersistStatus();
+    paintUndo();
+
+    if (photos.length) {
+      photos.forEach(async (photo) => {
+        const thumb = section.querySelector('.lifelog-strip-thumb[data-photo-id="' + photo.id + '"]');
+        if (!thumb) return;
+        const url = await mediaUrl(photo.path);
+        if (url) thumb.style.backgroundImage = "url(" + url + ")";
       });
     }
 
@@ -486,7 +740,7 @@ async function renderDetail(dateKey) {
         event.preventDefault();
         event.stopPropagation();
         const willOpen = menu?.classList.contains("hidden");
-        closeMenus(field);
+        closeAllMenus(field);
         if (willOpen) {
           menu.classList.remove("hidden");
           menu.removeAttribute("hidden");
@@ -502,90 +756,96 @@ async function renderDetail(dateKey) {
         const current = entryFor(dateKey);
         current[kind] = current[kind] === chip.dataset.id ? "" : chip.dataset.id;
         current.updatedAt = Date.now();
-        await saveStore();
+        await enqueuePersist();
         await renderDetail(dateKey);
         if (view === "lifelog") await renderBoard();
       });
     });
 
-    document.addEventListener("click", (event) => {
-      if (!section.contains(event.target)) closeMenus();
-    }, { once: true });
-
     const note = section.querySelector("#lifeLogNote");
     note?.addEventListener("input", () => {
-      // Immediate in-memory draft for THIS date; debounce only disk persist.
       applyNoteDraft(dateKey, note.value);
       scheduleNotePersist(dateKey);
     });
 
-    const photos = section.querySelector(".lifelog-photos");
     const fileInput = section.querySelector(".lifelog-photo-file");
-    const openPicker = () => fileInput?.click();
-    section.querySelector(".lifelog-photo-empty")?.addEventListener("click", openPicker);
-    section.querySelector(".lifelog-photo-add")?.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      openPicker();
-    });
-    section.querySelector(".lifelog-photo-remove")?.addEventListener("click", async (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const photoId = event.currentTarget.getAttribute("data-photo-id");
-      if (!photoId) return;
-      await removePhoto(dateKey, photoId);
-      await renderDetail(dateKey);
-      if (view === "lifelog") await renderBoard();
-    });
+
+    if (!section.dataset.actBound) {
+      section.dataset.actBound = "1";
+      section.addEventListener("click", async (event) => {
+        const act = event.target.closest("[data-lifelog-act]");
+        if (!act || !section.contains(act)) return;
+        const activeKey = currentDetailDate;
+        if (!activeKey) return;
+        const action = act.dataset.lifelogAct;
+        const photoId = act.dataset.photoId;
+        if (action === "add-photo") {
+          event.preventDefault();
+          if ((entryFor(activeKey).photos || []).length >= MAX_PHOTOS) {
+            showNotice("最多 9 张照片");
+            return;
+          }
+          section.querySelector(".lifelog-photo-file")?.click();
+        } else if (action === "view-photo" && photoId) {
+          viewingPhotoId = photoId;
+          await renderDetail(activeKey);
+        } else if (action === "set-cover" && photoId) {
+          await setCover(activeKey, photoId);
+          await renderDetail(activeKey);
+          if (view === "lifelog") await renderBoard();
+        } else if (action === "remove-photo" && photoId) {
+          await removePhoto(activeKey, photoId);
+          await renderDetail(activeKey);
+          if (view === "lifelog") await renderBoard();
+        } else if (action === "retry") {
+          await enqueuePersist();
+        } else if (action === "undo") {
+          await undoRemove();
+          if (view === "lifelog") await renderBoard();
+        }
+      });
+    }
+
     fileInput?.addEventListener("change", async () => {
       const file = fileInput.files && fileInput.files[0];
-      if (!file) return;
-      const dataUrl = await fileToDataUrl(file);
-      await addPhotoFromDataUrl(dateKey, dataUrl);
-      await renderDetail(dateKey);
-      if (view === "lifelog") await renderBoard();
       fileInput.value = "";
+      if (!file) return;
+      const activeKey = currentDetailDate;
+      if (!activeKey) return;
+      await addPhotoFromDataUrl(activeKey, await fileToDataUrl(file));
+      await renderDetail(activeKey);
+      if (view === "lifelog") await renderBoard();
     });
-    photos?.addEventListener("paste", async (event) => {
+
+    const onPasteImage = async (event) => {
       const items = event.clipboardData && event.clipboardData.items;
       if (!items) return;
+      const activeKey = currentDetailDate;
+      if (!activeKey) return;
       for (const item of items) {
         if (!item.type.startsWith("image/")) continue;
         event.preventDefault();
         const file = item.getAsFile();
         if (!file) continue;
-        const dataUrl = await fileToDataUrl(file);
-        await addPhotoFromDataUrl(dateKey, dataUrl);
-        await renderDetail(dateKey);
+        await addPhotoFromDataUrl(activeKey, await fileToDataUrl(file));
+        await renderDetail(activeKey);
         if (view === "lifelog") await renderBoard();
         break;
       }
-    });
-    // Bind section paste once; always use currentDetailDate (not a stale closed-over key).
+    };
+    section.querySelector(".lifelog-photos")?.addEventListener("paste", onPasteImage);
     if (!detailSectionPasteBound) {
       detailSectionPasteBound = true;
-      section.addEventListener("paste", async (event) => {
+      section.addEventListener("paste", (event) => {
         if (event.defaultPrevented) return;
-        const activeKey = currentDetailDate;
-        if (!activeKey) return;
-        const items = event.clipboardData && event.clipboardData.items;
-        if (!items) return;
-        for (const item of items) {
-          if (!item.type.startsWith("image/")) continue;
-          event.preventDefault();
-          const file = item.getAsFile();
-          if (!file) continue;
-          const dataUrl = await fileToDataUrl(file);
-          await addPhotoFromDataUrl(activeKey, dataUrl);
-          await renderDetail(activeKey);
-          if (view === "lifelog") await renderBoard();
-          break;
-        }
+        onPasteImage(event);
       });
     }
+
+    if (view === "lifelog" && previousDate !== dateKey) await renderBoard();
   }
 
-async function setView(next) {
+  async function setView(next) {
     if (next !== "lifelog") return;
     view = "lifelog";
     syncChrome();
@@ -611,60 +871,101 @@ async function setView(next) {
     if (closeCalendarDetail.__lifelogWrapped) return;
     const original = closeCalendarDetail;
     closeCalendarDetail = function lifelogAwareClose() {
-      const key = currentDetailDate;
-      const section = document.querySelector("#lifeLogDetail");
-      const liveNote = section?.querySelector("#lifeLogNote");
-      if (key && liveNote) applyNoteDraft(key, liveNote.value);
-      if (key) {
-        const timer = noteTimers.get(key);
-        if (timer) {
-          window.clearTimeout(timer);
-          noteTimers.delete(key);
-          enqueueNotePersist();
-        }
-      }
+      captureLiveNote();
+      if (currentDetailDate) flushNotePersist(currentDetailDate);
+      currentDetailDate = null;
+      viewingPhotoId = null;
+      if (view === "lifelog") renderBoard();
       return original();
     };
     closeCalendarDetail.__lifelogWrapped = true;
   }
 
+  let navHooked = false;
+  let navTries = 0;
+
   function wrapMonthNav() {
-    if (typeof changeCalendarMonth === "function" && changeCalendarMonth.name !== "lifelogAwareChange") {
-      const original = changeCalendarMonth;
-      changeCalendarMonth = function lifelogAwareChange(offset, animate) {
-        if (view === "lifelog") {
-          cursor = new Date(cursor.getFullYear(), cursor.getMonth() + offset, 1);
-          if (typeof calendarCursor !== "undefined") calendarCursor = new Date(cursor);
-          renderBoard();
-          return;
-        }
-        return original(offset, animate);
-      };
-    }
-    if (typeof goToCurrentCalendarMonth === "function" && goToCurrentCalendarMonth.name !== "lifelogAwareToday") {
-      const original = goToCurrentCalendarMonth;
-      goToCurrentCalendarMonth = function lifelogAwareToday() {
-        if (view === "lifelog") {
-          const now = new Date();
-          cursor = new Date(now.getFullYear(), now.getMonth(), 1);
-          if (typeof calendarCursor !== "undefined") calendarCursor = new Date(cursor);
-          renderBoard();
-          return;
-        }
-        return original();
-      };
-    }
+    if (navHooked) return;
+    if (typeof changeCalendarMonth !== "function" || typeof goToCurrentCalendarMonth !== "function") return;
+    const originalChange = changeCalendarMonth;
+    changeCalendarMonth = function lifelogAwareChange(offset, animate) {
+      if (view === "lifelog") {
+        shiftLifelogMonth(offset);
+        return;
+      }
+      return originalChange(offset, animate);
+    };
+    const originalToday = goToCurrentCalendarMonth;
+    goToCurrentCalendarMonth = function lifelogAwareToday() {
+      if (view === "lifelog") {
+        goLifelogToday();
+        return;
+      }
+      return originalToday();
+    };
+    navHooked = true;
   }
 
-  async function boot() {
-    ensureSwitcher();
-    ensureBoard();
+  function ensureNav() {
     wrapOpenDetail();
     wrapCloseDetail();
     wrapMonthNav();
-    await loadStore();
-    syncChrome();
-    if (typeof calendarDetailDate === "string" && calendarDetailDate) await renderDetail(calendarDetailDate);
+    bindDirectNav();
+    const wrapsReady = Boolean(
+      (typeof openCalendarDetail === "function" && openCalendarDetail.__lifelogWrapped)
+      && (typeof closeCalendarDetail === "function" && closeCalendarDetail.__lifelogWrapped)
+      && navHooked
+    );
+    if (!wrapsReady && navTries < 40) {
+      navTries += 1;
+      window.setTimeout(ensureNav, 50);
+    }
+  }
+
+  function bindDirectNav() {
+    const controls = document.querySelector(".month-controls");
+    if (!controls || controls.dataset.lifelogNav === "1") return;
+    controls.dataset.lifelogNav = "1";
+    controls.addEventListener("click", (event) => {
+      if (view !== "lifelog") return;
+      if (event.target.closest("#todayMonth")) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        goLifelogToday();
+      } else if (event.target.closest("#prevMonth")) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        shiftLifelogMonth(-1);
+      } else if (event.target.closest("#nextMonth")) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        shiftLifelogMonth(1);
+      }
+    }, true);
+  }
+
+  function bindFlushHooks() {
+    if (document.documentElement.dataset.lifelogFlush === "1") return;
+    document.documentElement.dataset.lifelogFlush = "1";
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") flushAllNotes();
+    });
+    window.addEventListener("beforeunload", () => { flushAllNotes(); });
+  }
+
+  function boot() {
+    ensureSwitcher();
+    ensureBoard();
+    bindDirectNav();
+    bindMenuDismiss();
+    bindFlushHooks();
+    wrapOpenDetail();
+    wrapCloseDetail();
+    ensureNav();
+    loadStore().then(() => {
+      syncChrome();
+      if (typeof calendarDetailDate === "string" && calendarDetailDate) return renderDetail(calendarDetailDate);
+    });
   }
 
   window.LumaLifelog = {
@@ -678,4 +979,9 @@ async function setView(next) {
 
   boot();
   document.addEventListener("DOMContentLoaded", boot);
+  window.addEventListener("load", () => {
+    wrapOpenDetail();
+    wrapCloseDetail();
+    ensureNav();
+  });
 })();
