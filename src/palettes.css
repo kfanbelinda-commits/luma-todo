@@ -175,20 +175,20 @@ html[data-theme="light"][data-palette="warm"] .settings-modal {
 }
 html[data-palette="graphite"] .brand-mark {
   color: #c5ccd8;
-  background: rgba(255, 255, 255, .06);
-  border-color: rgba(180, 190, 205, .28);
+  background: transparent;
+  border: 0;
 }
 html[data-palette="graphite"] .luma-bulb .bulb-glow { stroke: rgba(240, 244, 250, .88); }
 html[data-palette="paper"] .brand-mark {
   color: #2c3340;
-  background: rgba(28, 34, 44, .06);
-  border-color: rgba(80, 88, 100, .22);
+  background: transparent;
+  border: 0;
 }
 html[data-palette="paper"] .luma-bulb .bulb-glow { stroke: rgba(255, 255, 255, .9); }
 html[data-theme="light"][data-palette="warm"] .brand-mark {
   color: #8a692e;
-  background: rgba(169, 126, 48, .13);
-  border-color: rgba(169, 126, 48, .3);
+  background: transparent;
+  border: 0;
 }
 html[data-theme="light"][data-palette="warm"] .luma-bulb .bulb-glow { stroke: rgba(255, 248, 230, .95); }
 html[data-theme="light"][data-palette="warm"] .calendar-panel .weekdays,
@@ -231,8 +231,8 @@ html[data-palette="dusk"] .account-card {
 }
 html[data-palette="dusk"] .brand-mark {
   color: #e4c27a;
-  background: rgba(176, 137, 72, .18);
-  border-color: rgba(176, 137, 72, .42);
+  background: transparent;
+  border: 0;
 }
 html[data-palette="dusk"] .luma-bulb .bulb-glow { stroke: rgba(255, 236, 196, .92); }
 html[data-palette="dusk"] .eyebrow,

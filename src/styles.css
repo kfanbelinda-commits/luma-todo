@@ -95,11 +95,12 @@ button { color: inherit; }
   display: grid;
   place-items: center;
   border-radius: 13px;
-  color: white;
+  color: inherit;
   font-weight: 800;
   font-size: 20px;
-  background: linear-gradient(145deg, #7992ff, #6c5ce8);
-  box-shadow: 0 9px 20px rgba(102, 91, 232, .27);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 
 h1, h2, h3, p { margin: 0; }

@@ -93,8 +93,8 @@ body:hover .resize-corner::after { opacity: .28; }
   height: 29px;
   border-radius: 9px;
   font-size: 14px;
-  background: rgba(121,167,255,.18);
-  border: 1px solid rgba(137,177,255,.45);
+  background: transparent;
+  border: 0;
   color: #a9c7ff;
   box-shadow: none;
 }
@@ -719,9 +719,9 @@ html[data-theme="light"] .calendar-panel {
 }
 
 html[data-theme="light"] .brand-mark {
-  border-color: rgba(77,111,181,.30);
+  border: 0;
   color: #42649d;
-  background: rgba(104,145,214,.18);
+  background: transparent;
 }
 html[data-theme="light"] .luma-bulb .bulb-glow { stroke: rgba(255,255,255,.96); }
 html[data-theme="light"] .eyebrow,
