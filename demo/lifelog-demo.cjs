@@ -44,7 +44,7 @@ function buildDemoLifelog(now = new Date()) {
     if (seed >= 3 || d % 2 === 0) {
       const file = key + "-cover.svg";
       const color = COVER_COLORS[d % COVER_COLORS.length];
-      const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="' + color + '"/><stop offset="100%" stop-color="#2c3340"/></linearGradient></defs><rect width="640" height="640" fill="url(#g)"/><text x="48" y="96" fill="rgba(255,255,255,.92)" font-size="42" font-family="Segoe UI,sans-serif" font-weight="700">' + (month + 1) + "/" + d + '</text><text x="48" y="580" fill="rgba(255,255,255,.75)" font-size="28" font-family="Segoe UI,sans-serif">Lifelog demo</text></svg>';
+            const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="' + color + '"/><stop offset="100%" stop-color="#1c222c"/></linearGradient></defs><rect width="640" height="640" fill="url(#g)"/><circle cx="520" cy="120" r="160" fill="rgba(255,255,255,.12)"/><circle cx="120" cy="520" r="220" fill="rgba(0,0,0,.18)"/><rect x="0" y="0" width="640" height="160" fill="rgba(0,0,0,.18)"/></svg>';
       media.push({ relativePath: file, svg });
       photos.push({ id: "demo-" + key + "-1", path: file, addedAt: date.getTime() });
     }

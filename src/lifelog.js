@@ -197,7 +197,7 @@
       cells.push(
         '<button type="button" class="lifelog-cell ' + cls + '" data-date="' + key + '">'
         + (cover ? '<img class="lifelog-cell-img" src="' + cover + '" alt="">' : "")
-        + '<span class="lifelog-cell-num">' + d + "</span>"
+        + '<span class="day-number">' + d + "</span>"
         + (has && !cover ? '<span class="lifelog-cell-footer"><span>' + (weather?.emoji || "") + "</span><span>" + (mood?.emoji || "") + "</span></span>" : "")
         + "</button>"
       );
