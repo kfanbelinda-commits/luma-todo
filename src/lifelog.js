@@ -133,9 +133,16 @@
           setView("lifelog");
           return;
         }
-        // Month/Week: hide Lifelog, let week-view / month handlers continue.
+        // Month/Week: hide Lifelog, close day detail, let week/month handlers continue.
         view = button.dataset.calendarView;
         syncChrome();
+        if (typeof closeCalendarDetail === "function") closeCalendarDetail();
+        else {
+          const detail = document.querySelector("#calendarDetail");
+          document.querySelector("#calendarPanel")?.classList.remove("calendar-detail-open");
+          detail?.classList.add("hidden");
+          detail?.setAttribute("aria-hidden", "true");
+        }
       }, true);
     }
     return wrap;
