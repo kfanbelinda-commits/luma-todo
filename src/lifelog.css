@@ -195,7 +195,7 @@ html:not([data-theme="light"]) {
 
 .lifelog-block-title {
   margin: 0 0 8px;
-  color: var(--muted, rgba(90, 96, 108, .7));
+  color: inherit;
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0;
@@ -522,11 +522,33 @@ html:not([data-theme="light"]) .lifelog-note:focus {
   border-top: 1px solid rgba(128, 128, 128, .12);
 }
 .lifelog-day-plan > .lifelog-block-title {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
 }
 .lifelog-day-plan .calendar-detail-section {
-  margin-top: 4px;
+  margin-top: 0;
   padding: 0;
+}
+.lifelog-day-plan .calendar-detail-section + .calendar-detail-section {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(128, 128, 128, .10);
+}
+.lifelog-day-plan .calendar-detail-section-title {
+  margin-bottom: 4px;
+  color: var(--muted, rgba(90, 96, 108, .62));
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+.lifelog-day-plan .calendar-detail-count {
+  color: var(--muted, rgba(90, 96, 108, .48));
+  font-weight: 500;
+}
+.lifelog-day-plan .calendar-detail-hint {
+  margin: 0 0 8px;
+  color: var(--muted, rgba(90, 96, 108, .5));
+  font-size: 11px;
+  font-weight: 400;
 }
 .lifelog-day-plan-summary { display: none; }
 
