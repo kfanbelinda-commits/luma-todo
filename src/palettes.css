@@ -239,3 +239,59 @@ html[data-palette="dusk"] .opacity-control output {
   font-size: 11px;
 }
 .project-header-actions { gap: 3px; }
+
+.task-date-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
+}
+.task-date-label .task-due {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.task-date-label.is-overdue .overdue-chip {
+  flex: 0 0 auto;
+  padding: 0;
+  border-radius: 0;
+  color: #e27a86;
+  background: transparent;
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+.task-item:has(.task-date-label.is-overdue) {
+  grid-template-columns: 16px minmax(0, 1fr) 132px;
+}
+.task-actions:has(.is-overdue) {
+  width: 132px;
+  min-width: 132px;
+  grid-template-columns: minmax(0, 104px) 24px;
+}
+
+.project-progress {
+  appearance: none;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  padding: 2px 0;
+}
+button.project-progress.is-toggle {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+button.project-progress.is-toggle:hover,
+button.project-progress.is-toggle:focus-visible {
+  color: var(--ink);
+  background: var(--action-soft-hover);
+  outline: none;
+}
+button.project-progress.is-toggle[aria-expanded="true"] {
+  color: var(--ink);
+  background: var(--action-soft);
+}
+.completed-toggle { display: none; }
