@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="空态">
+  <!-- no stroke: pale soft stamp only -->
+  <path fill="#D8DCE2" d="M13 15h38c5 0 8 3.5 8 8.5v23c0 5-3 8.5-8 8.5H13c-5 0-8-3.5-8-8.5v-23c0-5 3-8.5 8-8.5Z"/>
+</svg>

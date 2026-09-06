@@ -1,0 +1,687 @@
+/* Lifelog board + detail */
+.lifelog-board {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 12px 12px;
+  padding: 0;
+  overflow: auto;
+  max-height: calc(100% - 145px);
+}
+.lifelog-board.hidden { display: none; }
+.calendar-panel.is-lifelog .weekdays,
+.calendar-panel.is-lifelog #calendarGrid,
+.calendar-panel.is-lifelog #weekBoard { display: none !important; }
+
+
+.lifelog-pills {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 2px;
+}
+.lifelog-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid rgba(128, 128, 128, .16);
+  border-radius: 999px;
+  background: rgba(128, 128, 128, .06);
+  color: var(--muted, rgba(90, 96, 108, .78));
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: none;
+}
+html[data-theme="light"] .lifelog-pill {
+  border-color: rgba(58, 71, 92, .12);
+  background: rgba(255, 255, 255, .55);
+  color: rgba(70, 78, 92, .82);
+}
+html[data-theme="dark"] .lifelog-pill,
+html:not([data-theme="light"]) .lifelog-pill {
+  border-color: rgba(255, 255, 255, .10);
+  background: rgba(255, 255, 255, .05);
+  color: rgba(232, 236, 244, .72);
+}
+.lifelog-pill-ico {
+  font-size: 11px;
+  line-height: 1;
+  opacity: .9;
+}
+.lifelog-pill-text { line-height: 1.1; }
+
+.lifelog-weekdays {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+.lifelog-weekdays span {
+  color: var(--muted, rgba(90, 96, 108, .55));
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Fixed square photo cells — do not stretch with window height. */
+.lifelog-grid {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-auto-rows: auto;
+  gap: 4px;
+}
+
+.lifelog-cell {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border: 1px solid rgba(123, 141, 191, .18);
+  border-radius: 10px;
+  background: linear-gradient(145deg, rgba(123, 141, 191, .08), rgba(111, 168, 168, .05));
+  color: inherit;
+  cursor: pointer;
+  transition: box-shadow .18s ease;
+}
+.lifelog-cell.empty {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  cursor: default;
+  pointer-events: none;
+}
+.lifelog-cell.no-note {
+  opacity: .88;
+  border-color: rgba(123, 141, 191, .12);
+  border-style: dashed;
+  background: transparent;
+  box-shadow: none;
+}
+.lifelog-cell.has-note:not(.has-img) {
+  background: rgba(123, 141, 191, .04);
+  box-shadow: none;
+}
+.lifelog-cell:not(.empty):hover {
+  box-shadow: inset 0 0 0 1px rgba(123, 141, 191, .28);
+}
+.lifelog-cell.is-selected {
+  box-shadow: inset 0 0 0 2px var(--action-focus-ring, rgba(123, 141, 191, .55));
+}
+.lifelog-cell.is-selected:hover {
+  box-shadow: inset 0 0 0 2px var(--action-focus-ring, rgba(123, 141, 191, .7));
+}
+.lifelog-cell-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Scheme D: overlay date on photos; solid chip only for today. */
+html[data-theme="light"] {
+  --lifelog-day-chip-fg: #1a1f2a;
+}
+html[data-theme="dark"],
+html:not([data-theme="light"]) {
+  --lifelog-day-chip-fg: #f2f4f8;
+}
+.lifelog-cell.has-img::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 34px;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, .38), transparent);
+}
+.lifelog-cell .lifelog-day-num {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  z-index: 3;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  display: block;
+  border-radius: 0;
+  background: transparent;
+  color: var(--lifelog-day-chip-fg, #1a1f2a);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  box-shadow: none;
+}
+.lifelog-cell.no-note .lifelog-day-num {
+  color: var(--muted, rgba(90, 96, 108, .48));
+  font-weight: 700;
+}
+.lifelog-cell.has-img .lifelog-day-num {
+  background: transparent;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .7), 0 0 10px rgba(0, 0, 0, .4);
+  box-shadow: none;
+}
+.lifelog-cell.is-today .lifelog-day-num {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #2a3038;
+  color: #fff;
+  font-size: 15px;
+  text-shadow: none;
+  box-shadow: none;
+}
+.lifelog-cell.has-img.is-today::after {
+  opacity: .45;
+}
+
+.lifelog-mood-stamp {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  z-index: 2;
+  line-height: 0;
+  pointer-events: none;
+}
+.lifelog-mood-stamp .lifelog-ico {
+  width: 14px;
+  height: 14px;
+}
+.lifelog-cell.has-img .lifelog-mood-stamp .lifelog-ico {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .5));
+}
+
+.lifelog-block-title {
+  margin: 0 0 8px;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.lifelog-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 2px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(128, 128, 128, .12);
+  overflow: visible;
+}
+
+.lifelog-pick-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: start;
+  overflow: visible;
+}
+.lifelog-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  overflow: visible;
+}
+.lifelog-field-label {
+  flex: 0 0 auto;
+  color: var(--muted, rgba(90, 96, 108, .7));
+  font-size: 12px;
+  font-weight: 650;
+}
+.lifelog-pick {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(128, 128, 128, .16);
+  border-radius: 12px;
+  background: rgba(128, 128, 128, .05);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.lifelog-pick:hover { background: rgba(128, 128, 128, .09); }
+.lifelog-pick:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--mood, #7b8dbf) 65%, transparent);
+  outline-offset: 2px;
+}
+.lifelog-pick.has-value {
+  border-color: color-mix(in srgb, var(--mood, #c5ccd4) 40%, transparent);
+  background: color-mix(in srgb, var(--mood, #c5ccd4) 12%, transparent);
+}
+.lifelog-pick.is-open {
+  border-color: color-mix(in srgb, var(--mood, #7b8dbf) 50%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--mood, #7b8dbf) 14%, transparent);
+}
+.lifelog-pick .lifelog-ico {
+  width: 28px;
+  height: 28px;
+  display: block;
+  object-fit: contain;
+  pointer-events: none;
+}
+.lifelog-pick-plus {
+  font-size: 18px;
+  line-height: 1;
+  opacity: .55;
+}
+
+.lifelog-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  display: grid;
+  grid-template-columns: repeat(3, 70px);
+  justify-content: start;
+  gap: 2px;
+  width: max-content;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid rgba(128, 128, 128, .12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .98);
+  box-shadow: 0 10px 28px rgba(30, 36, 48, .12);
+}
+.lifelog-field[data-kind="mood"] .lifelog-menu {
+  left: auto;
+  right: 0;
+}
+html[data-theme="dark"] .lifelog-menu,
+html:not([data-theme="light"]) .lifelog-menu {
+  border-color: rgba(255, 255, 255, .10);
+  background: rgba(36, 40, 48, .98);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .42);
+}
+.lifelog-menu.hidden { display: none; }
+
+.lifelog-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 70px;
+  min-height: 62px;
+  padding: 8px 4px 6px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.lifelog-opt:hover { background: rgba(128, 128, 128, .06); }
+.lifelog-opt:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--mood, #7b8dbf) 60%, transparent);
+  outline-offset: 1px;
+}
+.lifelog-opt .lifelog-ico {
+  width: 28px;
+  height: 28px;
+  padding: 5px;
+  box-sizing: content-box;
+  display: block;
+  object-fit: contain;
+  pointer-events: none;
+  border-radius: 50%;
+  background: rgba(128, 128, 128, .06);
+}
+.lifelog-opt.is-active {
+  background: transparent;
+  box-shadow: none;
+}
+.lifelog-opt.is-active .lifelog-ico {
+  background: color-mix(in srgb, var(--mood, #c5ccd4) 22%, transparent);
+}
+.lifelog-opt-lbl {
+  color: var(--muted, rgba(90, 96, 108, .62));
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.lifelog-opt.is-active .lifelog-opt-lbl {
+  color: inherit;
+  font-weight: 650;
+}
+
+.lifelog-note-label {
+  margin-top: 4px;
+  color: var(--muted, rgba(90, 96, 108, .7));
+  font-size: 13px;
+  font-weight: 700;
+}
+.lifelog-note {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 72px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(128, 128, 128, .16);
+  border-radius: 10px;
+  background: rgba(128, 128, 128, .045);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.lifelog-note::placeholder {
+  color: var(--muted, rgba(90, 96, 108, .5));
+}
+.lifelog-note:focus {
+  border-color: color-mix(in srgb, #7b8dbf 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, #7b8dbf 14%, transparent);
+  background: rgba(255, 255, 255, .55);
+}
+html[data-theme="light"] .lifelog-note {
+  background: rgba(255, 255, 255, .72);
+  border-color: rgba(57, 70, 92, .12);
+}
+html[data-theme="dark"] .lifelog-note,
+html:not([data-theme="light"]) .lifelog-note {
+  background: rgba(0, 0, 0, .18);
+  border-color: rgba(255, 255, 255, .10);
+}
+html[data-theme="dark"] .lifelog-note:focus,
+html:not([data-theme="light"]) .lifelog-note:focus {
+  background: rgba(0, 0, 0, .28);
+}
+
+.lifelog-photos {
+  position: relative;
+  margin-top: 2px;
+  outline: none;
+}
+.lifelog-photo-thumb {
+  display: block;
+  width: 100%;
+  max-height: 140px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+.lifelog-photo-empty {
+  width: 100%;
+  min-height: 88px;
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  padding: 14px;
+  border: 1px dashed rgba(128, 128, 128, .26);
+  border-radius: 12px;
+  background: rgba(128, 128, 128, .03);
+  color: var(--muted, rgba(90, 96, 108, .62));
+  font: inherit;
+  cursor: pointer;
+}
+.lifelog-photo-empty:hover {
+  border-color: rgba(123, 141, 191, .4);
+  background: rgba(123, 141, 191, .06);
+}
+.lifelog-photo-plus {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(128, 128, 128, .1);
+  font-size: 18px;
+  line-height: 1;
+}
+.lifelog-photo-hint { font-size: 11px; }
+.lifelog-photo-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(20, 24, 32, .55);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.lifelog-photo-remove:hover { background: rgba(180, 48, 48, .82); }
+.lifelog-photo-add.is-overlay {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(20, 24, 32, .55);
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lifelog-ico {
+  display: block;
+  flex: 0 0 auto;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+.lifelog-pill-ico {
+  display: inline-grid;
+  place-items: center;
+}
+.lifelog-pill-ico .lifelog-ico {
+  width: 14px;
+  height: 14px;
+}
+
+.calendar-detail:has(#lifeLogDetail) {
+  width: min(400px, 48%);
+  max-height: calc(100% - 52px);
+}
+.calendar-detail:has(#lifeLogDetail) .calendar-detail-body {
+  overflow-y: auto;
+}
+.calendar-detail:has(#lifeLogDetail) .calendar-detail-todos {
+  flex: 0 0 auto;
+  max-height: none;
+  overflow: visible;
+}
+
+
+
+/* lifelog day-plan (Life Log entry only) — always expanded, same inset as 生活记录 */
+.calendar-detail-body > #lifeLogDetail:first-child {
+  border-top: 0;
+  padding-top: 12px;
+  margin-top: 0;
+}
+.lifelog-day-plan {
+  margin: 0;
+  padding: 12px 16px 10px;
+  border-top: 1px solid rgba(128, 128, 128, .12);
+}
+.lifelog-day-plan > .lifelog-block-title {
+  margin: 0 0 10px;
+}
+.lifelog-day-plan .calendar-detail-section {
+  margin-top: 0;
+  padding: 0;
+}
+.lifelog-day-plan .calendar-detail-section + .calendar-detail-section {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(128, 128, 128, .10);
+}
+.lifelog-day-plan .calendar-detail-section-title {
+  margin-bottom: 4px;
+  color: var(--muted, rgba(90, 96, 108, .62));
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+.lifelog-day-plan .calendar-detail-count {
+  color: var(--muted, rgba(90, 96, 108, .48));
+  font-weight: 500;
+}
+.lifelog-day-plan .calendar-detail-hint {
+  margin: 0 0 8px;
+  color: var(--muted, rgba(90, 96, 108, .5));
+  font-size: 11px;
+  font-weight: 400;
+}
+.lifelog-day-plan-summary { display: none; }
+
+.lifelog-cell-note {
+  position: absolute;
+  inset: 38px 7px 8px;
+  z-index: 1;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--muted, rgba(90, 96, 108, .78));
+  font-size: 10px;
+  font-weight: 550;
+  line-height: 1.35;
+  text-align: left;
+}
+.lifelog-cell-mark {
+  position: absolute;
+  right: 6px;
+  top: 8px;
+  z-index: 2;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: rgba(128, 128, 128, .12);
+  color: var(--muted, rgba(90, 96, 108, .7));
+  font-size: 9px;
+  font-weight: 700;
+}
+.lifelog-empty-hint {
+  margin: 8px 2px 0;
+  color: var(--muted, rgba(90, 96, 108, .62));
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.lifelog-save-status,
+.lifelog-notice,
+.lifelog-undo {
+  margin: 0;
+  min-height: 16px;
+  color: var(--muted, rgba(90, 96, 108, .68));
+  font-size: 11px;
+  line-height: 1.3;
+}
+.lifelog-save-status.is-saving { color: var(--muted, rgba(90, 96, 108, .68)); }
+.lifelog-save-status.is-saved { color: color-mix(in srgb, #3d8a62 80%, currentColor); }
+.lifelog-save-status.is-error,
+.lifelog-notice { color: color-mix(in srgb, #b4534b 75%, currentColor); }
+.lifelog-save-retry,
+.lifelog-undo-btn,
+.lifelog-photo-textbtn {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.lifelog-undo {
+  color: var(--muted, rgba(90, 96, 108, .78));
+}
+
+.lifelog-photo-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.lifelog-photo-count,
+.lifelog-photo-cover-flag {
+  color: var(--muted, rgba(90, 96, 108, .68));
+  font-size: 11px;
+  font-weight: 650;
+}
+.lifelog-photo-add.is-overlay {
+  position: static;
+  width: auto;
+  height: auto;
+  margin-left: auto;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(128, 128, 128, .12);
+  color: inherit;
+  font-size: 14px;
+}
+.lifelog-photo-add.is-overlay[aria-disabled="true"] {
+  opacity: .45;
+  cursor: default;
+}
+.lifelog-strip {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  overflow-x: auto;
+}
+.lifelog-strip-thumb {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid rgba(128, 128, 128, .16);
+  border-radius: 8px;
+  background: rgba(128, 128, 128, .08) center / cover no-repeat;
+  cursor: pointer;
+}
+.lifelog-strip-thumb.is-current {
+  box-shadow: 0 0 0 2px var(--action-focus-ring, rgba(123, 141, 191, .55));
+}
+.lifelog-strip-thumb.is-cover::after {
+  content: "";
+  display: block;
+  width: 6px;
+  height: 6px;
+  margin: 2px 0 0 2px;
+  border-radius: 50%;
+  background: var(--action-primary, #c5ccd4);
+}
+
+.lifelog-photos .lifelog-photo-remove { display: none; }
+

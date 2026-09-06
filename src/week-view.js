@@ -415,13 +415,20 @@
     if (!days) return 0;
     const startHour = Number(days.dataset.startHour || 0);
     const hours = Number(days.dataset.hours || 24);
+    const scroll = document.querySelector('.week-scroll');
     const rect = days.getBoundingClientRect();
-    const ratio = clamp((clientY - rect.top) / Math.max(rect.height, 1), 0, 0.999);
+    // Prefer full content height; when scrolled, rect.top is negative so clientY-rect.top is content Y.
+    const y = clientY - rect.top;
+    const height = Math.max(rect.height, days.scrollHeight, 1);
+    const ratio = clamp(y / height, 0, 0.999);
     return snapMinutes(startHour * 60 + ratio * hours * 60);
   }
   function columnKeyAt(clientX, clientY) {
+    const prev = document.querySelectorAll('.week-block.is-dragging');
+    prev.forEach((el) => { el.style.pointerEvents = 'none'; });
     const el = document.elementFromPoint(clientX, clientY);
-    return el?.closest('.week-day-col')?.dataset.date || '';
+    prev.forEach((el) => { el.style.pointerEvents = ''; });
+    return el?.closest('.week-day-col')?.dataset.date || drag?.dateKey || '';
   }
   function applyPreview(block, startMin, endMin, dateKey) {
     const days = document.querySelector('.week-days');
@@ -437,6 +444,7 @@
     if (column && block.parentElement !== column) column.appendChild(block);
   }
   function beginDrag(event, block, edge) {
+    if (drag) return;
     const task = findTask(block.dataset.id);
     if (!canDragTime(task)) return;
     event.preventDefault();
@@ -446,20 +454,28 @@
     drag = {
       taskId: task.id, edge: edge || 'move', pointerId: event.pointerId,
       originX: event.clientX, originY: event.clientY, moved: false,
-      dateKey: block.dataset.date, startMin, endMin,
+      dateKey: block.dataset.date, startMin, endMin, captureTarget: ensureBoard(),
       original: { dueDate: task.dueDate, endDate: task.endDate || task.dueDate, time: task.time, endTime: task.endTime || '' },
     };
     block.classList.add('is-dragging');
     document.body.classList.add('week-dragging');
-    try { block.setPointerCapture(event.pointerId); } catch {}
-    window.addEventListener('pointermove', updateDrag);
-    window.addEventListener('pointerup', onWindowUp);
-    window.addEventListener('pointercancel', onWindowCancel);
+    // The preview reparents the block between columns, which releases capture.
+    // Keep capture on the stable board so an outside release still commits.
+    try { drag.captureTarget.setPointerCapture(event.pointerId); } catch {}
+    window.addEventListener('pointermove', updateDrag, true);
+    window.addEventListener('pointerup', onWindowUp, true);
+    window.addEventListener('pointercancel', onWindowCancel, true);
   }
-  function onWindowUp() { finishDrag(false); }
-  function onWindowCancel() { finishDrag(true); }
+  function onWindowUp(event) {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    updateDrag(event);
+    finishDrag(false);
+  }
+  function onWindowCancel(event) {
+    if (drag && event.pointerId === drag.pointerId) finishDrag(true);
+  }
   function updateDrag(event) {
-    if (!drag) return;
+    if (!drag || event.pointerId !== drag.pointerId) return;
     if (Math.abs(event.clientX - drag.originX) + Math.abs(event.clientY - drag.originY) > 4) drag.moved = true;
     const task = findTask(drag.taskId);
     const block = document.querySelector(`.week-block[data-id="${drag.taskId}"]`);
@@ -476,17 +492,9 @@
       const nextDate = columnKeyAt(event.clientX, event.clientY);
       if (nextDate) drag.dateKey = nextDate;
     }
-    task.time = formatMinutes(startMin);
-    task.endTime = formatMinutes(endMin);
-    if (drag.edge === 'move') {
-      task.dueDate = drag.dateKey;
-      if (typeof isCalendarEvent === 'function' && isCalendarEvent(task) && typeof fromDateKey === 'function') {
-        const length = (fromDateKey(drag.original.endDate) - fromDateKey(drag.original.dueDate)) / 86400000;
-        const end = parseKey(drag.dateKey);
-        end.setDate(end.getDate() + Math.max(0, length));
-        task.endDate = toKey(end);
-      }
-    }
+    drag.liveStart = startMin;
+    drag.liveEnd = endMin;
+    // Only the preview changes until this pointer is released successfully.
     applyPreview(block, startMin, endMin, drag.dateKey);
   }
   async function finishDrag(cancel) {
@@ -494,23 +502,38 @@
     drag = null;
     document.body.classList.remove('week-dragging');
     document.querySelectorAll('.week-block.is-dragging').forEach((el) => el.classList.remove('is-dragging'));
-    window.removeEventListener('pointermove', updateDrag);
-    window.removeEventListener('pointerup', onWindowUp);
-    window.removeEventListener('pointercancel', onWindowCancel);
+    window.removeEventListener('pointermove', updateDrag, true);
+    window.removeEventListener('pointerup', onWindowUp, true);
+    window.removeEventListener('pointercancel', onWindowCancel, true);
     if (!current) return;
+    try { current.captureTarget.releasePointerCapture(current.pointerId); } catch {}
     if (current.moved) ensureBoard().dataset.skipClick = '1';
     const task = findTask(current.taskId);
     if (!task) { renderBoard(); return; }
     if (cancel || !current.moved) {
-      task.dueDate = current.original.dueDate;
-      task.endDate = current.original.endDate;
-      task.time = current.original.time;
-      task.endTime = current.original.endTime;
       renderBoard();
       return;
     }
+    if (current.liveStart != null) task.time = formatMinutes(current.liveStart);
+    if (current.liveEnd != null) task.endTime = formatMinutes(current.liveEnd);
+    if (current.edge === 'move' && current.dateKey) {
+      task.dueDate = current.dateKey;
+      if (typeof isCalendarEvent === 'function' && isCalendarEvent(task) && typeof fromDateKey === 'function') {
+        const length = (fromDateKey(current.original.endDate) - fromDateKey(current.original.dueDate)) / 86400000;
+        const end = parseKey(current.dateKey);
+        end.setDate(end.getDate() + Math.max(0, length));
+        task.endDate = toKey(end);
+      } else {
+        task.endDate = current.dateKey;
+      }
+    }
     task.updatedAt = Date.now();
-    if (typeof persist === 'function') await persist();
+    try {
+      if (typeof persist === 'function') await persist();
+      else if (window.luma && window.luma.save && typeof state !== 'undefined') await window.luma.save(state);
+    } catch (err) {
+      console.error('week drag persist failed', err);
+    }
     if (typeof render === 'function') render();
     else renderBoard();
   }

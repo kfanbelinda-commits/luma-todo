@@ -22,4 +22,9 @@ contextBridge.exposeInMainWorld('luma', {
   icloudConnect: (payload) => ipcRenderer.invoke('icloud:connect', payload),
   icloudDisconnect: () => ipcRenderer.invoke('icloud:disconnect'),
   icloudSync: (payload) => ipcRenderer.invoke('icloud:sync', payload),
+  lifelogLoad: () => ipcRenderer.invoke('lifelog:load'),
+  lifelogSave: (payload) => ipcRenderer.invoke('lifelog:save', payload),
+  lifelogMediaDataUrl: (relativePath) => ipcRenderer.invoke('lifelog:media-data-url', relativePath),
+  lifelogSaveMedia: (payload) => ipcRenderer.invoke('lifelog:save-media', payload),
+  lifelogDeleteMedia: (relativePath) => ipcRenderer.invoke('lifelog:delete-media', relativePath),
 });

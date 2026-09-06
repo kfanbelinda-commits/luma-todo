@@ -503,7 +503,7 @@ html[data-theme="light"] .week-mini-day.is-anchor {
   border-radius: 50%;
   background: #c45c4a;
 }
-.week-block.is-draggable { cursor: grab; }
+.week-block.is-draggable { cursor: grab; touch-action: none; }
 .week-block.is-dragging { cursor: grabbing; z-index: 3; }
 .week-handle {
   position: absolute;
@@ -516,7 +516,7 @@ html[data-theme="light"] .week-mini-day.is-anchor {
 .week-handle-end { bottom: 0; }
 body.week-dragging { cursor: grabbing; user-select: none; }
 body.week-dragging .week-block { pointer-events: none; }
-body.week-dragging .week-block.is-dragging { pointer-events: auto; }
+body.week-dragging .week-block.is-dragging { pointer-events: none; }
 
 /* Week mode: keep the same header chrome as month to avoid jump. */
 .calendar-panel.is-week #monthLunar {

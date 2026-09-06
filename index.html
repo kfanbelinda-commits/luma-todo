@@ -43,28 +43,30 @@
         <aside id="calendarDetail" class="calendar-detail hidden no-drag" aria-hidden="true">
           <div id="calendarDetailView" class="calendar-detail-view">
             <div class="calendar-detail-header">
-              <div>
+              <div class="calendar-detail-heading">
                 <h3 id="calendarDetailTitle">9月4日 周五</h3>
                 <p id="calendarDetailLunar" class="calendar-detail-lunar"></p>
               </div>
               <button id="closeCalendarDetail" class="calendar-detail-close" type="button" aria-label="关闭日期详情">×</button>
             </div>
-            <section class="calendar-detail-section">
-              <div class="calendar-detail-section-title">
-                <span>当日日程</span>
-                <span id="calendarScheduleCount" class="calendar-detail-count"></span>
-              </div>
-              <div id="calendarScheduleList" class="calendar-detail-list"></div>
-            </section>
-            <section class="calendar-detail-section calendar-detail-todos">
-              <div class="calendar-detail-section-title">
-                <span>待办</span>
-                <span id="calendarTodoCount" class="calendar-detail-count"></span>
-              </div>
-              <p class="calendar-detail-hint">当天及之前未完成</p>
-              <div id="calendarTodoList" class="calendar-detail-list"></div>
-            </section>
-            <button id="addCalendarItem" class="calendar-detail-add calendar-detail-add-item" type="button">＋ 添加事项</button>
+            <div class="calendar-detail-body">
+              <section class="calendar-detail-section">
+                <div class="calendar-detail-section-title">
+                  <span>当日日程</span>
+                  <span id="calendarScheduleCount" class="calendar-detail-count"></span>
+                </div>
+                <div id="calendarScheduleList" class="calendar-detail-list"></div>
+              </section>
+              <section class="calendar-detail-section calendar-detail-todos">
+                <div class="calendar-detail-section-title">
+                  <span>待办</span>
+                  <span id="calendarTodoCount" class="calendar-detail-count"></span>
+                </div>
+                <p class="calendar-detail-hint">当天及之前未完成</p>
+                <div id="calendarTodoList" class="calendar-detail-list"></div>
+              </section>
+              <button id="addCalendarItem" class="calendar-detail-add calendar-detail-add-item" type="button">＋ 添加事项</button>
+            </div>
           </div>
 
           <div id="calendarEditorView" class="calendar-editor-view hidden">
@@ -109,6 +111,7 @@
               </div>
             </form>
           </div>
+          <div id="calendarDetailResize" class="calendar-detail-resize" role="separator" aria-orientation="horizontal" aria-label="拖动调整详情高度" tabindex="0"></div>
         </aside>
       </section>
 
@@ -294,6 +297,7 @@
 
     <script src="src/appearance.js"></script>
     <script src="src/appearance-boot.js"></script>
+    <script src="src/lifelog-boot.js"></script>
     <script src="src/app.js"></script>
   </body>
 </html>

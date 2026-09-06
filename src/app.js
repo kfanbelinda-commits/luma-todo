@@ -55,6 +55,8 @@ calendarCursor.setDate(1);
 let taskDateFilter = null;
 let calendarDetailDate = null;
 let calendarDetailViewMode = 'detail';
+let calendarDetailHeight = Number(localStorage.getItem('luma.calendarDetailHeight')) || 0;
+let calendarDetailResizing = false;
 let calendarCreateMode = 'todo';
 let editingCalendarEventId = null;
 let calendarEventResizeState = null;
@@ -985,6 +987,18 @@ function closeCalendarDetail() {
   renderCalendar();
 }
 
+function applyCalendarDetailHeight(detail, panel) {
+  if (!detail || !panel) return;
+  const panelRect = panel.getBoundingClientRect();
+  const maxH = Math.max(280, panelRect.height - 72);
+  const minH = 280;
+  let h = calendarDetailHeight || Math.min(560, maxH);
+  h = Math.max(minH, Math.min(h, maxH));
+  detail.style.setProperty('--calendar-detail-height', `${Math.round(h)}px`);
+  detail.style.height = `${Math.round(h)}px`;
+  detail.style.bottom = 'auto';
+}
+
 function positionCalendarDetail() {
   const detail = $('#calendarDetail');
   const panel = $('#calendarPanel');
@@ -992,6 +1006,8 @@ function positionCalendarDetail() {
     ? panel?.querySelector(`.calendar-day[data-date="${calendarDetailDate}"]`)
     : null;
   if (!detail || !panel || !selectedCell || detail.classList.contains('hidden')) return;
+
+  applyCalendarDetailHeight(detail, panel);
 
   const panelRect = panel.getBoundingClientRect();
   const cellRect = selectedCell.getBoundingClientRect();
@@ -1018,6 +1034,63 @@ function positionCalendarDetail() {
 
   detail.style.left = `${Math.round(left)}px`;
   detail.style.top = `${Math.round(top)}px`;
+  detail.style.right = 'auto';
+}
+
+function bindCalendarDetailResize() {
+  const handle = $('#calendarDetailResize');
+  const detail = $('#calendarDetail');
+  const panel = $('#calendarPanel');
+  if (!handle || !detail || handle.dataset.bound === '1') return;
+  handle.dataset.bound = '1';
+
+  const onMove = (clientY) => {
+    if (!calendarDetailResizing) return;
+    const top = detail.getBoundingClientRect().top;
+    const panelRect = panel.getBoundingClientRect();
+    const maxH = Math.max(280, panelRect.bottom - top - 12);
+    const next = Math.max(280, Math.min(clientY - top, maxH));
+    calendarDetailHeight = next;
+    detail.style.setProperty('--calendar-detail-height', `${Math.round(next)}px`);
+    detail.style.height = `${Math.round(next)}px`;
+  };
+
+  const stop = () => {
+    if (!calendarDetailResizing) return;
+    calendarDetailResizing = false;
+    detail.classList.remove('is-resizing');
+    try { localStorage.setItem('luma.calendarDetailHeight', String(Math.round(calendarDetailHeight))); } catch (_) {}
+    document.removeEventListener('pointermove', pointerMove);
+    document.removeEventListener('pointerup', stop);
+    document.removeEventListener('pointercancel', stop);
+  };
+
+  const pointerMove = (event) => onMove(event.clientY);
+
+  handle.addEventListener('pointerdown', (event) => {
+    if (event.button != null && event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    calendarDetailResizing = true;
+    detail.classList.add('is-resizing');
+    handle.setPointerCapture?.(event.pointerId);
+    document.addEventListener('pointermove', pointerMove);
+    document.addEventListener('pointerup', stop);
+    document.addEventListener('pointercancel', stop);
+  });
+
+  handle.addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+    event.preventDefault();
+    const delta = event.key === 'ArrowUp' ? -24 : 24;
+    const panelRect = panel.getBoundingClientRect();
+    const top = detail.getBoundingClientRect().top;
+    const maxH = Math.max(280, panelRect.bottom - top - 12);
+    calendarDetailHeight = Math.max(280, Math.min((calendarDetailHeight || detail.getBoundingClientRect().height) + delta, maxH));
+    detail.style.setProperty('--calendar-detail-height', `${Math.round(calendarDetailHeight)}px`);
+    detail.style.height = `${Math.round(calendarDetailHeight)}px`;
+    try { localStorage.setItem('luma.calendarDetailHeight', String(Math.round(calendarDetailHeight))); } catch (_) {}
+  });
 }
 
 function openCalendarDetail(dateKey) {
@@ -2534,3 +2607,8 @@ async function init() {
 }
 
 init();
+
+/* calendar-detail-resize-boot */
+document.addEventListener('DOMContentLoaded', () => {
+  try { bindCalendarDetailResize(); } catch (_) {}
+});
