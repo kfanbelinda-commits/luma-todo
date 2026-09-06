@@ -5,32 +5,46 @@
    Graphite = cool mineral chrome (current Luma dark).
    Dusk = warm lacquer ground + champagne text + kinpaku gold marks. */
 
-.palette-setting {
+.settings-modal fieldset.palette-setting {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  justify-content: stretch;
+  gap: 8px;
+  width: 100%;
   min-width: 0;
   margin: 0;
-  padding: 10px 12px 12px;
+  padding: 10px 2px 12px;
   border: 0;
 }
-.palette-setting legend {
+.settings-modal .palette-setting legend {
+  display: block;
+  float: none;
+  width: 100%;
   padding: 0;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 650;
   color: var(--ink);
 }
-.palette-options {
+.settings-modal .palette-options {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 8px;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
 }
 .settings-modal .palette-option {
   position: relative;
   display: grid;
   justify-items: center;
-  gap: 5px;
-  padding: 6px 2px;
-  border: 1px solid transparent;
-  border-radius: 8px;
+  align-content: start;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 6px 4px 8px;
+  border: 1px solid rgba(128, 128, 128, .16);
+  border-radius: 10px;
   font-size: 11px;
   color: var(--muted);
   cursor: pointer;
@@ -54,9 +68,9 @@
   display: grid;
   place-items: center;
   width: 100%;
-  height: 32px;
-  border-radius: 5px;
-  font-size: 13px;
+  height: 44px;
+  border-radius: 7px;
+  font-size: 14px;
   font-weight: 650;
 }
 .swatch-graphite {
@@ -95,7 +109,7 @@ html[data-theme="light"][data-palette="warm"] {
 
 html[data-theme="light"][data-palette="warm"] .todo-panel,
 html[data-theme="light"][data-palette="warm"] .calendar-panel {
-  background: rgba(244, 238, 228, calc(var(--panel-opacity) + .03));
+  background: rgba(244, 238, 228, var(--panel-opacity));
 }
 html[data-theme="light"][data-palette="warm"] .quick-input-wrap input,
 html[data-theme="light"][data-palette="warm"] .task-title,
@@ -137,7 +151,7 @@ html[data-theme="light"][data-palette="warm"] .calendar-panel .day-number {
   color: #51483c;
 }
 
-/* Dusk: Impeccable lacquer ground, champagne type, kinpaku marks. */
+/* Dusk: opaque lacquer at 100%, no leftover gradient wash. */
 html[data-palette="dusk"] {
   --ink: #f4ead8;
   --muted: #c6b49a;
@@ -154,13 +168,8 @@ html[data-palette="dusk"] {
 
 html[data-palette="dusk"] .todo-panel,
 html[data-palette="dusk"] .calendar-panel {
-  background: rgba(22, 18, 14, calc(var(--panel-opacity) + .05));
-}
-html[data-palette="dusk"] .panel {
+  background: rgba(22, 18, 14, var(--panel-opacity));
   border-color: rgba(176, 137, 72, .28);
-  background:
-    linear-gradient(145deg, rgba(64, 48, 28, .42), rgba(22, 18, 14, .62)),
-    rgba(26, 20, 16, .55);
 }
 html[data-palette="dusk"] .popover,
 html[data-palette="dusk"] .modal,
@@ -169,14 +178,13 @@ html[data-palette="dusk"] .settings-modal {
   color: #f4ead8;
   border-color: rgba(176, 137, 72, .32);
 }
-html[data-palette="dusk"] .settings-section,
-html[data-palette="dusk"] .account-card,
-html[data-palette="dusk"] .sync-card {
-  background: rgba(42, 32, 24, .55);
-  border-color: rgba(176, 137, 72, .18);
-}
 html[data-palette="dusk"] .settings-modal .settings-section {
   background: transparent;
+}
+html[data-palette="dusk"] .account-card,
+html[data-palette="dusk"] .sync-card {
+  background: rgba(42, 32, 24, .88);
+  border-color: rgba(176, 137, 72, .22);
 }
 html[data-palette="dusk"] .brand-mark {
   color: #e4c27a;
@@ -272,7 +280,6 @@ html[data-palette="dusk"] .opacity-control output {
   grid-template-columns: minmax(0, 104px) 24px;
 }
 
-/* Counts are metadata, not a second heading. */
 .project-title .project-progress,
 button.project-progress,
 span.project-progress {
