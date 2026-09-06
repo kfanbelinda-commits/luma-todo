@@ -58,29 +58,17 @@
   window.LumaAppearanceApply = applyPalette;
 
   function relocateOverdueChip(item) {
-    const chip = item.querySelector('.task-meta .overdue-chip');
-    if (!chip) return item;
-    const match = chip.textContent.match(/(\d+)/);
-    const days = match ? match[1] : '';
-    chip.textContent = days ? `顺延${days}天` : '顺延';
-    chip.title = days ? `已过期 ${days} 天` : '已过期';
-
+    const chip = item.querySelector('.overdue-chip');
     const date = item.querySelector('.task-date-label');
+    const source = (chip && chip.textContent) || (date && date.title) || '';
+    const match = source.match(/(\d+)/);
+    const days = match ? match[1] : '';
+    const title = days ? `已过期 ${days} 天` : '已过期';
     if (date) {
-      const dueText = date.textContent.trim();
       date.classList.add('is-overdue');
-      date.title = chip.title + (dueText ? `，原日期 ${dueText}` : '');
-      date.textContent = '';
-      if (dueText) {
-        const due = document.createElement('span');
-        due.className = 'task-due';
-        due.textContent = dueText;
-        date.append(chip, due);
-      } else {
-        date.append(chip);
-      }
+      date.title = title;
     }
-
+    chip?.remove();
     const meta = item.querySelector('.task-meta');
     if (meta && !meta.children.length) meta.remove();
     return item;
