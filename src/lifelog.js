@@ -401,12 +401,14 @@
       );
     }
 
-    let stats = "记录 " + daysWith + " 天 · " + photoCount + " 张照片";
-    if (topMood) stats += " · 常见心情：" + topMood.label;
+    let statsHtml = ""
+      + '<span class="lifelog-pill"><span class="lifelog-pill-ico" aria-hidden="true">📝</span><span class="lifelog-pill-text">' + daysWith + " Days</span></span>"
+      + '<span class="lifelog-pill"><span class="lifelog-pill-ico" aria-hidden="true">📷</span><span class="lifelog-pill-text">' + photoCount + " Photos</span></span>"
+      + (topMood ? '<span class="lifelog-pill"><span class="lifelog-pill-ico" aria-hidden="true">' + iconImg(topMood, 14) + '</span><span class="lifelog-pill-text">Most ' + escapeHtml(topMood.label) + "</span></span>" : "");
 
     board.innerHTML = ""
-      + '<div class="lifelog-pills" aria-label="本月记录">'
-      + '<span class="lifelog-pill"><span class="lifelog-pill-text">' + escapeHtml(stats) + "</span></span>"
+      + '<div class="lifelog-pills" aria-label="本月 Lifelog 统计">'
+      + statsHtml
       + "</div>"
       + '<div class="lifelog-weekdays">' + WEEKDAYS.map((label) => "<span>" + label + "</span>").join("") + "</div>"
       + '<div class="lifelog-grid">' + cells.join("") + "</div>"
@@ -448,14 +450,28 @@
 
     if (view === "lifelog") {
       let plan = document.querySelector("#lifeLogDayPlan");
+      if (plan && plan.tagName === "DETAILS") {
+        const next = document.createElement("section");
+        next.id = "lifeLogDayPlan";
+        next.className = "lifelog-day-plan";
+        Array.from(plan.childNodes).forEach((child) => {
+          if (child.nodeName === "SUMMARY") return;
+          next.appendChild(child);
+        });
+        plan.replaceWith(next);
+        plan = next;
+      }
       if (!plan) {
-        plan = document.createElement("details");
+        plan = document.createElement("section");
         plan.id = "lifeLogDayPlan";
         plan.className = "lifelog-day-plan";
-        const summary = document.createElement("summary");
-        summary.className = "lifelog-day-plan-summary";
-        summary.textContent = "当天安排";
-        plan.appendChild(summary);
+      }
+      let heading = plan.querySelector(":scope > .lifelog-block-title");
+      if (!heading) {
+        heading = document.createElement("div");
+        heading.className = "lifelog-block-title";
+        heading.textContent = "当天安排";
+        plan.insertBefore(heading, plan.firstChild);
       }
       if (scheduleSection && scheduleSection.parentElement !== plan) plan.appendChild(scheduleSection);
       if (todoSection && todoSection.parentElement !== plan) plan.appendChild(todoSection);
@@ -469,6 +485,7 @@
         const insertBefore = plan;
         Array.from(plan.childNodes).forEach((child) => {
           if (child.nodeName === "SUMMARY") return;
+          if (child.classList && child.classList.contains("lifelog-block-title")) return;
           body.insertBefore(child, insertBefore);
         });
         plan.remove();

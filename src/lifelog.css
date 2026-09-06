@@ -194,18 +194,12 @@ html:not([data-theme="light"]) {
 }
 
 .lifelog-block-title {
-  margin: 0 0 4px;
+  margin: 0 0 8px;
   color: var(--muted, rgba(90, 96, 108, .7));
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0;
-}
-
-.lifelog-block-title {
-  margin: 2px 0 8px;
-  color: var(--muted, rgba(90, 96, 108, .7));
-  font-size: 13px;
-  font-weight: 700;
+  line-height: 1.2;
 }
 
 .lifelog-detail {
@@ -215,13 +209,15 @@ html:not([data-theme="light"]) {
   margin-top: 2px;
   padding-top: 12px;
   border-top: 1px solid rgba(128, 128, 128, .12);
+  overflow: visible;
 }
 
 .lifelog-pick-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  align-items: center;
+  align-items: start;
+  overflow: visible;
 }
 .lifelog-field {
   position: relative;
@@ -229,6 +225,7 @@ html:not([data-theme="light"]) {
   align-items: center;
   gap: 10px;
   min-height: 40px;
+  overflow: visible;
 }
 .lifelog-field-label {
   flex: 0 0 auto;
@@ -278,19 +275,20 @@ html:not([data-theme="light"]) {
 
 .lifelog-menu {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 6px);
   left: 0;
   z-index: 60;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
-  width: max(220px, 100%);
-  min-width: 220px;
-  padding: 10px;
-  border: 1px solid rgba(128, 128, 128, .14);
-  border-radius: 14px;
-  background: rgba(252, 252, 253, .98);
-  box-shadow: 0 12px 28px rgba(30, 36, 48, .16);
+  grid-template-columns: repeat(3, 70px);
+  justify-content: start;
+  gap: 2px;
+  width: max-content;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid rgba(128, 128, 128, .12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .98);
+  box-shadow: 0 10px 28px rgba(30, 36, 48, .12);
 }
 .lifelog-field[data-kind="mood"] .lifelog-menu {
   left: auto;
@@ -299,8 +297,8 @@ html:not([data-theme="light"]) {
 html[data-theme="dark"] .lifelog-menu,
 html:not([data-theme="light"]) .lifelog-menu {
   border-color: rgba(255, 255, 255, .10);
-  background: rgba(40, 44, 52, .98);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, .4);
+  background: rgba(36, 40, 48, .98);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .42);
 }
 .lifelog-menu.hidden { display: none; }
 
@@ -310,16 +308,17 @@ html:not([data-theme="light"]) .lifelog-menu {
   align-items: center;
   justify-content: center;
   gap: 5px;
-  min-height: 58px;
-  padding: 8px 4px;
+  width: 70px;
+  min-height: 62px;
+  padding: 8px 4px 6px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 14px;
   background: transparent;
   color: inherit;
   font: inherit;
   cursor: pointer;
 }
-.lifelog-opt:hover { background: rgba(128, 128, 128, .08); }
+.lifelog-opt:hover { background: rgba(128, 128, 128, .06); }
 .lifelog-opt:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--mood, #7b8dbf) 60%, transparent);
   outline-offset: 1px;
@@ -327,17 +326,24 @@ html:not([data-theme="light"]) .lifelog-menu {
 .lifelog-opt .lifelog-ico {
   width: 28px;
   height: 28px;
+  padding: 5px;
+  box-sizing: content-box;
   display: block;
   object-fit: contain;
   pointer-events: none;
+  border-radius: 50%;
+  background: rgba(128, 128, 128, .06);
 }
 .lifelog-opt.is-active {
-  background: color-mix(in srgb, var(--mood, #7b8dbf) 12%, transparent);
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--mood, #7b8dbf) 40%, transparent);
+  background: transparent;
+  box-shadow: none;
+}
+.lifelog-opt.is-active .lifelog-ico {
+  background: color-mix(in srgb, var(--mood, #c5ccd4) 22%, transparent);
 }
 .lifelog-opt-lbl {
-  color: var(--muted, rgba(90, 96, 108, .68));
-  font-size: 11px;
+  color: var(--muted, rgba(90, 96, 108, .62));
+  font-size: 10px;
   font-weight: 500;
   line-height: 1.1;
   white-space: nowrap;
@@ -504,32 +510,25 @@ html:not([data-theme="light"]) .lifelog-note:focus {
 
 
 
-/* lifelog day-plan (Life Log entry only) */
+/* lifelog day-plan (Life Log entry only) — always expanded, same inset as 生活记录 */
 .calendar-detail-body > #lifeLogDetail:first-child {
   border-top: 0;
-  padding-top: 0;
+  padding-top: 12px;
   margin-top: 0;
 }
 .lifelog-day-plan {
-  margin-top: 4px;
-  padding-top: 10px;
+  margin: 0;
+  padding: 12px 16px 10px;
   border-top: 1px solid rgba(128, 128, 128, .12);
 }
-.lifelog-day-plan-summary {
-  cursor: pointer;
-  list-style: none;
-  color: var(--muted, rgba(90, 96, 108, .7));
-  font-size: 13px;
-  font-weight: 700;
-  user-select: none;
-}
-.lifelog-day-plan-summary::-webkit-details-marker { display: none; }
-.lifelog-day-plan[open] .lifelog-day-plan-summary {
-  margin-bottom: 8px;
+.lifelog-day-plan > .lifelog-block-title {
+  margin: 0 0 8px;
 }
 .lifelog-day-plan .calendar-detail-section {
-  margin-top: 8px;
+  margin-top: 4px;
+  padding: 0;
 }
+.lifelog-day-plan-summary { display: none; }
 
 .lifelog-cell-note {
   position: absolute;
