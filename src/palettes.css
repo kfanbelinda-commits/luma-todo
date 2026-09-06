@@ -1,0 +1,159 @@
+/* Additive palettes only. Graphite and Paper keep theme-graphite.css as-is.
+   Warm/Dusk override visible surfaces after that file, without rewriting it. */
+
+.palette-setting {
+  min-width: 0;
+  margin: 0;
+  padding: 10px 12px 12px;
+  border: 0;
+}
+.palette-setting legend {
+  padding: 0;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ink);
+}
+.palette-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+.settings-modal .palette-option {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  padding: 6px 2px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.palette-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.palette-option:has(input:checked) {
+  border-color: var(--action-border);
+  background: var(--action-soft);
+  color: var(--ink);
+}
+.palette-option:has(input:focus-visible) {
+  outline: 2px solid var(--action-primary);
+  outline-offset: 2px;
+}
+.palette-swatch {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 30px;
+  border: 1px solid rgba(128, 128, 128, .22);
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: 650;
+}
+.swatch-graphite { background: #26282f; color: #f5f5f5; }
+.swatch-paper { background: #fff; color: #242424; }
+.swatch-warm { background: #f4eee4; color: #2a241c; }
+.swatch-dusk { background: #1c1916; color: #f3ede4; }
+
+html[data-theme="light"][data-palette="warm"] {
+  --ink: #2a241c;
+  --muted: #716555;
+  --action-primary: #3e3224;
+  --action-primary-strong: #2a241c;
+  --action-on-primary: #fffaf2;
+  --action-soft: rgba(62, 50, 36, .08);
+  --action-soft-hover: rgba(62, 50, 36, .13);
+  --action-soft-pressed: rgba(62, 50, 36, .20);
+  --action-border: rgba(62, 50, 36, .24);
+  --action-focus-ring: rgba(62, 50, 36, .34);
+}
+
+html[data-theme="light"][data-palette="warm"] .todo-panel,
+html[data-theme="light"][data-palette="warm"] .calendar-panel {
+  background: rgba(244, 238, 228, calc(var(--panel-opacity) + .03));
+}
+html[data-theme="light"][data-palette="warm"] .quick-input-wrap input,
+html[data-theme="light"][data-palette="warm"] .task-title,
+html[data-theme="light"][data-palette="warm"] .project-title,
+html[data-theme="light"][data-palette="warm"] .schedule-task-title,
+html[data-theme="light"][data-palette="warm"] .modal,
+html[data-theme="light"][data-palette="warm"] .popover {
+  color: #2a241c;
+}
+html[data-theme="light"][data-palette="warm"] .eyebrow,
+html[data-theme="light"][data-palette="warm"] .input-hint,
+html[data-theme="light"][data-palette="warm"] .project-progress,
+html[data-theme="light"][data-palette="warm"] .task-meta,
+html[data-theme="light"][data-palette="warm"] .task-date-label,
+html[data-theme="light"][data-palette="warm"] .completed-toggle,
+html[data-theme="light"][data-palette="warm"] .calendar-footer,
+html[data-theme="light"][data-palette="warm"] .settings-section small,
+html[data-theme="light"][data-palette="warm"] .settings-note,
+html[data-theme="light"][data-palette="warm"] .day-overflow {
+  color: #716555;
+}
+html[data-theme="light"][data-palette="warm"] .quick-input-wrap input::placeholder,
+html[data-theme="light"][data-palette="warm"] .project-quick-input::placeholder {
+  color: #8a7d6c;
+}
+html[data-theme="light"][data-palette="warm"] .popover,
+html[data-theme="light"][data-palette="warm"] .modal,
+html[data-theme="light"][data-palette="warm"] .settings-modal {
+  background: rgba(250, 245, 236, .98);
+  border-color: rgba(203, 191, 172, .7);
+}
+html[data-theme="light"][data-palette="warm"] .brand-mark {
+  color: #8a692e;
+  background: rgba(169, 126, 48, .13);
+  border-color: rgba(169, 126, 48, .3);
+}
+html[data-theme="light"][data-palette="warm"] .calendar-panel .weekdays,
+html[data-theme="light"][data-palette="warm"] .calendar-panel .day-number {
+  color: #51483c;
+}
+
+html[data-palette="dusk"] {
+  --ink: #f3ede4;
+  --muted: #c4b8a8;
+  --action-primary: #e7d8c3;
+  --action-primary-strong: #fff5e7;
+  --action-on-primary: #2a241c;
+  --action-soft: rgba(231, 216, 195, .10);
+  --action-soft-hover: rgba(231, 216, 195, .18);
+  --action-soft-pressed: rgba(231, 216, 195, .25);
+  --action-border: rgba(231, 216, 195, .28);
+  --action-focus-ring: rgba(231, 216, 195, .42);
+}
+
+html[data-palette="dusk"] .todo-panel,
+html[data-palette="dusk"] .calendar-panel {
+  background: rgba(28, 25, 22, calc(var(--panel-opacity) + .03));
+}
+html[data-palette="dusk"] .popover,
+html[data-palette="dusk"] .modal {
+  background: rgba(37, 32, 28, .94);
+  color: #f3ede4;
+}
+html[data-palette="dusk"] .brand-mark {
+  color: #d1ad70;
+  background: rgba(169, 126, 48, .16);
+  border-color: rgba(169, 126, 48, .3);
+}
+html[data-palette="dusk"] .eyebrow,
+html[data-palette="dusk"] .project-progress,
+html[data-palette="dusk"] .task-meta,
+html[data-palette="dusk"] .day-overflow,
+html[data-palette="dusk"] .month-lunar {
+  color: #c4b8a8;
+}
+html[data-palette="dusk"] .project-title,
+html[data-palette="dusk"] .quick-input-wrap input,
+html[data-palette="dusk"] .day-number {
+  color: #f3ede4;
+}
