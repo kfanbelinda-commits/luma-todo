@@ -292,7 +292,7 @@ html[data-palette="dusk"] .opacity-control output {
 
 .project-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 56px 24px;
+  grid-template-columns: minmax(0, 1fr) 64px 24px;
   align-items: center;
   column-gap: 4px;
   min-height: 28px;
@@ -321,7 +321,7 @@ span.project-progress {
   align-items: center;
   justify-content: flex-end;
   justify-self: end;
-  width: 56px;
+  width: 64px;
   margin: 0;
   padding: 0;
   border: 0;
@@ -365,7 +365,7 @@ button.project-progress.is-toggle[aria-expanded="true"] {
 
 .task-item,
 .task-item:has(.task-date-label.is-overdue) {
-  grid-template-columns: 16px minmax(0, 1fr) 56px 24px;
+  grid-template-columns: 16px minmax(0, 1fr) 64px 24px;
 }
 .task-actions,
 .task-actions:has(.is-overdue) {
@@ -379,8 +379,8 @@ button.project-progress.is-toggle[aria-expanded="true"] {
   align-items: center;
   justify-content: flex-end;
   justify-self: end;
-  gap: 4px;
-  width: 56px;
+  gap: 3px;
+  width: 64px;
   min-width: 0;
   height: 24px;
 }
@@ -389,11 +389,16 @@ button.project-progress.is-toggle[aria-expanded="true"] {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.task-date-label.is-overdue {
-  color: #c86b76;
-}
 .task-date-label.is-overdue .overdue-chip {
   display: none;
+}
+.task-date-label .overdue-mark {
+  flex: 0 0 auto;
+  color: #c86b76;
+  font-size: 11px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
 }
 .task-time.task-more {
   justify-self: end;
