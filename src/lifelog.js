@@ -371,7 +371,7 @@
     const title = document.querySelector("#monthTitle");
     if (title) title.textContent = year + " 年 " + (month + 1) + " 月";
     const lunar = document.querySelector("#monthLunar");
-    if (lunar) lunar.textContent = "本月记录";
+    if (lunar) lunar.textContent = "LifeLog";
     const eyebrow = defaultEyebrow();
     if (eyebrow) eyebrow.textContent = "日子与片刻";
 
@@ -384,7 +384,6 @@
       const entry = store.entries[key];
       const has = Boolean(entry && (entry.note || entry.mood || entry.weather || entry.photos?.length));
       const cover = entry ? await coverUrl(entry) : null;
-      const weather = weatherMeta(entry?.weather);
       const mood = moodMeta(entry?.mood);
       const excerpt = !cover && entry?.note ? noteExcerpt(entry.note) : "";
       let cls = cover ? "has-img" : has ? "has-note" : "no-note";
@@ -394,9 +393,9 @@
       cells.push(
         '<button type="button" class="lifelog-cell ' + cls + '" data-date="' + key + '" aria-label="' + escapeHtml(dateSpoken(key)) + '"' + ariaCurrent + ">"
         + (cover ? '<img class="lifelog-cell-img" src="' + cover + '" alt="">' : "")
-        + (excerpt ? '<span class="lifelog-cell-note">' + escapeHtml(excerpt) + "</span>" : (!cover && has && !weather && !mood ? '<span class="lifelog-cell-mark" aria-hidden="true">文</span>' : ""))
+        + (excerpt ? '<span class="lifelog-cell-note">' + escapeHtml(excerpt) + "</span>" : "")
         + '<span class="lifelog-day-num">' + d + "</span>"
-        + ((weather || mood) ? '<span class="lifelog-cell-footer' + (cover ? " on-photo" : "") + '"><span>' + (weather ? iconImg(weather, 16) : "") + "</span><span>" + (mood ? iconImg(mood, 16) : "") + "</span></span>" : "")
+        + (mood ? '<span class="lifelog-mood-stamp">' + iconImg(mood, 14) + "</span>" : "")
         + "</button>"
       );
     }
