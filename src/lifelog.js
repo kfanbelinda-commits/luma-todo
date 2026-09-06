@@ -204,13 +204,11 @@
     }
 
     board.innerHTML = ""
-      + '<div class="lifelog-header">'
-      + '<div class="lifelog-title-zone"><h2 class="lifelog-title">Lifelog</h2><div class="lifelog-meta">' + (month + 1) + " 月 " + year + "</div></div>"
-      + '<div class="lifelog-pills">'
-      + '<div class="lifelog-pill">📝 ' + daysWith + " Days</div>"
-      + '<div class="lifelog-pill">📷 ' + photos + " Photos</div>"
-      + (topMood ? '<div class="lifelog-pill">✨ Most ' + topMood.emoji + "</div>" : "")
-      + "</div></div>"
+      + '<div class="lifelog-pills" aria-label="本月 Lifelog 统计">'
+      + '<span class="lifelog-pill"><span class="lifelog-pill-ico" aria-hidden="true">📝</span><span class="lifelog-pill-text">' + daysWith + " Days</span></span>"
+      + '<span class="lifelog-pill"><span class="lifelog-pill-ico" aria-hidden="true">📷</span><span class="lifelog-pill-text">' + photos + " Photos</span></span>"
+      + (topMood ? '<span class="lifelog-pill"><span class="lifelog-pill-ico" aria-hidden="true">✨</span><span class="lifelog-pill-text">Most ' + topMood.emoji + "</span></span>" : "")
+      + "</div>"
       + '<div class="lifelog-weekdays">' + WEEKDAYS.map((label) => "<span>" + label + "</span>").join("") + "</div>"
       + '<div class="lifelog-grid">' + cells.join("") + "</div>";
 
@@ -230,8 +228,12 @@
       section.id = "lifeLogDetail";
       section.className = "calendar-detail-section lifelog-detail";
       const addBtn = document.querySelector("#addCalendarItem");
-      if (addBtn) detail.insertBefore(section, addBtn);
+      if (addBtn && addBtn.parentElement) addBtn.insertAdjacentElement("afterend", section);
       else detail.appendChild(section);
+    }
+    const addBtn = document.querySelector("#addCalendarItem");
+    if (addBtn && section.previousElementSibling !== addBtn) {
+      addBtn.insertAdjacentElement("afterend", section);
     }
     return section;
   }

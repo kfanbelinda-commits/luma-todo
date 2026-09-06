@@ -15,39 +15,47 @@
 .calendar-panel.is-lifelog #calendarGrid,
 .calendar-panel.is-lifelog #weekBoard { display: none !important; }
 
-.lifelog-header {
+
+.lifelog-pills {
   display: flex;
   flex: 0 0 auto;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
-  justify-content: space-between;
-  padding: 2px 2px 0;
+  justify-content: flex-end;
+  padding: 0 2px;
 }
-.lifelog-title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--ink, inherit);
-}
-.lifelog-meta {
-  margin-top: 1px;
-  color: var(--muted, rgba(90, 96, 108, .65));
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.lifelog-pills { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
 .lifelog-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 4px 9px;
-  border: 1px solid rgba(123, 141, 191, .24);
+  border: 1px solid rgba(128, 128, 128, .16);
   border-radius: 999px;
-  background: rgba(123, 141, 191, .1);
-  color: var(--accent, #6b7aa8);
+  background: rgba(128, 128, 128, .06);
+  color: var(--muted, rgba(90, 96, 108, .78));
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: none;
 }
+html[data-theme="light"] .lifelog-pill {
+  border-color: rgba(58, 71, 92, .12);
+  background: rgba(255, 255, 255, .55);
+  color: rgba(70, 78, 92, .82);
+}
+html[data-theme="dark"] .lifelog-pill,
+html:not([data-theme="light"]) .lifelog-pill {
+  border-color: rgba(255, 255, 255, .10);
+  background: rgba(255, 255, 255, .05);
+  color: rgba(232, 236, 244, .72);
+}
+.lifelog-pill-ico {
+  font-size: 11px;
+  line-height: 1;
+  opacity: .9;
+}
+.lifelog-pill-text { line-height: 1.1; }
 
 .lifelog-weekdays {
   flex: 0 0 auto;
@@ -291,4 +299,14 @@ html:not([data-theme="light"]) .lifelog-note { background: rgba(0, 0, 0, .18); }
   color: var(--muted, rgba(90, 96, 108, .62));
   font-size: 11px;
   text-align: center;
+}
+
+/* add stays with tasks */
+.calendar-detail-view:has(#lifeLogDetail) > #addCalendarItem {
+  order: 0;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+.calendar-detail-view:has(#lifeLogDetail) > #lifeLogDetail {
+  order: 1;
 }
