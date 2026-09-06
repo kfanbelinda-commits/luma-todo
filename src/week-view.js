@@ -415,13 +415,20 @@
     if (!days) return 0;
     const startHour = Number(days.dataset.startHour || 0);
     const hours = Number(days.dataset.hours || 24);
+    const scroll = document.querySelector('.week-scroll');
     const rect = days.getBoundingClientRect();
-    const ratio = clamp((clientY - rect.top) / Math.max(rect.height, 1), 0, 0.999);
+    // Prefer full content height; when scrolled, rect.top is negative so clientY-rect.top is content Y.
+    const y = clientY - rect.top;
+    const height = Math.max(rect.height, days.scrollHeight, 1);
+    const ratio = clamp(y / height, 0, 0.999);
     return snapMinutes(startHour * 60 + ratio * hours * 60);
   }
   function columnKeyAt(clientX, clientY) {
+    const prev = document.querySelectorAll('.week-block.is-dragging');
+    prev.forEach((el) => { el.style.pointerEvents = 'none'; });
     const el = document.elementFromPoint(clientX, clientY);
-    return el?.closest('.week-day-col')?.dataset.date || '';
+    prev.forEach((el) => { el.style.pointerEvents = ''; });
+    return el?.closest('.week-day-col')?.dataset.date || drag?.dateKey || '';
   }
   function applyPreview(block, startMin, endMin, dateKey) {
     const days = document.querySelector('.week-days');
