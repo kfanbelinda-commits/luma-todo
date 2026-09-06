@@ -202,7 +202,6 @@ html[data-theme="light"] .week-mini-day.is-anchor {
   flex: 1;
   overflow-x: hidden;
   overflow-y: auto;
-  scrollbar-gutter: stable;
   scrollbar-width: thin;
 }
 .week-scroll::-webkit-scrollbar {
