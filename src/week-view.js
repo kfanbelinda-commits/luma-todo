@@ -183,7 +183,12 @@
     const focus = parseKey(anchorKey);
     const year = focus.getFullYear();
     const month = focus.getMonth();
-    const start = mondayOf(new Date(year, month, 1));
+    let start = mondayOf(new Date(year, month, 1));
+    const focusedWeekStart = mondayOf(parseKey(keys[0]));
+    // First grid row is the focused week itself — shift earlier so a prior week stays clickable (bottom already exposes next-month days).
+    if (focusedWeekStart.getTime() <= start.getTime()) {
+      start = new Date(start.getFullYear(), start.getMonth(), start.getDate() - 7);
+    }
     const weekSet = new Set(keys);
     const today = todayKey();
     const cells = [];
