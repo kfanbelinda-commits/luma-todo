@@ -215,25 +215,35 @@
     const noteItems = stats.notes.map((task, index) => (
       `<li><span>${index + 1}.</span><span>${escapeText(task.title)}</span></li>`
     )).join('') || '<li class="week-rail-empty">完成待办后会出现在这里</li>';
+    const weekRange = (() => {
+      const a = parseKey(keys[0]);
+      const b = parseKey(keys[6]);
+      return a.getMonth() === b.getMonth()
+        ? `${a.getMonth() + 1}月${a.getDate()}日 – ${b.getDate()}日`
+        : `${a.getMonth() + 1}月${a.getDate()}日 – ${b.getMonth() + 1}月${b.getDate()}日`;
+    })();
     host.innerHTML = [
-      `<div class="week-rail-date"><strong>${dayNum}</strong><span>${monthLabel}<small>${weekdayLabel}</small></span></div>`,
-      `<div class="week-rail-cal">`
+      `<div class="week-rail-top">`
+      + `<p class="week-rail-range">${weekRange}</p>`
+      + `<div class="week-rail-date"><strong>${dayNum}</strong><span>${monthLabel}<small>${weekdayLabel}</small></span></div>`
+      + `<div class="week-rail-cal">`
       + `<div class="week-mini-weekdays">${WEEKDAY_LABELS.map((label) => `<span>${label}</span>`).join('')}</div>`
       + `<div class="week-mini-grid">${cells.join('')}</div>`
-      + `</div>`,
-      `<section class="week-rail-section">`
+      + `</div></div>`,
+      `<div class="week-rail-body">`
+      + `<section class="week-rail-section">`
       + `<h3>Stats <em>本月计划统计</em></h3>`
       + `<table class="week-rail-stats"><thead><tr><th></th><th>状态</th><th>数量</th><th>比例</th></tr></thead><tbody>${statRows}`
       + `<tr class="week-rail-stat-total"><td></td><td>总计划</td><td>${stats.total}</td><td>100%</td></tr></tbody></table>`
-      + `</section>`,
-      `<section class="week-rail-section week-rail-todos">`
+      + `</section>`
+      + `<section class="week-rail-section week-rail-todos">`
       + `<h3>To Do <em>本月待办</em></h3>`
       + `<ol class="week-rail-list">${todoItems}</ol>`
-      + `</section>`,
-      `<section class="week-rail-section week-rail-notes">`
+      + `</section>`
+      + `<section class="week-rail-section week-rail-notes">`
       + `<h3>Notes <em>本月成果</em></h3>`
       + `<ol class="week-rail-notes-list">${noteItems}</ol>`
-      + `</section>`
+      + `</section></div>`
     ].join('');
     host.querySelectorAll('.week-rail-check').forEach((button) => {
       button.addEventListener('click', (event) => {
