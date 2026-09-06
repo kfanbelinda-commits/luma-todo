@@ -166,9 +166,8 @@ html[data-theme="light"] .week-mini-day.is-anchor {
 .week-block {
   overflow: hidden;
   border: 0;
-  border-left: 2px solid var(--event-color, #91a9c7);
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--event-color, #91a9c7) 18%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--event-color, #91a9c7) 20%, transparent);
   color: inherit;
   font: inherit;
   font-size: 11px;
