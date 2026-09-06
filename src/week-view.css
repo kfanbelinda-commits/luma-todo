@@ -69,8 +69,15 @@
   line-height: 0.95;
 }
 .week-rail-date span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   color: var(--muted, rgba(90, 96, 108, .72));
   font-size: 13px;
+  font-weight: 500;
+}
+.week-rail-date small {
+  font-size: 11px;
   font-weight: 500;
 }
 .week-rail-cal {
@@ -83,8 +90,7 @@
 }
 .week-rail-section {
   display: flex;
-  min-height: 0;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   flex-direction: column;
   gap: 8px;
 }
@@ -197,8 +203,10 @@
   color: var(--muted, rgba(90, 96, 108, .55));
   font-size: 11px;
 }
-.week-rail-todos { flex: 1.2 1 auto; }
-.week-rail-notes { flex: 1 1 auto; }
+.week-rail-todos,
+.week-rail-notes {
+  flex: 0 0 auto;
+}
 .week-mini-weekdays,
 .week-mini-grid {
   display: grid;
@@ -487,3 +495,7 @@ html[data-theme="light"] .week-mini-day.is-anchor {
 body.week-dragging { cursor: grabbing; user-select: none; }
 body.week-dragging .week-block { pointer-events: none; }
 body.week-dragging .week-block.is-dragging { pointer-events: auto; }
+
+.calendar-panel.is-week .calendar-header { padding-bottom: 8px; }
+.calendar-panel.is-week #monthLunar { display: none; }
+.calendar-panel.is-week .eyebrow { margin-bottom: 2px; }

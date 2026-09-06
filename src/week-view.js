@@ -201,6 +201,7 @@
     const stats = monthStats(year, month);
     const dayNum = pad(focus.getDate());
     const monthLabel = `${month + 1}月 / ${year}`;
+    const weekdayLabel = `周${WEEKDAY_LABELS[(focus.getDay() + 6) % 7]}`;
     const statRows = stats.rows.map((row) => (
       `<tr class="week-rail-stat is-${row.tone}"><td><i aria-hidden="true"></i></td><td>${row.label}</td><td>${row.count}</td><td>${row.ratio}</td></tr>`
     )).join('');
@@ -215,9 +216,8 @@
       `<li><span>${index + 1}.</span><span>${escapeText(task.title)}</span></li>`
     )).join('') || '<li class="week-rail-empty">完成待办后会出现在这里</li>';
     host.innerHTML = [
-      `<div class="week-rail-date"><strong>${dayNum}</strong><span>${monthLabel}</span></div>`,
+      `<div class="week-rail-date"><strong>${dayNum}</strong><span>${monthLabel}<small>${weekdayLabel}</small></span></div>`,
       `<div class="week-rail-cal">`
-      + `<div class="week-mini-label">${year} 年 ${month + 1} 月</div>`
       + `<div class="week-mini-weekdays">${WEEKDAY_LABELS.map((label) => `<span>${label}</span>`).join('')}</div>`
       + `<div class="week-mini-grid">${cells.join('')}</div>`
       + `</div>`,
