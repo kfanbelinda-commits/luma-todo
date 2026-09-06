@@ -6,22 +6,22 @@ const dir = path.join(__dirname, "..", "demo", "lifelog-covers");
 fs.mkdirSync(dir, { recursive: true });
 
 const covers = [
-  ["01-kitchen-morning.jpg", "https://images.unsplash.com/photo-1556911220-bff31c8750ea?auto=format&fit=crop&w=800&h=800&q=70"],
-  ["02-messy-desk.jpg", "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?auto=format&fit=crop&w=800&h=800&q=70"],
-  ["03-commute-window.jpg", "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=800&h=800&q=65"],
-  ["04-home-sofa.jpg", "https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?auto=format&fit=crop&w=800&h=800&q=68"],
-  ["05-laundry-day.jpg", "https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=800&h=800&q=70"],
-  ["06-night-desk-lamp.jpg", "https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=800&h=800&q=68"],
-  ["07-rain-street.jpg", "https://images.unsplash.com/photo-1428908728789-d2de25dbd4e2?auto=format&fit=crop&w=800&h=800&q=65"],
-  ["08-simple-lunch.jpg", "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&h=800&q=65"],
-  ["09-hands-coffee.jpg", "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=800&h=800&q=62"],
-  ["10-bedroom-corner.jpg", "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=800&h=800&q=65"],
-  ["11-supermarket-bag.jpg", "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&h=800&q=65"],
-  ["12-evening-walk.jpg", "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=800&h=800&q=55"],
-  ["13-phone-notes.jpg", "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&h=800&q=65"],
-  ["14-bus-seat.jpg", "https://images.unsplash.com/photo-1544620341-fac388f98a7e?auto=format&fit=crop&w=800&h=800&q=65"],
-  ["15-plant-window.jpg", "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=800&h=800&q=60"],
-  ["16-late-snack.jpg", "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&h=800&q=55"]
+  ["01-morning-window.jpg", "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=800&h=800&q=72"],
+  ["02-soft-flowers.jpg", "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=800&h=800&q=72"],
+  ["03-tea-table.jpg", "https://images.unsplash.com/photo-1571934811356-5cc061b6821f?auto=format&fit=crop&w=800&h=800&q=72"],
+  ["04-notebook.jpg", "https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=800&h=800&q=72"],
+  ["05-green-leaves.jpg", "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=800&h=800&q=72"],
+  ["06-quiet-cafe.jpg", "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=800&h=800&q=72"],
+  ["07-soft-sky.jpg", "https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=800&h=800&q=72"],
+  ["08-linen-bed.jpg", "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=800&h=800&q=72"],
+  ["09-walk-path.jpg", "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&h=800&q=72"],
+  ["10-fruit-bowl.jpg", "https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&w=800&h=800&q=72"],
+  ["11-cat-sun.jpg", "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=800&h=800&q=72"],
+  ["12-bike-lane.jpg", "https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=800&h=800&q=72"],
+  ["13-soft-bakery.jpg", "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=800&h=800&q=72"],
+  ["14-plant-desk.jpg", "https://images.unsplash.com/photo-1485955900006-10f4d324d411?auto=format&fit=crop&w=800&h=800&q=72"],
+  ["15-seaside-soft.jpg", "https://images.unsplash.com/photo-1505142468610-359e7d316be0?auto=format&fit=crop&w=800&h=800&q=72"],
+  ["16-evening-lamp.jpg", "https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=800&h=800&q=72"]
 ];
 
 function fetch(url) {

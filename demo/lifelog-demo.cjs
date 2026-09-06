@@ -21,22 +21,22 @@ const NOTES = [
 ];
 
 const COVER_FILES = [
-  "01-kitchen-morning.jpg",
-  "02-messy-desk.jpg",
-  "03-commute-window.jpg",
-  "04-home-sofa.jpg",
-  "05-laundry-day.jpg",
-  "06-night-desk-lamp.jpg",
-  "07-rain-street.jpg",
-  "08-simple-lunch.jpg",
-  "09-hands-coffee.jpg",
-  "10-bedroom-corner.jpg",
-  "11-supermarket-bag.jpg",
-  "12-evening-walk.jpg",
-  "13-phone-notes.jpg",
-  "14-bus-seat.jpg",
-  "15-plant-window.jpg",
-  "16-late-snack.jpg"
+  "01-morning-window.jpg",
+  "02-soft-flowers.jpg",
+  "03-tea-table.jpg",
+  "04-notebook.jpg",
+  "05-green-leaves.jpg",
+  "06-quiet-cafe.jpg",
+  "07-soft-sky.jpg",
+  "08-linen-bed.jpg",
+  "09-walk-path.jpg",
+  "10-fruit-bowl.jpg",
+  "11-cat-sun.jpg",
+  "12-bike-lane.jpg",
+  "13-soft-bakery.jpg",
+  "14-plant-desk.jpg",
+  "15-seaside-soft.jpg",
+  "16-evening-lamp.jpg"
 ];
 
 function pad(n) { return String(n).padStart(2, "0"); }
