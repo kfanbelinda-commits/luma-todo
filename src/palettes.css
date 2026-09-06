@@ -292,7 +292,7 @@ html[data-palette="dusk"] .opacity-control output {
 
 .project-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 64px 24px;
+  grid-template-columns: minmax(0, 1fr) 22px 40px 24px;
   align-items: center;
   column-gap: 4px;
   min-height: 28px;
@@ -310,6 +310,7 @@ html[data-palette="dusk"] .opacity-control output {
 .project-add-task {
   display: grid;
   place-items: center;
+  grid-column: 4;
   width: 24px;
   height: 24px;
   margin: 0;
@@ -317,7 +318,6 @@ html[data-palette="dusk"] .opacity-control output {
   border: 0;
   line-height: 1;
   font-size: 13px;
-  font-weight: 400;
   justify-self: end;
   align-self: center;
 }
@@ -329,7 +329,8 @@ span.project-progress {
   place-items: center end;
   justify-self: end;
   align-self: center;
-  width: 64px;
+  grid-column: 3;
+  width: 40px;
   height: 24px;
   margin: 0;
   padding: 0;
@@ -373,7 +374,7 @@ button.project-progress.is-toggle[aria-expanded="true"] {
 
 .task-item,
 .task-item:has(.task-date-label.is-overdue) {
-  grid-template-columns: 16px minmax(0, 1fr) 64px 24px;
+  grid-template-columns: 16px minmax(0, 1fr) 22px 40px 24px;
 }
 .task-actions,
 .task-actions:has(.is-overdue) {
@@ -382,33 +383,36 @@ button.project-progress.is-toggle[aria-expanded="true"] {
   min-width: 0;
   grid-template-columns: unset;
 }
-.task-date-label {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
+.overdue-mark {
+  grid-column: 3;
   justify-self: end;
-  gap: 3px;
-  width: 64px;
-  min-width: 0;
-  height: 24px;
-}
-.task-date-label .task-due {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.task-date-label.is-overdue .overdue-chip {
-  display: none;
-}
-.task-date-label .overdue-mark {
-  flex: 0 0 auto;
+  align-self: center;
+  width: 22px;
   color: #c86b76;
   font-size: 11px;
   font-weight: 550;
   font-variant-numeric: tabular-nums;
-  line-height: 16px;
+  line-height: 1;
+  text-align: right;
+}
+.task-date-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  grid-column: 4;
+  justify-self: end;
+  width: 40px;
+  min-width: 0;
+  height: 24px;
+}
+.task-date-label.is-overdue {
+  color: #c86b76;
+}
+.task-date-label.is-overdue .overdue-chip {
+  display: none;
 }
 .task-time.task-more {
+  grid-column: 5;
   justify-self: end;
 }
 
