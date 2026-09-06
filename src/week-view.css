@@ -119,10 +119,14 @@ html[data-theme="light"] .week-mini-day.is-anchor {
   border-left: 1px solid rgba(128, 128, 128, .12);
 }
 .week-hairline {
-  height: 0;
+  flex: 0 0 auto;
+  height: 1px;
+  margin: 0;
   border: 0;
-  border-top: 1px solid rgba(128, 128, 128, .16);
+  background: rgba(128, 128, 128, .22);
   pointer-events: none;
+  position: relative;
+  z-index: 4;
 }
 .week-col-head {
   display: flex;
@@ -211,25 +215,53 @@ html[data-theme="light"] .week-mini-day.is-anchor {
 .week-days {
   position: relative;
   min-height: calc(var(--hours, 24) * var(--hour-h, 44px));
-  /* One continuous hour stroke across the whole week, not per-column stubs. */
+  /* Layer order: first = top. Rails above today wash so they never break. */
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(var(--hour-h, 44px) - 1px),
+      rgba(128, 128, 128, .14) calc(var(--hour-h, 44px) - 1px),
+      rgba(128, 128, 128, .14) var(--hour-h, 44px)
+    ),
+    linear-gradient(
+      to right,
+      transparent 0,
+      transparent calc((var(--today-index, 0) - 1) * 100% / 7),
+      color-mix(in srgb, var(--action-primary, #3d4654) 9%, transparent) calc((var(--today-index, 0) - 1) * 100% / 7),
+      color-mix(in srgb, var(--action-primary, #3d4654) 9%, transparent) calc(var(--today-index, 0) * 100% / 7),
+      transparent calc(var(--today-index, 0) * 100% / 7),
+      transparent 100%
+    );
+  background-size: 100% var(--hour-h, 44px), 100% 100%;
+  background-repeat: repeat, no-repeat;
+}
+.week-day-col {
+  position: relative;
+  background: transparent;
+}
+.week-col-heads.has-today,
+.week-allday-cols.has-today {
+  background-image: linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc((var(--today-index) - 1) * 100% / 7),
+    color-mix(in srgb, var(--action-primary, #3d4654) 9%, transparent) calc((var(--today-index) - 1) * 100% / 7),
+    color-mix(in srgb, var(--action-primary, #3d4654) 9%, transparent) calc(var(--today-index) * 100% / 7),
+    transparent calc(var(--today-index) * 100% / 7),
+    transparent 100%
+  );
+}
+.week-days:not(.has-today) {
   background-image: repeating-linear-gradient(
     to bottom,
     transparent 0,
     transparent calc(var(--hour-h, 44px) - 1px),
-    rgba(128, 128, 128, .1) calc(var(--hour-h, 44px) - 1px),
-    rgba(128, 128, 128, .1) var(--hour-h, 44px)
+    rgba(128, 128, 128, .14) calc(var(--hour-h, 44px) - 1px),
+    rgba(128, 128, 128, .14) var(--hour-h, 44px)
   );
   background-size: 100% var(--hour-h, 44px);
   background-repeat: repeat;
-}
-.week-day-col {
-  position: relative;
-}
-/* Today column wash — Google soft tint + Apple restraint; circle header stays the hard cue. */
-.week-col-head.is-today,
-.week-allday-col.is-today,
-.week-day-col.is-today {
-  background-color: color-mix(in srgb, var(--action-primary, #3d4654) 9%, transparent);
 }
 .week-hour-lines {
   display: none;
