@@ -483,6 +483,8 @@
       const nextDate = columnKeyAt(event.clientX, event.clientY);
       if (nextDate) drag.dateKey = nextDate;
     }
+    drag.liveStart = startMin;
+    drag.liveEnd = endMin;
     task.time = formatMinutes(startMin);
     task.endTime = formatMinutes(endMin);
     if (drag.edge === 'move') {
@@ -492,6 +494,8 @@
         const end = parseKey(drag.dateKey);
         end.setDate(end.getDate() + Math.max(0, length));
         task.endDate = toKey(end);
+      } else {
+        task.endDate = drag.dateKey;
       }
     }
     applyPreview(block, startMin, endMin, drag.dateKey);
@@ -516,8 +520,26 @@
       renderBoard();
       return;
     }
+    if (current.liveStart != null) task.time = formatMinutes(current.liveStart);
+    if (current.liveEnd != null) task.endTime = formatMinutes(current.liveEnd);
+    if (current.edge === 'move' && current.dateKey) {
+      task.dueDate = current.dateKey;
+      if (typeof isCalendarEvent === 'function' && isCalendarEvent(task) && typeof fromDateKey === 'function') {
+        const length = (fromDateKey(current.original.endDate) - fromDateKey(current.original.dueDate)) / 86400000;
+        const end = parseKey(current.dateKey);
+        end.setDate(end.getDate() + Math.max(0, length));
+        task.endDate = toKey(end);
+      } else {
+        task.endDate = current.dateKey;
+      }
+    }
     task.updatedAt = Date.now();
-    if (typeof persist === 'function') await persist();
+    try {
+      if (typeof persist === 'function') await persist();
+      else if (window.luma && window.luma.save && typeof state !== 'undefined') await window.luma.save(state);
+    } catch (err) {
+      console.error('week drag persist failed', err);
+    }
     if (typeof render === 'function') render();
     else renderBoard();
   }
