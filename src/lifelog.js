@@ -226,7 +226,7 @@
       + '<div class="lifelog-pills" aria-label="本月 Lifelog 统计">'
       + '<span class="lifelog-pill"><span class="lifelog-pill-ico" aria-hidden="true">📝</span><span class="lifelog-pill-text">' + daysWith + " Days</span></span>"
       + '<span class="lifelog-pill"><span class="lifelog-pill-ico" aria-hidden="true">📷</span><span class="lifelog-pill-text">' + photos + " Photos</span></span>"
-      + (topMood ? '<span class="lifelog-pill"><span class="lifelog-pill-ico" aria-hidden="true">✨</span><span class="lifelog-pill-text">Most ' + topMood.emoji + "</span></span>" : "")
+      + (topMood ? '<span class="lifelog-pill"><span class="lifelog-pill-ico" aria-hidden="true">' + iconImg(topMood, 14) + '</span><span class="lifelog-pill-text">Most ' + topMood.label + "</span></span>" : "")
       + "</div>"
       + '<div class="lifelog-weekdays">' + WEEKDAYS.map((label) => "<span>" + label + "</span>").join("") + "</div>"
       + '<div class="lifelog-grid">' + cells.join("") + "</div>";
@@ -261,20 +261,23 @@
     const list = kind === "weather" ? WEATHER : MOODS;
     const selected = list.find((item) => item.id === entry[kind]);
     const label = kind === "weather" ? "天气" : "心情";
-    const icon = selected ? iconImg(selected, 28) : (kind === "mood" ? iconImg(null, 28) : '<span class="lifelog-pick-plus">＋</span>');
+    const swatch = selected ? selected.color : "";
+    const icon = selected
+      ? iconImg(selected, 30)
+      : (kind === "mood" ? iconImg(null, 30) : '<span class="lifelog-pick-plus" aria-hidden="true">＋</span>');
     const options = list.map((item) => (
-      '<button type="button" class="lifelog-emoji-opt' + (entry[kind] === item.id ? " is-active" : "") + '" data-id="' + item.id + '" role="option" title="' + item.label + '" style="--mood:' + item.color + '">'
-      + iconImg(item, 32)
-      + '<span class="lifelog-emoji-opt-lbl">' + item.label + "</span>"
+      '<button type="button" class="lifelog-opt' + (entry[kind] === item.id ? " is-active" : "") + '" data-id="' + item.id + '" role="option" aria-selected="' + (entry[kind] === item.id ? "true" : "false") + '" title="' + item.label + '" style="--mood:' + item.color + '">'
+      + iconImg(item, 30)
+      + '<span class="lifelog-opt-lbl">' + item.label + "</span>"
       + "</button>"
     )).join("");
     return ""
       + '<div class="lifelog-field" data-kind="' + kind + '">'
-      + '<span class="lifelog-field-label">' + label + "</span>"
-      + '<button type="button" class="lifelog-pick' + (selected ? " has-value" : "") + '" data-kind="' + kind + '" aria-label="' + label + (selected ? ("：" + selected.label) : "") + '" aria-haspopup="listbox" aria-expanded="false">'
-      + '<span class="lifelog-pick-icon">' + icon + "</span>"
+      + '<span class="lifelog-field-label" id="lifelog-label-' + kind + '">' + label + "</span>"
+      + '<button type="button" class="lifelog-pick' + (selected ? " has-value" : "") + '" data-kind="' + kind + '" style="' + (swatch ? ("--mood:" + swatch) : "") + '" aria-labelledby="lifelog-label-' + kind + '" aria-label="' + label + (selected ? ("：" + selected.label) : "：未选") + '" aria-haspopup="listbox" aria-expanded="false">'
+      + icon
       + "</button>"
-      + '<div class="lifelog-menu hidden" role="listbox" hidden>' + options + "</div>"
+      + '<div class="lifelog-menu hidden" role="listbox" hidden aria-label="' + label + '">' + options + "</div>"
       + "</div>";
   }
 
@@ -397,7 +400,7 @@ async function renderDetail(dateKey) {
         }
       });
       menu?.addEventListener("click", async (event) => {
-        const chip = event.target.closest(".lifelog-emoji-opt");
+        const chip = event.target.closest(".lifelog-opt");
         if (!chip) return;
         event.preventDefault();
         event.stopPropagation();
