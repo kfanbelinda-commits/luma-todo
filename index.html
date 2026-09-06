@@ -11,6 +11,7 @@
     <title>Luma Todo</title>
     <link rel="stylesheet" href="src/styles.css" />
     <link rel="stylesheet" href="src/theme-graphite.css" />
+    <link rel="stylesheet" href="src/palettes.css" />
   </head>
   <body>
     <div class="resize-handle resize-edge resize-n" data-edge="n"></div>
@@ -141,8 +142,8 @@
         <section class="quick-entry">
           <div class="quick-input-wrap">
             <span class="spark">✦</span>
-            <input id="quickInput" autocomplete="off" placeholder="输入待办内容" />
-            <button id="addTask" class="add-button" aria-label="发送待办" title="发送待办">
+            <input id="quickInput" autocomplete="off" aria-label="待办内容" placeholder="输入待办，按 Enter 添加" />
+            <button id="addTask" class="add-button" aria-label="添加待办" title="添加待办">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M2.4 4.1 22 12 2.4 19.9l2.2-6.1L16.2 12 4.6 10.2 2.4 4.1Z" />
               </svg>
@@ -239,10 +240,16 @@
               <input id="opacitySlider" class="opacity-slider" type="range" min="0" max="100" step="5" value="88" aria-label="窗口透明度" />
             </div>
           </section>
-          <section class="settings-section">
-            <div><strong>浅色模式</strong><small>使用明亮的玻璃面板与深色文字</small></div>
-            <label class="switch"><input id="lightModeToggle" type="checkbox" /><span></span></label>
-          </section>
+          <input id="lightModeToggle" type="checkbox" hidden />
+          <fieldset class="settings-section palette-setting">
+            <legend>外观</legend>
+            <div class="palette-options">
+              <label class="palette-option"><input type="radio" name="palette" value="graphite" /><span class="palette-swatch swatch-graphite" aria-hidden="true">Aa</span><span>Graphite</span></label>
+              <label class="palette-option"><input type="radio" name="palette" value="paper" /><span class="palette-swatch swatch-paper" aria-hidden="true">Aa</span><span>Paper</span></label>
+              <label class="palette-option"><input type="radio" name="palette" value="warm" /><span class="palette-swatch swatch-warm" aria-hidden="true">Aa</span><span>Warm</span></label>
+              <label class="palette-option"><input type="radio" name="palette" value="dusk" /><span class="palette-swatch swatch-dusk" aria-hidden="true">Aa</span><span>Dusk</span></label>
+            </div>
+          </fieldset>
         </div>
         <div class="sync-settings">
           <section class="sync-card google-sync-card">
@@ -290,6 +297,8 @@
       </form>
     </dialog>
 
+    <script src="src/appearance.js"></script>
+    <script src="src/appearance-boot.js"></script>
     <script src="src/app.js"></script>
   </body>
 </html>
