@@ -277,17 +277,23 @@ html[data-palette="dusk"] .opacity-control output {
   min-height: 21px;
 }
 .day-event[hidden] { display: none !important; }
+.day-events {
+  align-content: start;
+}
 .day-overflow {
   display: block;
+  order: 999;
   width: 100%;
   flex: 0 0 auto;
-  min-height: 20px;
+  margin-top: 1px;
+  min-height: 16px;
   border: 0;
   background: transparent;
   text-align: left;
   cursor: pointer;
   font: inherit;
   font-size: 11px;
+  line-height: 16px;
 }
 
 .project-header {
