@@ -15,12 +15,13 @@
     "check": "node --check main.cjs && node --check preload.cjs && node --check src/appearance.js && node --check src/app.js && node --check src/week-view.js && npm run test:unit && node scripts/check-invariants.cjs",
     "dist": "electron-builder --win --publish never",
     "release": "electron-builder --win --publish always",
-    "start:demo": "node scripts/download-lifelog-covers.cjs && electron . --demo",
+    "start:demo": "electron . --demo",
     "start:real": "electron .",
-    "start:demo:reset": "node scripts/download-lifelog-covers.cjs && electron . --demo --demo-reset",
+    "start:demo:reset": "electron . --demo --demo-reset",
     "start:icloud": "electron . --icloud-test",
     "test:unit": "node --test qa/icloud-ics.test.cjs qa/appearance.test.cjs qa/week-drag.test.cjs",
-    "start:demo:reset-lifelog": "node scripts/download-lifelog-covers.cjs && electron . --demo --demo-reset-lifelog"
+    "demo:covers": "node scripts/download-lifelog-covers.cjs",
+    "start:demo:reset-lifelog": "electron . --demo --demo-reset-lifelog"
   },
   "devDependencies": {
     "electron": "^44.1.1",
