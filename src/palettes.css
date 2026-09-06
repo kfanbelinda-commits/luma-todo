@@ -96,21 +96,52 @@
 }
 
 html[data-theme="light"][data-palette="warm"] {
-  --ink: #2a241c;
-  --muted: #716555;
-  --action-primary: #3e3224;
-  --action-primary-strong: #2a241c;
-  --action-on-primary: #fffaf2;
-  --action-soft: rgba(62, 50, 36, .08);
-  --action-soft-hover: rgba(62, 50, 36, .13);
-  --action-soft-pressed: rgba(62, 50, 36, .20);
-  --action-border: rgba(62, 50, 36, .24);
-  --action-focus-ring: rgba(62, 50, 36, .34);
+  --ink: #2c2418;
+  --muted: #6e5f4e;
+  --line: rgba(92, 70, 42, .16);
+  --action-primary: #4a3724;
+  --action-primary-strong: #2c2418;
+  --action-on-primary: #fbf4e8;
+  --action-soft: rgba(74, 55, 36, .09);
+  --action-soft-hover: rgba(74, 55, 36, .14);
+  --action-soft-pressed: rgba(74, 55, 36, .20);
+  --action-border: rgba(74, 55, 36, .24);
+  --action-focus-ring: rgba(74, 55, 36, .36);
 }
 
 html[data-theme="light"][data-palette="warm"] .todo-panel,
 html[data-theme="light"][data-palette="warm"] .calendar-panel {
-  background: rgba(244, 238, 228, var(--panel-opacity));
+  background: rgba(243, 234, 220, var(--panel-opacity));
+}
+html[data-theme="light"][data-palette="warm"] .quick-input-wrap,
+html[data-theme="light"][data-palette="warm"] .date-summary,
+html[data-theme="light"][data-palette="warm"] .icon-button,
+html[data-theme="light"][data-palette="warm"] .soft-button {
+  border-color: rgba(92, 70, 42, .18);
+  background: rgba(255, 248, 236, .55);
+  color: #2c2418;
+}
+html[data-theme="light"][data-palette="warm"] .calendar-day {
+  border-color: rgba(92, 70, 42, .12);
+}
+html[data-theme="light"][data-palette="warm"] .calendar-day:hover,
+html[data-theme="light"][data-palette="warm"] .calendar-day:focus-visible {
+  background: rgba(255, 248, 236, .42);
+}
+html[data-theme="light"][data-palette="warm"] .calendar-day.today,
+html[data-theme="light"][data-palette="warm"] .calendar-day.today.focused-date {
+  background: rgba(176, 137, 72, .14);
+}
+html[data-theme="light"][data-palette="warm"] .day-event.calendar-event-item,
+html[data-theme="light"][data-palette="warm"] .day-event.google-calendar-event {
+  color: #4a3b2a;
+  background: rgba(92, 70, 42, .08);
+  border-color: rgba(92, 70, 42, .10);
+}
+html[data-theme="light"][data-palette="warm"] .weekdays,
+html[data-theme="light"][data-palette="warm"] .month-lunar,
+html[data-theme="light"][data-palette="warm"] .calendar-day.muted .day-number {
+  color: #7a6b59;
 }
 html[data-theme="light"][data-palette="warm"] .quick-input-wrap input,
 html[data-theme="light"][data-palette="warm"] .task-title,
@@ -118,7 +149,7 @@ html[data-theme="light"][data-palette="warm"] .project-title,
 html[data-theme="light"][data-palette="warm"] .schedule-task-title,
 html[data-theme="light"][data-palette="warm"] .modal,
 html[data-theme="light"][data-palette="warm"] .popover {
-  color: #2a241c;
+  color: #2c2418;
 }
 html[data-theme="light"][data-palette="warm"] .eyebrow,
 html[data-theme="light"][data-palette="warm"] .input-hint,
@@ -130,7 +161,7 @@ html[data-theme="light"][data-palette="warm"] .calendar-footer,
 html[data-theme="light"][data-palette="warm"] .settings-section small,
 html[data-theme="light"][data-palette="warm"] .settings-note,
 html[data-theme="light"][data-palette="warm"] .day-overflow {
-  color: #716555;
+  color: #6e5f4e;
 }
 html[data-theme="light"][data-palette="warm"] .quick-input-wrap input::placeholder,
 html[data-theme="light"][data-palette="warm"] .project-quick-input::placeholder {
@@ -366,7 +397,6 @@ button.project-progress.is-toggle[aria-expanded="true"] {
   grid-template-columns: minmax(0, 104px) 24px;
 }
 
-/* Settings sync: same row language as 开机/透明度, not app-store tiles. */
 .settings-modal .sync-settings {
   margin-top: 2px;
   background: transparent;
@@ -379,9 +409,15 @@ html[data-palette="dusk"] .settings-modal .sync-card {
   margin: 0;
   padding: 10px 2px 12px;
   border: 0;
-  border-top: 1px solid rgba(128, 128, 128, .14);
+  border-top: 0;
   border-radius: 0;
   background: transparent;
+}
+.settings-modal .settings-list {
+  border-bottom: 0;
+}
+.settings-modal .sync-card + .sync-card {
+  border-top: 1px solid rgba(128, 128, 128, .16);
 }
 .settings-modal .sync-card-header,
 .settings-modal .apple-sync-heading {
