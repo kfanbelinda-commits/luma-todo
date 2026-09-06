@@ -1,8 +1,10 @@
 /* Week board for Luma. Leaves month rendering in app.js and only
    takes over the calendar panel when the 周 toggle is on. */
 (function () {
-  const HOUR_START = 8;
-  const HOUR_END = 20;
+  const DAY_START = 0;
+  const DAY_END = 24;
+  const VIEW_START = 8;
+  const VIEW_END = 20;
   const HOUR_PX = 44;
   const SNAP = 15;
   const MIN_SPAN = 15;
@@ -10,6 +12,8 @@
   let view = 'month';
   let anchorKey = todayKey();
   let drag = null;
+  let savedScroll = null;
+  let nowTimer = 0;
   function pad(value) { return String(value).padStart(2, '0'); }
   function todayKey() {
     const now = new Date();
@@ -64,6 +68,10 @@
   function canDragTime(task) {
     return Boolean(task && !task.completed && !isExternal(task) && minutes(task.time) != null);
   }
+  function nowMinutes() {
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+  }
   function ensureAssets() {
     if (!document.querySelector('link[href="src/week-view.css"]')) {
       const link = document.createElement('link');
@@ -113,20 +121,8 @@
     timed.sort((a, b) => String(a.time).localeCompare(String(b.time)));
     return { allDay, timed };
   }
-  function hourRange(keys) {
-    let start = HOUR_START;
-    let end = HOUR_END;
-    keys.forEach((key) => {
-      splitDayTasks(key).timed.forEach((task) => {
-        const begin = minutes(task.time);
-        const finish = minutes(task.endTime) ?? (begin + 30);
-        if (begin != null) start = Math.min(start, Math.floor(begin / 60));
-        if (finish != null) end = Math.max(end, Math.ceil(finish / 60));
-      });
-    });
-    start = clamp(start, 6, 10);
-    end = clamp(Math.max(end, start + 8), 16, 22);
-    return { start, end };
+  function hourLabels() {
+    return Array.from({ length: DAY_END - DAY_START }, (_, index) => DAY_START + index);
   }
   function renderMini(host, keys) {
     const focus = parseKey(anchorKey);
@@ -154,21 +150,53 @@
     const handles = draggable ? '<i class="week-handle week-handle-start" data-edge="start"></i><i class="week-handle week-handle-end" data-edge="end"></i>' : '';
     return `<button type="button" class="week-block${draggable ? ' is-draggable' : ''}${isExternal(task) ? ' is-external' : ''}" data-date="${key}" data-id="${escapeText(task.id)}" style="top:${top}%;height:${height}%;--event-color:${projectColor(task)}">${handles}<em>${escapeText(task.time)}</em><span>${escapeText(task.title)}</span></button>`;
   }
+  function nowLineMarkup(keys, rangeStart, rangeMinutes) {
+    const key = todayKey();
+    if (!keys.includes(key)) return '';
+    const top = ((nowMinutes() - rangeStart) / rangeMinutes) * 100;
+    return `<div class="week-now" data-date="${key}" style="top:${top}%"><span></span></div>`;
+  }
+  function placeNowLine() {
+    const line = document.querySelector('.week-now');
+    const days = document.querySelector('.week-days');
+    if (!line || !days) return;
+    const key = todayKey();
+    if (line.dataset.date !== key) { line.remove(); return; }
+    const rangeStart = Number(days.dataset.startHour || 0) * 60;
+    const rangeMinutes = Number(days.dataset.hours || 24) * 60;
+    line.style.top = `${((nowMinutes() - rangeStart) / rangeMinutes) * 100}%`;
+    const column = document.querySelector(`.week-day-col[data-date="${key}"]`);
+    if (column && line.parentElement !== column) column.appendChild(line);
+  }
+  function defaultScrollTop() {
+    const keys = weekKeys(anchorKey);
+    const now = nowMinutes();
+    if (keys.includes(todayKey()) && (now < VIEW_START * 60 || now > VIEW_END * 60)) {
+      return Math.max(0, (now / 60) * HOUR_PX - HOUR_PX * 2);
+    }
+    return VIEW_START * HOUR_PX;
+  }
+  function restoreScroll(board) {
+    const scroll = board.querySelector('.week-scroll');
+    if (!scroll) return;
+    scroll.scrollTop = savedScroll == null ? defaultScrollTop() : savedScroll;
+  }
   function renderBoard() {
     const board = ensureBoard();
+    const existing = board.querySelector('.week-scroll');
+    if (existing) savedScroll = existing.scrollTop;
     const keys = weekKeys(anchorKey);
     const start = parseKey(keys[0]);
     const end = parseKey(keys[6]);
-    const hours = hourRange(keys);
+    const labels = hourLabels();
     const title = document.querySelector('#monthTitle');
     if (title) {
       title.textContent = start.getMonth() === end.getMonth()
         ? `${start.getFullYear()} 年 ${start.getMonth() + 1} 月 ${start.getDate()}–${end.getDate()} 日`
         : `${start.getMonth() + 1}月${start.getDate()}日 – ${end.getMonth() + 1}月${end.getDate()}日`;
     }
-    const hourLabels = Array.from({ length: hours.end - hours.start }, (_, index) => hours.start + index);
-    const rangeStart = hours.start * 60;
-    const rangeMinutes = (hours.end - hours.start) * 60;
+    const rangeStart = DAY_START * 60;
+    const rangeMinutes = (DAY_END - DAY_START) * 60;
     const header = keys.map((key) => {
       const date = parseKey(key);
       return `<button type="button" class="week-col-head${key === todayKey() ? ' is-today' : ''}" data-date="${key}"><span>${WEEKDAY_LABELS[(date.getDay() + 6) % 7]}</span><strong>${date.getDate()}</strong></button>`;
@@ -179,11 +207,14 @@
     }).join('');
     const dayCols = keys.map((key) => {
       const blocks = splitDayTasks(key).timed.map((task) => blockMarkup(task, key, rangeStart, rangeMinutes)).join('');
-      return `<div class="week-day-col" data-date="${key}"><div class="week-hour-lines">${hourLabels.map(() => '<i></i>').join('')}</div>${blocks}</div>`;
+      const now = key === todayKey() ? nowLineMarkup(keys, rangeStart, rangeMinutes) : '';
+      return `<div class="week-day-col" data-date="${key}"><div class="week-hour-lines">${labels.map(() => '<i></i>').join('')}</div>${blocks}${now}</div>`;
     }).join('');
-    const gutter = hourLabels.map((hour) => `<span>${pad(hour)}:00</span>`).join('');
-    board.innerHTML = `<aside class="week-mini" aria-label="本周在月历中的位置"></aside><section class="week-main"><div class="week-main-head"><span class="week-gutter-spacer"></span><div class="week-col-heads">${header}</div></div><div class="week-allday"><span class="week-gutter-label">全天</span><div class="week-allday-cols">${allDayCols}</div></div><div class="week-scroll"><div class="week-gutter" style="--hour-h:${HOUR_PX}px">${gutter}</div><div class="week-days" data-start-hour="${hours.start}" data-hours="${hourLabels.length}" style="--hour-h:${HOUR_PX}px;--hours:${hourLabels.length}">${dayCols}</div></div></section>`;
+    const gutter = labels.map((hour) => `<span>${pad(hour)}:00</span>`).join('');
+    board.innerHTML = `<aside class="week-mini" aria-label="本周在月历中的位置"></aside><section class="week-main"><div class="week-main-head"><span class="week-gutter-spacer"></span><div class="week-col-heads">${header}</div></div><div class="week-allday"><span class="week-gutter-label">全天</span><div class="week-allday-cols">${allDayCols}</div></div><div class="week-scroll"><div class="week-gutter" style="--hour-h:${HOUR_PX}px;--hours:${labels.length}">${gutter}</div><div class="week-days" data-start-hour="${DAY_START}" data-hours="${labels.length}" style="--hour-h:${HOUR_PX}px;--hours:${labels.length}">${dayCols}</div></div></section>`;
     renderMini(board.querySelector('.week-mini'), keys);
+    restoreScroll(board);
+    placeNowLine();
   }
   function setView(next) {
     view = next === 'week' ? 'week' : 'month';
@@ -200,8 +231,11 @@
       if (weekdays) weekdays.hidden = true;
       board.hidden = false;
       board.classList.remove('hidden');
+      savedScroll = null;
       renderBoard();
+      startNowClock();
     } else {
+      stopNowClock();
       board.hidden = true;
       board.classList.add('hidden');
       if (grid) grid.hidden = false;
@@ -253,8 +287,8 @@
   function pointToMinutes(clientY) {
     const days = document.querySelector('.week-days');
     if (!days) return 0;
-    const startHour = Number(days.dataset.startHour || HOUR_START);
-    const hours = Number(days.dataset.hours || 12);
+    const startHour = Number(days.dataset.startHour || 0);
+    const hours = Number(days.dataset.hours || 24);
     const rect = days.getBoundingClientRect();
     const ratio = clamp((clientY - rect.top) / Math.max(rect.height, 1), 0, 0.999);
     return snapMinutes(startHour * 60 + ratio * hours * 60);
@@ -266,8 +300,8 @@
   function applyPreview(block, startMin, endMin, dateKey) {
     const days = document.querySelector('.week-days');
     if (!days || !block) return;
-    const rangeStart = Number(days.dataset.startHour || HOUR_START) * 60;
-    const rangeMinutes = Number(days.dataset.hours || 12) * 60;
+    const rangeStart = Number(days.dataset.startHour || 0) * 60;
+    const rangeMinutes = Number(days.dataset.hours || 24) * 60;
     block.style.top = `${((clamp(startMin, rangeStart, rangeStart + rangeMinutes) - rangeStart) / rangeMinutes) * 100}%`;
     block.style.height = `${Math.max(6, ((clamp(endMin, startMin + MIN_SPAN, rangeStart + rangeMinutes) - clamp(startMin, rangeStart, rangeStart + rangeMinutes)) / rangeMinutes) * 100)}%`;
     const label = block.querySelector('em');
@@ -354,6 +388,14 @@
     if (typeof render === 'function') render();
     else renderBoard();
   }
+  function startNowClock() {
+    stopNowClock();
+    nowTimer = window.setInterval(placeNowLine, 30000);
+  }
+  function stopNowClock() {
+    if (nowTimer) window.clearInterval(nowTimer);
+    nowTimer = 0;
+  }
   function bindBoard() {
     const board = ensureBoard();
     if (board.dataset.bound === '1') return;
@@ -378,6 +420,19 @@
       const item = event.target.closest('.week-block, .week-chip, .week-col-head, .week-day-col, .week-allday-col');
       if (item?.dataset.date && typeof openCalendarDetail === 'function') openCalendarDetail(item.dataset.date);
     });
+    const panel = document.querySelector('#calendarPanel');
+    if (panel && panel.dataset.weekWheel !== '1') {
+      panel.dataset.weekWheel = '1';
+      panel.addEventListener('wheel', (event) => {
+        if (view !== 'week') return;
+        const scroll = document.querySelector('.week-scroll');
+        if (!scroll) return;
+        event.preventDefault();
+        event.stopPropagation();
+        savedScroll = scroll.scrollTop + event.deltaY;
+        scroll.scrollTop = savedScroll;
+      }, { capture: true, passive: false });
+    }
   }
   function boot() {
     ensureAssets();
