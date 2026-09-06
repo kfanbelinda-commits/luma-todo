@@ -87,9 +87,13 @@
   }
 
   function bindProgressToggle(group) {
+    const actions = group.querySelector('.project-header-actions');
+    let progress = group.querySelector('.project-progress');
+    if (!progress || !actions) return;
+    if (progress.parentElement !== actions) actions.insertBefore(progress, actions.firstChild);
+
     const hiddenToggle = group.querySelector('.completed-toggle');
-    const progress = group.querySelector('.project-progress');
-    if (!hiddenToggle || !progress || progress.dataset.boundToggle === '1') return;
+    if (!hiddenToggle || progress.dataset.boundToggle === '1') return;
 
     const button = progress.tagName === 'BUTTON' ? progress : document.createElement('button');
     if (button !== progress) {
@@ -97,6 +101,7 @@
       button.className = `${progress.className} is-toggle`.trim();
       button.textContent = progress.textContent;
       progress.replaceWith(button);
+      progress = button;
     } else {
       button.classList.add('is-toggle');
     }
