@@ -302,9 +302,14 @@
     const labels = hourLabels();
     const title = document.querySelector('#monthTitle');
     if (title) {
-      title.textContent = start.getMonth() === end.getMonth()
-        ? `${start.getFullYear()} 年 ${start.getMonth() + 1} 月 ${start.getDate()}–${end.getDate()} 日`
-        : `${start.getMonth() + 1}月${start.getDate()}日 – ${end.getMonth() + 1}月${end.getDate()}日`;
+      const crossYear = start.getFullYear() !== end.getFullYear();
+      if (crossYear) {
+        title.textContent = `${start.getFullYear()}年${start.getMonth() + 1}月${start.getDate()}日 – ${end.getFullYear()}年${end.getMonth() + 1}月${end.getDate()}日`;
+      } else if (start.getMonth() === end.getMonth()) {
+        title.textContent = `${start.getMonth() + 1} 月 ${start.getDate()}–${end.getDate()} 日`;
+      } else {
+        title.textContent = `${start.getMonth() + 1}月${start.getDate()}日 – ${end.getMonth() + 1}月${end.getDate()}日`;
+      }
     }
     const rangeStart = DAY_START * 60;
     const rangeMinutes = (DAY_END - DAY_START) * 60;
