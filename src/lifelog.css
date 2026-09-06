@@ -140,14 +140,14 @@ html:not([data-theme="light"]) {
   content: "";
   position: absolute;
   inset: 0 0 auto;
-  height: 26px;
+  height: 34px;
   z-index: 1;
   pointer-events: none;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, .32), transparent);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, .38), transparent);
 }
 .lifelog-cell .lifelog-day-num {
   position: absolute;
-  top: 5px;
+  top: 4px;
   left: 6px;
   z-index: 3;
   min-width: 0;
@@ -157,30 +157,32 @@ html:not([data-theme="light"]) {
   border-radius: 0;
   background: transparent;
   color: var(--lifelog-day-chip-fg, #1a1f2a);
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 800;
+  letter-spacing: -0.03em;
   line-height: 1;
   box-shadow: none;
 }
 .lifelog-cell.no-note .lifelog-day-num {
-  color: var(--muted, rgba(90, 96, 108, .42));
-  font-weight: 650;
+  color: var(--muted, rgba(90, 96, 108, .48));
+  font-weight: 700;
 }
 .lifelog-cell.has-img .lifelog-day-num {
   background: transparent;
   color: #fff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, .6), 0 0 8px rgba(0, 0, 0, .35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .7), 0 0 10px rgba(0, 0, 0, .4);
   box-shadow: none;
 }
 .lifelog-cell.is-today .lifelog-day-num {
-  min-width: 22px;
-  height: 22px;
+  min-width: 26px;
+  height: 26px;
   padding: 0 6px;
   display: grid;
   place-items: center;
-  border-radius: 7px;
+  border-radius: 8px;
   background: #2a3038;
   color: #fff;
+  font-size: 15px;
   text-shadow: none;
   box-shadow: none;
 }
@@ -560,7 +562,7 @@ html:not([data-theme="light"]) .lifelog-note:focus {
 
 .lifelog-cell-note {
   position: absolute;
-  inset: 34px 7px 8px;
+  inset: 38px 7px 8px;
   z-index: 1;
   overflow: hidden;
   display: -webkit-box;
