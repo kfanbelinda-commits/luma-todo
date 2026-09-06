@@ -444,6 +444,7 @@
     if (column && block.parentElement !== column) column.appendChild(block);
   }
   function beginDrag(event, block, edge) {
+    if (drag) return;
     const task = findTask(block.dataset.id);
     if (!canDragTime(task)) return;
     event.preventDefault();
@@ -453,20 +454,28 @@
     drag = {
       taskId: task.id, edge: edge || 'move', pointerId: event.pointerId,
       originX: event.clientX, originY: event.clientY, moved: false,
-      dateKey: block.dataset.date, startMin, endMin,
+      dateKey: block.dataset.date, startMin, endMin, captureTarget: ensureBoard(),
       original: { dueDate: task.dueDate, endDate: task.endDate || task.dueDate, time: task.time, endTime: task.endTime || '' },
     };
     block.classList.add('is-dragging');
     document.body.classList.add('week-dragging');
-    try { block.setPointerCapture(event.pointerId); } catch {}
-    window.addEventListener('pointermove', updateDrag);
-    window.addEventListener('pointerup', onWindowUp);
-    window.addEventListener('pointercancel', onWindowCancel);
+    // The preview reparents the block between columns, which releases capture.
+    // Keep capture on the stable board so an outside release still commits.
+    try { drag.captureTarget.setPointerCapture(event.pointerId); } catch {}
+    window.addEventListener('pointermove', updateDrag, true);
+    window.addEventListener('pointerup', onWindowUp, true);
+    window.addEventListener('pointercancel', onWindowCancel, true);
   }
-  function onWindowUp() { finishDrag(false); }
-  function onWindowCancel() { finishDrag(true); }
+  function onWindowUp(event) {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    updateDrag(event);
+    finishDrag(false);
+  }
+  function onWindowCancel(event) {
+    if (drag && event.pointerId === drag.pointerId) finishDrag(true);
+  }
   function updateDrag(event) {
-    if (!drag) return;
+    if (!drag || event.pointerId !== drag.pointerId) return;
     if (Math.abs(event.clientX - drag.originX) + Math.abs(event.clientY - drag.originY) > 4) drag.moved = true;
     const task = findTask(drag.taskId);
     const block = document.querySelector(`.week-block[data-id="${drag.taskId}"]`);
@@ -485,19 +494,7 @@
     }
     drag.liveStart = startMin;
     drag.liveEnd = endMin;
-    task.time = formatMinutes(startMin);
-    task.endTime = formatMinutes(endMin);
-    if (drag.edge === 'move') {
-      task.dueDate = drag.dateKey;
-      if (typeof isCalendarEvent === 'function' && isCalendarEvent(task) && typeof fromDateKey === 'function') {
-        const length = (fromDateKey(drag.original.endDate) - fromDateKey(drag.original.dueDate)) / 86400000;
-        const end = parseKey(drag.dateKey);
-        end.setDate(end.getDate() + Math.max(0, length));
-        task.endDate = toKey(end);
-      } else {
-        task.endDate = drag.dateKey;
-      }
-    }
+    // Only the preview changes until this pointer is released successfully.
     applyPreview(block, startMin, endMin, drag.dateKey);
   }
   async function finishDrag(cancel) {
@@ -505,18 +502,15 @@
     drag = null;
     document.body.classList.remove('week-dragging');
     document.querySelectorAll('.week-block.is-dragging').forEach((el) => el.classList.remove('is-dragging'));
-    window.removeEventListener('pointermove', updateDrag);
-    window.removeEventListener('pointerup', onWindowUp);
-    window.removeEventListener('pointercancel', onWindowCancel);
+    window.removeEventListener('pointermove', updateDrag, true);
+    window.removeEventListener('pointerup', onWindowUp, true);
+    window.removeEventListener('pointercancel', onWindowCancel, true);
     if (!current) return;
+    try { current.captureTarget.releasePointerCapture(current.pointerId); } catch {}
     if (current.moved) ensureBoard().dataset.skipClick = '1';
     const task = findTask(current.taskId);
     if (!task) { renderBoard(); return; }
     if (cancel || !current.moved) {
-      task.dueDate = current.original.dueDate;
-      task.endDate = current.original.endDate;
-      task.time = current.original.time;
-      task.endTime = current.original.endTime;
       renderBoard();
       return;
     }

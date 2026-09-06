@@ -503,7 +503,7 @@ html[data-theme="light"] .week-mini-day.is-anchor {
   border-radius: 50%;
   background: #c45c4a;
 }
-.week-block.is-draggable { cursor: grab; }
+.week-block.is-draggable { cursor: grab; touch-action: none; }
 .week-block.is-dragging { cursor: grabbing; z-index: 3; }
 .week-handle {
   position: absolute;
