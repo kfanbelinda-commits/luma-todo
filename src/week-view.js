@@ -199,9 +199,6 @@
       cells.push(`<button type="button" class="week-mini-day${muted ? ' is-muted' : ''}${weekSet.has(key) ? ' is-week' : ''}${key === today ? ' is-today' : ''}${key === anchorKey ? ' is-anchor' : ''}" data-date="${key}">${date.getDate()}</button>`);
     }
     const stats = monthStats(year, month);
-    const dayNum = pad(focus.getDate());
-    const monthLabel = `${month + 1}月 / ${year}`;
-    const weekdayLabel = `周${WEEKDAY_LABELS[(focus.getDay() + 6) % 7]}`;
     const statRows = stats.rows.map((row) => (
       `<tr class="week-rail-stat is-${row.tone}"><td><i aria-hidden="true"></i></td><td>${row.label}</td><td>${row.count}</td><td>${row.ratio}</td></tr>`
     )).join('');
@@ -217,7 +214,6 @@
     )).join('') || '<li class="week-rail-empty">完成待办后会出现在这里</li>';
     host.innerHTML = [
       `<div class="week-rail-top">`
-      + `<div class="week-rail-date"><strong>${dayNum}</strong><span>${monthLabel}<small>${weekdayLabel}</small></span></div>`
       + `<div class="week-rail-cal">`
       + `<div class="week-mini-weekdays">${WEEKDAY_LABELS.map((label) => `<span>${label}</span>`).join('')}</div>`
       + `<div class="week-mini-grid">${cells.join('')}</div>`
@@ -554,6 +550,14 @@
       panel.dataset.weekWheel = '1';
       panel.addEventListener('wheel', (event) => {
         if (view !== 'week') return;
+        const rail = event.target.closest('.week-mini');
+        if (rail) {
+          const body = rail.querySelector('.week-rail-body') || rail;
+          event.preventDefault();
+          event.stopPropagation();
+          body.scrollTop += event.deltaY;
+          return;
+        }
         const scroll = document.querySelector('.week-scroll');
         if (!scroll) return;
         event.preventDefault();

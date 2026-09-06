@@ -60,12 +60,6 @@
   flex-direction: column;
   gap: 10px;
 }
-.week-rail-range {
-  margin: 0;
-  color: var(--muted, rgba(90, 96, 108, .62));
-  font-size: 11px;
-  font-weight: 500;
-}
 .week-rail-body {
   display: flex;
   min-height: 0;
@@ -77,30 +71,7 @@
   padding-right: 2px;
   scrollbar-width: thin;
 }
-.week-rail-date {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 0 2px;
-}
-.week-rail-date strong {
-  font-size: 40px;
-  font-weight: 700;
-  letter-spacing: -0.04em;
-  line-height: 0.95;
-}
-.week-rail-date span {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  color: var(--muted, rgba(90, 96, 108, .72));
-  font-size: 13px;
-  font-weight: 500;
-}
-.week-rail-date small {
-  font-size: 11px;
-  font-weight: 500;
-}
+
 .week-rail-cal {
   flex: 0 0 auto;
 }
