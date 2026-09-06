@@ -398,11 +398,11 @@ html[data-theme="light"] .week-mini-day.is-anchor {
   min-height: 0;
   flex: 1;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: scroll; /* always reserve a bar so measured --week-sb matches spacer */
   scrollbar-width: thin;
 }
 .week-scroll::-webkit-scrollbar {
-  width: var(--week-sb, 12px);
+  width: 12px;
 }
 .week-gutter {
   display: grid;

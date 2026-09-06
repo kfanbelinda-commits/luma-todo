@@ -287,6 +287,14 @@
     }
     return VIEW_START * HOUR_PX;
   }
+  function syncWeekScrollbarGutter() {
+    const main = document.querySelector('.week-main');
+    const scroll = document.querySelector('.week-scroll');
+    if (!main || !scroll) return;
+    // Real scrollbar width — guessing 12px is why head/allday vs timed grid keep drifting.
+    const width = Math.max(0, scroll.offsetWidth - scroll.clientWidth);
+    main.style.setProperty('--week-sb', `${width}px`);
+  }
   function restoreScroll(board) {
     const scroll = board.querySelector('.week-scroll');
     if (!scroll) return;
@@ -330,6 +338,7 @@
     board.innerHTML = `<aside class="week-mini" aria-label="周视图侧栏"></aside><section class="week-main"><div class="week-main-head"><span class="week-gutter-spacer"></span><div class="week-col-heads${todayIndex ? ' has-today' : ''}" style="--today-index:${todayIndex}">${header}</div></div><div class="week-hairline" aria-hidden="true"></div><div class="week-allday"><span class="week-gutter-label">全天</span><div class="week-allday-cols${todayIndex ? ' has-today' : ''}" style="--today-index:${todayIndex}">${allDayCols}</div></div><div class="week-hairline" aria-hidden="true"></div><div class="week-scroll"><div class="week-gutter" style="--hour-h:${HOUR_PX}px;--hours:${labels.length}">${gutter}</div><div class="week-days${todayIndex ? ' has-today' : ''}" data-start-hour="${DAY_START}" data-hours="${labels.length}" style="--hour-h:${HOUR_PX}px;--hours:${labels.length};--today-index:${todayIndex}">${dayCols}${nowLine}</div></div></section>`;
     renderMini(board.querySelector('.week-mini'), keys);
     restoreScroll(board);
+    syncWeekScrollbarGutter();
     placeNowLine();
   }
   function setView(next) {
@@ -523,6 +532,10 @@
       if (handle && block) { beginDrag(event, block, handle.dataset.edge); return; }
       if (block?.classList.contains('is-draggable')) beginDrag(event, block, 'move');
     });
+    if (!window.__weekSbResizeBound) {
+      window.__weekSbResizeBound = true;
+      window.addEventListener('resize', () => syncWeekScrollbarGutter());
+    }
     board.addEventListener('click', (event) => {
       if (board.dataset.skipClick === '1') {
         delete board.dataset.skipClick;
