@@ -186,11 +186,12 @@ html[data-theme="light"] .week-mini-day.is-anchor {
   grid-template-columns: 44px minmax(0, 1fr);
   min-height: 0;
   flex: 1;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .week-gutter {
   display: grid;
-  grid-template-rows: repeat(var(--hours, 12), var(--hour-h, 44px));
+  grid-template-rows: repeat(var(--hours, 24), var(--hour-h, 44px));
 }
 .week-gutter span {
   transform: translateY(-6px);
@@ -201,7 +202,7 @@ html[data-theme="light"] .week-mini-day.is-anchor {
 }
 .week-days {
   position: relative;
-  min-height: calc(var(--hours, 12) * var(--hour-h, 44px));
+  min-height: calc(var(--hours, 24) * var(--hour-h, 44px));
 }
 .week-day-col {
   position: relative;
@@ -209,7 +210,7 @@ html[data-theme="light"] .week-mini-day.is-anchor {
 }
 .week-hour-lines {
   display: grid;
-  grid-template-rows: repeat(var(--hours, 12), var(--hour-h, 44px));
+  grid-template-rows: repeat(var(--hours, 24), var(--hour-h, 44px));
 }
 .week-hour-lines i {
   border-top: 1px solid rgba(128, 128, 128, .08);
@@ -227,6 +228,24 @@ html[data-theme="light"] .week-mini-day.is-anchor {
   font-style: normal;
   font-size: 10px;
   opacity: .72;
+}
+.week-now {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 2;
+  height: 0;
+  border-top: 1.5px solid #c45c4a;
+  pointer-events: none;
+}
+.week-now span {
+  position: absolute;
+  top: -4px;
+  left: -5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c45c4a;
 }
 .week-block.is-draggable { cursor: grab; }
 .week-block.is-dragging { cursor: grabbing; z-index: 3; }
