@@ -371,9 +371,29 @@ html[data-theme="light"] .week-mini-day.is-anchor {
   overflow-x: hidden;
   overflow-y: scroll; /* always reserve a bar so measured --week-sb matches spacer */
   scrollbar-width: thin;
+  scrollbar-color: rgba(90, 96, 108, .18) transparent;
 }
-.week-scroll::-webkit-scrollbar {
+.week-scroll::-webkit-scrollbar,
+.week-rail-body::-webkit-scrollbar {
   width: 12px;
+}
+.week-scroll::-webkit-scrollbar-track,
+.week-rail-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.week-scroll::-webkit-scrollbar-thumb,
+.week-rail-body::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+  background-color: rgba(90, 96, 108, .18);
+}
+.week-scroll::-webkit-scrollbar-thumb:hover,
+.week-rail-body::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(90, 96, 108, .28);
+}
+.week-rail-body {
+  scrollbar-color: rgba(90, 96, 108, .18) transparent;
 }
 .week-gutter {
   display: grid;
@@ -491,4 +511,25 @@ body.week-dragging .week-block.is-dragging { pointer-events: auto; }
 /* Week mode: keep the same header chrome as month to avoid jump. */
 .calendar-panel.is-week #monthLunar {
   display: none;
+}
+
+/* Month/week nav — quiet squares, SVG chevrons centered like Apple/Google. */
+.calendar-panel .month-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.calendar-panel .month-controls .icon-button {
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  line-height: 0;
+  border-radius: 8px;
+}
+.calendar-panel .month-controls .icon-button svg {
+  width: 14px;
+  height: 14px;
+  display: block;
 }
