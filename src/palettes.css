@@ -157,3 +157,33 @@ html[data-palette="dusk"] .quick-input-wrap input,
 html[data-palette="dusk"] .day-number {
   color: #f3ede4;
 }
+
+/* Shared polish for every palette. */
+.task-item .check { position: relative; }
+.task-item .check::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+}
+.day-event {
+  line-height: 16px;
+  min-height: 21px;
+}
+.calendar-day.crowded .day-event {
+  line-height: 16px;
+  min-height: 21px;
+}
+.day-event[hidden] { display: none !important; }
+.day-overflow {
+  display: block;
+  width: 100%;
+  flex: 0 0 auto;
+  min-height: 20px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+}
+.project-header-actions { gap: 3px; }
