@@ -8,6 +8,7 @@ const { execFile } = require('child_process');
 
 const DEMO_MODE = !app.isPackaged && process.argv.includes('--demo');
 const DEMO_RESET_MODE = DEMO_MODE && process.argv.includes('--demo-reset');
+const DEMO_RESET_LIFELOG = DEMO_MODE && (DEMO_RESET_MODE || process.argv.includes('--demo-reset-lifelog'));
 const ICLOUD_TEST_MODE = !app.isPackaged && process.argv.includes('--icloud-test');
 
 // Demo data stays isolated. The iCloud experiment deliberately uses the real
@@ -94,7 +95,7 @@ function ensureDemoLifelog() {
   if (!DEMO_MODE) return;
   const target = lifelogPath();
   const mediaDir = lifelogMediaDir();
-  if (DEMO_RESET_MODE) {
+  if (DEMO_RESET_LIFELOG) {
     if (fs.existsSync(target)) fs.unlinkSync(target);
     if (fs.existsSync(mediaDir)) fs.rmSync(mediaDir, { recursive: true, force: true });
   }
@@ -103,7 +104,14 @@ function ensureDemoLifelog() {
   const demo = buildDemoLifelog(new Date());
   fs.mkdirSync(mediaDir, { recursive: true });
   for (const item of demo.media || []) {
-    fs.writeFileSync(path.join(mediaDir, item.relativePath), item.svg, 'utf8');
+    const dest = path.join(mediaDir, item.relativePath);
+    if (item.fromFile) {
+      fs.copyFileSync(item.fromFile, dest);
+    } else if (item.buffer) {
+      fs.writeFileSync(dest, item.buffer);
+    } else if (item.svg != null) {
+      fs.writeFileSync(dest, item.svg, 'utf8');
+    }
   }
   writeLifelogStore({ version: 1, entries: demo.entries });
 }

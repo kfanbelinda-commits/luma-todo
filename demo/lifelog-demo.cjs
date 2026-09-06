@@ -1,6 +1,9 @@
 /* Demo-only lifelog seed. Never touches real userData. */
 "use strict";
 
+const fs = require("fs");
+const path = require("path");
+
 const WEATHER = ["sunny", "cloudy", "rainy", "windy", "snowy", "storm"];
 const MOODS = ["great", "good", "okay", "calm", "low", "awful"];
 const NOTES = [
@@ -15,11 +18,33 @@ const NOTES = [
   "夜里看了会书，睡眠应该会好一点。",
   "灵感冒了一下，先记下来免得跑掉。",
 ];
-const COVER_COLORS = ["#7b8dbf", "#6fa8a8", "#c4a574", "#8b6ef5", "#4aa6a1", "#f58a3d", "#5d8de0", "#a878ad"];
+
+const COVER_FILES = [
+  "01-night-city.jpg",
+  "02-travel-street.jpg",
+  "03-cafe.jpg",
+  "04-food.jpg",
+  "05-park-walk.jpg",
+  "06-sunset.jpg",
+  "07-rainy-window.jpg",
+  "08-desk-life.jpg",
+  "09-subway.jpg",
+  "10-beach.jpg",
+  "11-mountain.jpg",
+  "12-friends-silhouette.jpg",
+  "13-neon-night.jpg",
+  "14-morning-coffee.jpg",
+  "15-city-skyline.jpg",
+  "16-road-trip.jpg"
+];
 
 function pad(n) { return String(n).padStart(2, "0"); }
 function keyFor(date) {
   return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate());
+}
+
+function coverPath(name) {
+  return path.join(__dirname, "lifelog-covers", name);
 }
 
 /** Full-month showcase wall for demo mode. */
@@ -29,6 +54,10 @@ function buildDemoLifelog(now = new Date()) {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const entries = {};
   const media = [];
+  const available = COVER_FILES.filter((name) => fs.existsSync(coverPath(name)));
+  if (!available.length) {
+    throw new Error("demo/lifelog-covers is empty — run node scripts/download-lifelog-covers.cjs");
+  }
 
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(year, month, d, 12, 0, 0, 0);
@@ -42,10 +71,9 @@ function buildDemoLifelog(now = new Date()) {
     const photos = [];
 
     if (seed >= 3 || d % 2 === 0) {
-      const file = key + "-cover.svg";
-      const color = COVER_COLORS[d % COVER_COLORS.length];
-            const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="' + color + '"/><stop offset="100%" stop-color="#1c222c"/></linearGradient></defs><rect width="640" height="640" fill="url(#g)"/><circle cx="520" cy="140" r="180" fill="rgba(255,255,255,.14)"/><circle cx="140" cy="520" r="240" fill="rgba(0,0,0,.16)"/></svg>';
-      media.push({ relativePath: file, svg });
+      const srcName = available[(d - 1) % available.length];
+      const file = key + "-cover.jpg";
+      media.push({ relativePath: file, fromFile: coverPath(srcName) });
       photos.push({ id: "demo-" + key + "-1", path: file, addedAt: date.getTime() });
     }
 
