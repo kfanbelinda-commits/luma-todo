@@ -64,7 +64,7 @@
       chip?.remove();
       return item;
     }
-    if (date.querySelector('.overdue-mark')) {
+    if (item.querySelector(':scope > .overdue-mark, .task-actions > .overdue-mark')) {
       chip?.remove();
       return item;
     }
@@ -75,21 +75,15 @@
     if (!chip && !days) return item;
 
     const dueNode = date.querySelector('.task-due');
-    const dueText = (dueNode ? dueNode.textContent : date.textContent).replace(/\s*\+\d+\s*$/, '').trim();
-
+    const dueText = (dueNode ? dueNode.textContent : date.textContent).replace(/\s*\+\d+\s*/g, '').trim();
     date.classList.add('is-overdue');
     date.removeAttribute('title');
-    date.textContent = '';
-    if (dueText) {
-      const due = document.createElement('span');
-      due.className = 'task-due';
-      due.textContent = dueText;
-      date.append(due);
-    }
+    date.textContent = dueText;
+
     const mark = document.createElement('span');
     mark.className = 'overdue-mark';
     mark.textContent = `+${days || 1}`;
-    date.append(mark);
+    date.before(mark);
 
     chip?.remove();
     const meta = item.querySelector('.task-meta');
