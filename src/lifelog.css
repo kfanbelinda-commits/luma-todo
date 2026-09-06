@@ -325,6 +325,26 @@ html:not([data-theme="light"]) .lifelog-note { background: rgba(0, 0, 0, .18); }
 .lifelog-photo-hint {
   font-size: 11px;
 }
+.lifelog-photo-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(20, 24, 32, .55);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+.lifelog-photo-remove:hover {
+  background: rgba(180, 48, 48, .82);
+}
 .lifelog-photo-add.is-overlay {
   position: absolute;
   right: 8px;

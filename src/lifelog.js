@@ -306,11 +306,29 @@
     await saveStore();
   }
 
-  async function renderDetail(dateKey) {
+    async function removePhoto(dateKey, photoId) {
+    const entry = entryFor(dateKey);
+    const photos = entry.photos || [];
+    const target = photos.find((photo) => photo.id === photoId);
+    if (!target) return;
+    entry.photos = photos.filter((photo) => photo.id !== photoId);
+    if (entry.coverPhotoId === photoId) {
+      entry.coverPhotoId = entry.photos[0] ? entry.photos[0].id : "";
+    }
+    entry.updatedAt = Date.now();
+    if (target.path) {
+      mediaCache.delete(target.path);
+      try { await window.luma?.lifelogDeleteMedia?.(target.path); } catch (_) {}
+    }
+    await saveStore();
+  }
+
+async function renderDetail(dateKey) {
     const section = ensureDetailMount();
     if (!section || !dateKey) return;
     const entry = entryFor(dateKey);
-    const cover = await coverUrl(entry);
+    const coverPhoto = (entry.photos || []).find((photo) => photo.id === entry.coverPhotoId) || (entry.photos || [])[0] || null;
+    const cover = coverPhoto ? await mediaUrl(coverPhoto.path) : null;
     section.innerHTML = ""
       + '<div class="calendar-detail-section-title"><span>Lifelog</span><span class="calendar-detail-count">生活记录</span></div>'
       + '<div class="lifelog-pick-row">'
@@ -320,14 +338,15 @@
       + '<label class="lifelog-note-label" for="lifeLogNote">今日絮语</label>'
       + '<textarea id="lifeLogNote" class="lifelog-note" rows="3" maxlength="280" placeholder="写给今天的一句，不必很长…">' + (entry.note || "").replace(/</g, "&lt;") + "</textarea>"
       + '<div class="lifelog-photos" tabindex="0" aria-label="添加图片，可粘贴">'
-      + (cover
-        ? '<img class="lifelog-photo-thumb" src="' + cover + '" alt="">'
-          + '<button type="button" class="lifelog-photo-add is-overlay" aria-label="再加一张">＋</button>'
-        : '<button type="button" class="lifelog-photo-empty" aria-label="添加图片">'
-          + '<span class="lifelog-photo-plus">＋</span>'
-          + '<span class="lifelog-photo-hint">添加图片 · 也可粘贴</span>'
-          + "</button>")
-      + '<input class="lifelog-photo-file" type="file" accept="image/*" hidden>'
+            + (cover
+              ? '<img class="lifelog-photo-thumb" src="' + cover + '" alt="">'
+                + '<button type="button" class="lifelog-photo-remove" data-photo-id="' + coverPhoto.id + '" aria-label="删除图片">×</button>'
+                + '<button type="button" class="lifelog-photo-add is-overlay" aria-label="再加一张">＋</button>'
+              : '<button type="button" class="lifelog-photo-empty" aria-label="添加图片">'
+                + '<span class="lifelog-photo-plus">＋</span>'
+                + '<span class="lifelog-photo-hint">添加图片 · 也可粘贴</span>'
+                + "</button>")
+            + '<input class="lifelog-photo-file" type="file" accept="image/*" hidden>'
       + "</div>";
 
     function closeMenus(except) {
@@ -396,6 +415,15 @@
       event.preventDefault();
       event.stopPropagation();
       openPicker();
+    });
+    section.querySelector(".lifelog-photo-remove")?.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const photoId = event.currentTarget.getAttribute("data-photo-id");
+      if (!photoId) return;
+      await removePhoto(dateKey, photoId);
+      await renderDetail(dateKey);
+      if (view === "lifelog") await renderBoard();
     });
     fileInput?.addEventListener("change", async () => {
       const file = fileInput.files && fileInput.files[0];

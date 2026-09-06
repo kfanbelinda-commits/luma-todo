@@ -26,4 +26,5 @@ contextBridge.exposeInMainWorld('luma', {
   lifelogSave: (payload) => ipcRenderer.invoke('lifelog:save', payload),
   lifelogMediaDataUrl: (relativePath) => ipcRenderer.invoke('lifelog:media-data-url', relativePath),
   lifelogSaveMedia: (payload) => ipcRenderer.invoke('lifelog:save-media', payload),
+  lifelogDeleteMedia: (relativePath) => ipcRenderer.invoke('lifelog:delete-media', relativePath),
 });

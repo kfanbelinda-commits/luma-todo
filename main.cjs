@@ -1978,6 +1978,18 @@ trustedHandle('lifelog:save-media', (_event, payload) => {
   return safeName;
 });
 
+trustedHandle('lifelog:delete-media', (_event, relativePath) => {
+  const safeName = String(relativePath || '')
+    .replace(/\\/g, '/')
+    .split('/')
+    .filter(Boolean)
+    .pop();
+  if (!safeName || safeName.includes('..')) throw new Error('invalid media path');
+  const abs = path.join(lifelogMediaDir(), safeName);
+  if (fs.existsSync(abs)) fs.unlinkSync(abs);
+  return true;
+});
+
 trustedHandle('lifelog:media-data-url', (_event, relativePath) => {
   const abs = lifelogMediaAbsolute(relativePath);
   if (!abs || !fs.existsSync(abs)) return null;
