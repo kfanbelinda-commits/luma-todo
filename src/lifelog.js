@@ -282,18 +282,55 @@
   function ensureDetailMount() {
     const detail = document.querySelector("#calendarDetailView");
     if (!detail) return null;
+    const body = detail.querySelector(".calendar-detail-body");
+    if (!body) return null;
+
     let section = document.querySelector("#lifeLogDetail");
     if (!section) {
       section = document.createElement("section");
       section.id = "lifeLogDetail";
       section.className = "calendar-detail-section lifelog-detail";
-      const addBtn = document.querySelector("#addCalendarItem");
-      if (addBtn && addBtn.parentElement) addBtn.insertAdjacentElement("afterend", section);
-      else detail.appendChild(section);
     }
+
     const addBtn = document.querySelector("#addCalendarItem");
-    if (addBtn && section.previousElementSibling !== addBtn) {
-      addBtn.insertAdjacentElement("afterend", section);
+    const scheduleSection = document.querySelector("#calendarScheduleList")?.closest(".calendar-detail-section");
+    const todoSection = document.querySelector("#calendarTodoList")?.closest(".calendar-detail-section")
+      || body.querySelector(".calendar-detail-todos");
+
+    if (view === "lifelog") {
+      // Record-first: lifeLogDetail on top; schedule/todos/add in collapsed 「当天安排」.
+      let plan = document.querySelector("#lifeLogDayPlan");
+      if (!plan) {
+        plan = document.createElement("details");
+        plan.id = "lifeLogDayPlan";
+        plan.className = "lifelog-day-plan";
+        const summary = document.createElement("summary");
+        summary.className = "lifelog-day-plan-summary";
+        summary.textContent = "当天安排";
+        plan.appendChild(summary);
+      }
+      if (scheduleSection && scheduleSection.parentElement !== plan) plan.appendChild(scheduleSection);
+      if (todoSection && todoSection.parentElement !== plan) plan.appendChild(todoSection);
+      if (addBtn && addBtn.parentElement !== plan) plan.appendChild(addBtn);
+
+      if (body.firstElementChild !== section) body.insertBefore(section, body.firstChild);
+      if (section.nextElementSibling !== plan) section.insertAdjacentElement("afterend", plan);
+    } else {
+      // Month/week: restore schedule → todos → add → lifeLogDetail (unchanged order).
+      const plan = document.querySelector("#lifeLogDayPlan");
+      if (plan) {
+        const insertBefore = plan;
+        Array.from(plan.childNodes).forEach((child) => {
+          if (child.nodeName === "SUMMARY") return;
+          body.insertBefore(child, insertBefore);
+        });
+        plan.remove();
+      }
+      if (addBtn && addBtn.parentElement) {
+        if (section.previousElementSibling !== addBtn) addBtn.insertAdjacentElement("afterend", section);
+      } else if (!section.isConnected) {
+        body.appendChild(section);
+      }
     }
     return section;
   }
