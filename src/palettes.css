@@ -259,27 +259,82 @@ html[data-palette="dusk"] .opacity-control output {
   font: inherit;
   font-size: 11px;
 }
+
+/* Things/Todoist: heading metadata stays with the title;
+   + is an icon rail; dates belong only to task rows. */
 .project-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20px;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  column-gap: 6px;
+  min-height: 28px;
+  padding-bottom: 6px;
 }
 .project-title {
+  display: flex;
+  align-items: center;
   min-width: 0;
-  flex: 1;
+  height: 20px;
 }
 .project-header-actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  flex: 0 0 auto;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  gap: 0;
 }
-.project-header-actions .project-progress {
-  margin-left: 0;
-  min-width: 2.75em;
-  text-align: right;
+.project-add-task {
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+}
+.project-title .project-progress,
+button.project-progress,
+span.project-progress {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 0 2px 0 10px;
+  border: 0;
+  border-radius: 0;
+  height: 20px;
+  background: transparent;
+  color: var(--muted, rgba(90, 96, 108, .62));
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 450;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  line-height: 20px;
+  opacity: .7;
+}
+html[data-theme="light"] .project-title .project-progress,
+html[data-theme="light"] button.project-progress,
+html[data-theme="light"] span.project-progress {
+  color: rgba(90, 98, 110, .58);
+  opacity: 1;
+}
+button.project-progress.is-toggle {
+  cursor: pointer;
+}
+button.project-progress.is-toggle:hover,
+button.project-progress.is-toggle:focus-visible {
+  color: var(--muted, rgba(90, 96, 108, .88));
+  background: transparent;
+  outline: none;
+  opacity: 1;
+}
+button.project-progress.is-toggle[aria-expanded="true"] {
+  color: var(--muted);
+  background: transparent;
+  opacity: 1;
+}
+.completed-toggle {
+  display: none !important;
 }
 
 .task-date-label {
@@ -312,48 +367,4 @@ html[data-palette="dusk"] .opacity-control output {
   width: 132px;
   min-width: 132px;
   grid-template-columns: minmax(0, 104px) 24px;
-}
-
-.project-title .project-progress,
-button.project-progress,
-span.project-progress {
-  appearance: none;
-  flex: 0 0 auto;
-  margin-left: 4px;
-  border: 0;
-  border-radius: 0;
-  padding: 0;
-  background: transparent;
-  color: var(--muted, rgba(90, 96, 108, .72));
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 450;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.01em;
-  line-height: 1;
-  opacity: .78;
-}
-html[data-theme="light"] .project-title .project-progress,
-html[data-theme="light"] button.project-progress,
-html[data-theme="light"] span.project-progress {
-  color: rgba(90, 98, 110, .62);
-  opacity: 1;
-}
-button.project-progress.is-toggle {
-  cursor: pointer;
-}
-button.project-progress.is-toggle:hover,
-button.project-progress.is-toggle:focus-visible {
-  color: var(--muted, rgba(90, 96, 108, .88));
-  background: transparent;
-  outline: none;
-  opacity: 1;
-}
-button.project-progress.is-toggle[aria-expanded="true"] {
-  color: var(--muted);
-  background: transparent;
-  opacity: 1;
-}
-.completed-toggle {
-  display: none !important;
 }
