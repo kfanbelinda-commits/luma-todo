@@ -3,6 +3,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { spawnSync } = require("child_process");
 
 const WEATHER = ["sunny", "cloudy", "rainy", "windy", "snowy", "storm"];
 const MOODS = ["great", "good", "okay", "calm", "low", "awful"];
@@ -47,17 +48,44 @@ function coverPath(name) {
   return path.join(__dirname, "lifelog-covers", name);
 }
 
+function listCovers() {
+  return COVER_FILES.filter((name) => {
+    try {
+      return fs.existsSync(coverPath(name)) && fs.statSync(coverPath(name)).size > 2048;
+    } catch {
+      return false;
+    }
+  });
+}
+
+function tryRestoreCovers() {
+  if (listCovers().length) return;
+  const repoRoot = path.join(__dirname, "..");
+  fs.mkdirSync(path.join(__dirname, "lifelog-covers"), { recursive: true });
+  spawnSync("git", ["checkout", "HEAD", "--", "demo/lifelog-covers"], {
+    cwd: repoRoot,
+    stdio: "ignore",
+    windowsHide: true,
+    timeout: 15000,
+  });
+  if (listCovers().length) return;
+  spawnSync(process.execPath, [path.join(repoRoot, "scripts", "download-lifelog-covers.cjs")], {
+    cwd: repoRoot,
+    stdio: "ignore",
+    windowsHide: true,
+    timeout: 90000,
+  });
+}
+
 /** Full-month showcase wall for demo mode. */
 function buildDemoLifelog(now = new Date()) {
+  tryRestoreCovers();
   const year = now.getFullYear();
   const month = now.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const entries = {};
   const media = [];
-  const available = COVER_FILES.filter((name) => fs.existsSync(coverPath(name)));
-  if (!available.length) {
-    throw new Error("demo/lifelog-covers is empty — run node scripts/download-lifelog-covers.cjs");
-  }
+  const available = listCovers();
 
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(year, month, d, 12, 0, 0, 0);
@@ -70,7 +98,7 @@ function buildDemoLifelog(now = new Date()) {
     const note = NOTES[(d + month) % NOTES.length];
     const photos = [];
 
-    if (seed >= 3 || d % 2 === 0) {
+    if (available.length && (seed >= 3 || d % 2 === 0)) {
       const srcName = available[(d - 1) % available.length];
       const file = key + "-cover.jpg";
       media.push({ relativePath: file, fromFile: coverPath(srcName) });

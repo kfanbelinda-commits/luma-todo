@@ -1833,7 +1833,7 @@ app.on('second-instance', () => {
 app.whenReady().then(() => {
   if (!hasSingleInstanceLock) return;
   ensureDemoData();
-  ensureDemoLifelog();
+  try { ensureDemoLifelog(); } catch (err) { console.warn("demo lifelog seed skipped:", err && err.message); }
   ensureDailyBackup();
   createWindow();
   createTray();

@@ -47,6 +47,10 @@ function fetch(url) {
 (async () => {
   for (const [name, url] of covers) {
     const out = path.join(dir, name);
+    if (fs.existsSync(out) && fs.statSync(out).size > 2048) {
+      console.log("skip", name);
+      continue;
+    }
     try {
       const buf = await fetch(url);
       fs.writeFileSync(out, buf);
