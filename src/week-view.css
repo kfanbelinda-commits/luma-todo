@@ -220,12 +220,20 @@
 }
 .week-mini-day.is-muted { opacity: .38; }
 .week-mini-day.is-week {
+  opacity: 1;
+  border-radius: 0;
   background: var(--action-soft, rgba(80, 90, 110, .12));
 }
+.week-mini-day.is-week.is-muted {
+  color: color-mix(in srgb, currentColor 58%, transparent);
+}
+.week-mini-grid .week-mini-day.is-week:nth-child(7n + 1) { border-radius: 5px 0 0 5px; }
+.week-mini-grid .week-mini-day.is-week:nth-child(7n) { border-radius: 0 5px 5px 0; }
 .week-mini-day.is-today {
   box-shadow: inset 0 0 0 1px var(--action-border, rgba(80, 90, 110, .28));
 }
 .week-mini-day.is-anchor {
+  border-radius: 5px;
   background: var(--action-primary, #3d4654);
   color: var(--action-on-primary, #f6f7f9);
 }
