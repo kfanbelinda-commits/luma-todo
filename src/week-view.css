@@ -100,10 +100,28 @@ html[data-theme="light"] .week-mini-day.is-anchor {
   flex-direction: column;
 }
 .week-main-head,
-.week-allday {
+.week-allday,
+.week-scroll {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
   align-items: stretch;
+  /* Same scrollbar gutter as .week-scroll or header/allday columns drift left of the timed grid. */
+  scrollbar-gutter: stable;
+}
+.week-main-head,
+.week-allday {
+  overflow-y: scroll; /* reserve gutter even when these rows do not scroll */
+  scrollbar-width: thin;
+}
+.week-main-head::-webkit-scrollbar,
+.week-allday::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+  background: transparent;
+}
+.week-main-head::-webkit-scrollbar-thumb,
+.week-allday::-webkit-scrollbar-thumb {
+  background: transparent;
 }
 .week-col-heads,
 .week-allday-cols,
@@ -194,12 +212,11 @@ html[data-theme="light"] .week-mini-day.is-anchor {
   text-overflow: ellipsis;
 }
 .week-scroll {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
   min-height: 0;
   flex: 1;
   overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-width: thin;
 }
 .week-gutter {
   display: grid;
