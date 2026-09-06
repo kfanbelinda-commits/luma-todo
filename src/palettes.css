@@ -308,25 +308,33 @@ html[data-palette="dusk"] .opacity-control output {
   display: contents;
 }
 .project-add-task {
+  display: grid;
+  place-items: center;
   width: 24px;
   height: 24px;
-  line-height: 24px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  line-height: 1;
+  font-size: 13px;
+  font-weight: 400;
   justify-self: end;
+  align-self: center;
 }
 .project-title .project-progress,
 button.project-progress,
 span.project-progress {
   appearance: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
+  display: grid;
+  place-items: center end;
   justify-self: end;
+  align-self: center;
   width: 64px;
+  height: 24px;
   margin: 0;
   padding: 0;
   border: 0;
   border-radius: 0;
-  height: 24px;
   background: transparent;
   color: var(--muted, rgba(90, 96, 108, .62));
   font-family: inherit;
@@ -334,7 +342,7 @@ span.project-progress {
   font-weight: 450;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
-  line-height: 24px;
+  line-height: 1;
   text-align: right;
   opacity: .7;
 }
