@@ -197,7 +197,7 @@
       cells.push(
         '<button type="button" class="lifelog-cell ' + cls + '" data-date="' + key + '">'
         + (cover ? '<img class="lifelog-cell-img" src="' + cover + '" alt="">' : "")
-        + '<span class="day-number">' + d + "</span>"
+        + '<span class="lifelog-day-num">' + d + "</span>"
         + (has && !cover ? '<span class="lifelog-cell-footer"><span>' + (weather?.emoji || "") + "</span><span>" + (mood?.emoji || "") + "</span></span>" : "")
         + "</button>"
       );
@@ -236,6 +236,26 @@
     return section;
   }
 
+  function pickerButton(kind, entry) {
+    const list = kind === "weather" ? WEATHER : MOODS;
+    const selected = list.find((item) => item.id === entry[kind]);
+    const label = kind === "weather" ? "天气" : "心情";
+    const icon = selected ? selected.emoji : (kind === "weather" ? "🌤" : "🙂");
+    const text = selected ? selected.emoji + " " + selected.label : "点击图标选择";
+    const options = list.map((item) => (
+      '<button type="button" class="lifelog-chip' + (entry[kind] === item.id ? " is-active" : "") + '" data-id="' + item.id + '" role="option">' + item.emoji + " " + item.label + "</button>"
+    )).join("");
+    return ""
+      + '<div class="lifelog-field" data-kind="' + kind + '">'
+      + '<span class="lifelog-field-label">' + label + "</span>"
+      + '<button type="button" class="lifelog-pick' + (selected ? " has-value" : "") + '" data-kind="' + kind + '" aria-haspopup="listbox" aria-expanded="false">'
+      + '<span class="lifelog-pick-icon">' + icon + "</span>"
+      + '<span class="lifelog-pick-text">' + text + "</span>"
+      + "</button>"
+      + '<div class="lifelog-menu hidden" role="listbox" hidden>' + options + "</div>"
+      + "</div>";
+  }
+
   async function renderDetail(dateKey) {
     const section = ensureDetailMount();
     if (!section || !dateKey) return;
@@ -243,23 +263,47 @@
     const cover = await coverUrl(entry);
     section.innerHTML = ""
       + '<div class="calendar-detail-section-title"><span>Lifelog</span><span class="calendar-detail-count">生活记录</span></div>'
-      + '<div class="lifelog-chip-row" data-kind="weather">'
-      + WEATHER.map((item) => '<button type="button" class="lifelog-chip' + (entry.weather === item.id ? " is-active" : "") + '" data-id="' + item.id + '">' + item.emoji + " " + item.label + "</button>").join("")
-      + "</div>"
-      + '<div class="lifelog-chip-row" data-kind="mood">'
-      + MOODS.map((item) => '<button type="button" class="lifelog-chip' + (entry.mood === item.id ? " is-active" : "") + '" data-id="' + item.id + '">' + item.emoji + " " + item.label + "</button>").join("")
-      + "</div>"
+      + pickerButton("weather", entry)
+      + pickerButton("mood", entry)
       + '<label class="lifelog-note-label" for="lifeLogNote">一两句话</label>'
       + '<textarea id="lifeLogNote" class="lifelog-note" rows="3" maxlength="280" placeholder="今天发生了什么…">' + (entry.note || "").replace(/</g, "&lt;") + "</textarea>"
       + '<div class="lifelog-photos">'
       + (cover ? '<img class="lifelog-photo-thumb" src="' + cover + '" alt="">' : '<div class="lifelog-photo-empty">demo 封面会显示在这里；真实选图下一步再加</div>')
       + "</div>";
 
-    section.querySelectorAll(".lifelog-chip-row").forEach((row) => {
-      row.addEventListener("click", async (event) => {
+    function closeMenus(except) {
+      section.querySelectorAll(".lifelog-field").forEach((field) => {
+        if (except && field === except) return;
+        const pick = field.querySelector(".lifelog-pick");
+        const menu = field.querySelector(".lifelog-menu");
+        pick?.classList.remove("is-open");
+        pick?.setAttribute("aria-expanded", "false");
+        menu?.classList.add("hidden");
+        menu?.setAttribute("hidden", "");
+      });
+    }
+
+    section.querySelectorAll(".lifelog-field").forEach((field) => {
+      const kind = field.dataset.kind;
+      const pick = field.querySelector(".lifelog-pick");
+      const menu = field.querySelector(".lifelog-menu");
+      pick?.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const open = menu?.classList.contains("hidden");
+        closeMenus(field);
+        if (open) {
+          menu.classList.remove("hidden");
+          menu.removeAttribute("hidden");
+          pick.classList.add("is-open");
+          pick.setAttribute("aria-expanded", "true");
+        }
+      });
+      menu?.addEventListener("click", async (event) => {
         const chip = event.target.closest(".lifelog-chip");
         if (!chip) return;
-        const kind = row.dataset.kind;
+        event.preventDefault();
+        event.stopPropagation();
         const current = entryFor(dateKey);
         current[kind] = current[kind] === chip.dataset.id ? "" : chip.dataset.id;
         current.updatedAt = Date.now();
@@ -268,6 +312,11 @@
         if (view === "lifelog") await renderBoard();
       });
     });
+
+    const onDoc = (event) => {
+      if (!section.contains(event.target)) closeMenus();
+    };
+    document.addEventListener("click", onDoc, { once: true });
 
     const note = section.querySelector("#lifeLogNote");
     note?.addEventListener("input", () => {
