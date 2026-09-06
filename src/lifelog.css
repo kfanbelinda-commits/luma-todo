@@ -201,72 +201,68 @@ html:not([data-theme="light"]) .lifelog-pill {
 
 .lifelog-menu {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 8px);
   left: 0;
   z-index: 40;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
   min-width: 168px;
-  max-width: 220px;
   padding: 8px;
-  border: 1px solid rgba(128, 128, 128, .2);
-  border-radius: 12px;
-  background: rgba(250, 251, 253, .98);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, .16);
+  border: 1px solid rgba(128, 128, 128, .14);
+  border-radius: 14px;
+  background: rgba(252, 252, 253, .98);
+  box-shadow: 0 12px 32px rgba(30, 36, 48, .14);
 }
 html[data-theme="dark"] .lifelog-menu,
 html:not([data-theme="light"]) .lifelog-menu {
-  background: rgba(34, 37, 44, .98);
+  border-color: rgba(255, 255, 255, .10);
+  background: rgba(40, 44, 52, .98);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .35);
 }
 .lifelog-menu.hidden { display: none; }
-.lifelog-menu .lifelog-chip {
-  display: inline-flex;
+
+.lifelog-emoji-opt {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  border: 1px solid rgba(128, 128, 128, .2);
-  border-radius: 999px;
-  background: rgba(128, 128, 128, .06);
+  gap: 3px;
+  padding: 8px 4px 6px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
   color: inherit;
   font: inherit;
-  font-size: 11px;
   cursor: pointer;
+  transition: background .15s ease;
 }
-.lifelog-menu .lifelog-chip.is-active {
-  border-color: rgba(123, 141, 191, .45);
-  background: rgba(123, 141, 191, .16);
-  font-weight: 700;
+.lifelog-emoji-opt:hover {
+  background: rgba(128, 128, 128, .08);
 }
-.lifelog-chip-emoji { font-size: 14px; line-height: 1; }
-.lifelog-chip-label { line-height: 1; }
-
-/* Taller day detail when Lifelog is present; scroll the whole panel instead of crushing todos. */
-.calendar-detail:has(#lifeLogDetail) {
-  top: 52px;
-  bottom: 12px;
-  width: min(400px, 48%);
+.lifelog-emoji-opt.is-active {
+  background: rgba(123, 141, 191, .14);
 }
-.calendar-detail-view:has(#lifeLogDetail) {
-  overflow-y: auto;
+.lifelog-emoji-opt-ico {
+  font-size: 20px;
+  line-height: 1;
 }
-.calendar-detail-view:has(#lifeLogDetail) > .calendar-detail-header,
-.calendar-detail-view:has(#lifeLogDetail) > .calendar-detail-section,
-.calendar-detail-view:has(#lifeLogDetail) > .calendar-detail-add,
-.calendar-detail-view:has(#lifeLogDetail) > #lifeLogDetail {
-  flex-shrink: 0;
+.lifelog-emoji-opt-lbl {
+  color: var(--muted, rgba(90, 96, 108, .7));
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.1;
 }
-.calendar-detail-view:has(#lifeLogDetail) > .calendar-detail-todos {
-  flex: 0 0 auto;
-  max-height: none;
-  min-height: 0;
-  overflow: visible;
+.lifelog-emoji-opt.is-active .lifelog-emoji-opt-lbl {
+  color: inherit;
+  font-weight: 650;
 }
 
 .lifelog-note-label {
-  margin-top: 2px;
-  color: var(--muted, rgba(90, 96, 108, .7));
-  font-size: 11px;
+  margin-top: 4px;
+  color: var(--muted, rgba(90, 96, 108, .72));
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 .lifelog-note {
   width: 100%;
@@ -284,29 +280,68 @@ html:not([data-theme="light"]) .lifelog-menu {
 }
 html[data-theme="dark"] .lifelog-note,
 html:not([data-theme="light"]) .lifelog-note { background: rgba(0, 0, 0, .18); }
-.lifelog-photos { margin-top: 2px; }
+.lifelog-photos {
+  position: relative;
+  margin-top: 4px;
+  outline: none;
+}
 .lifelog-photo-thumb {
   display: block;
   width: 100%;
-  max-height: 120px;
+  max-height: 140px;
   object-fit: cover;
-  border-radius: 10px;
+  border-radius: 12px;
 }
 .lifelog-photo-empty {
-  padding: 12px;
+  width: 100%;
+  min-height: 96px;
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  padding: 16px;
   border: 1px dashed rgba(128, 128, 128, .28);
-  border-radius: 10px;
+  border-radius: 12px;
+  background: rgba(128, 128, 128, .03);
   color: var(--muted, rgba(90, 96, 108, .62));
+  font: inherit;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease;
+}
+.lifelog-photo-empty:hover {
+  border-color: rgba(123, 141, 191, .4);
+  background: rgba(123, 141, 191, .06);
+}
+.lifelog-photo-plus {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(128, 128, 128, .1);
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
+}
+.lifelog-photo-hint {
   font-size: 11px;
-  text-align: center;
 }
-
-/* add stays with tasks */
-.calendar-detail-view:has(#lifeLogDetail) > #addCalendarItem {
-  order: 0;
-  flex-shrink: 0;
-  margin-top: 4px;
+.lifelog-photo-add.is-overlay {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(20, 24, 32, .55);
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
 }
-.calendar-detail-view:has(#lifeLogDetail) > #lifeLogDetail {
-  order: 1;
+.lifelog-photo-add.is-overlay:hover {
+  background: rgba(20, 24, 32, .72);
 }

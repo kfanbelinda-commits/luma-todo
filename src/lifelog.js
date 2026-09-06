@@ -244,19 +244,66 @@
     const label = kind === "weather" ? "天气" : "心情";
     const icon = selected ? selected.emoji : "＋";
     const options = list.map((item) => (
-      '<button type="button" class="lifelog-chip' + (entry[kind] === item.id ? " is-active" : "") + '" data-id="' + item.id + '" role="option">'
-      + '<span class="lifelog-chip-emoji">' + item.emoji + '</span>'
-      + '<span class="lifelog-chip-label">' + item.label + "</span>"
+      '<button type="button" class="lifelog-emoji-opt' + (entry[kind] === item.id ? " is-active" : "") + '" data-id="' + item.id + '" role="option" title="' + item.label + '">'
+      + '<span class="lifelog-emoji-opt-ico">' + item.emoji + "</span>"
+      + '<span class="lifelog-emoji-opt-lbl">' + item.label + "</span>"
       + "</button>"
     )).join("");
     return ""
       + '<div class="lifelog-field" data-kind="' + kind + '">'
       + '<span class="lifelog-field-label">' + label + "</span>"
-      + '<button type="button" class="lifelog-pick' + (selected ? " has-value" : "") + '" data-kind="' + kind + '" aria-label="' + label + '" aria-haspopup="listbox" aria-expanded="false">'
+      + '<button type="button" class="lifelog-pick' + (selected ? " has-value" : "") + '" data-kind="' + kind + '" aria-label="' + label + (selected ? ("：" + selected.label) : "") + '" aria-haspopup="listbox" aria-expanded="false">'
       + '<span class="lifelog-pick-icon">' + icon + "</span>"
       + "</button>"
       + '<div class="lifelog-menu hidden" role="listbox" hidden>' + options + "</div>"
       + "</div>";
+  }
+
+  function fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(reader.error || new Error("read failed"));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function resizeDataUrl(dataUrl, maxEdge = 1600, quality = 0.86) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
+        const width = Math.max(1, Math.round(img.width * scale));
+        const height = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  }
+
+  async function addPhotoFromDataUrl(dateKey, dataUrl) {
+    if (!dataUrl || !String(dataUrl).startsWith("data:image/")) return;
+    const entry = entryFor(dateKey);
+    if ((entry.photos || []).length >= 9) return;
+    const resized = await resizeDataUrl(dataUrl);
+    const relativePath = await window.luma?.lifelogSaveMedia?.({
+      dataBase64: resized,
+      mime: "image/jpeg",
+    });
+    if (!relativePath) return;
+    const id = "photo-" + Date.now().toString(36);
+    entry.photos = entry.photos || [];
+    entry.photos.push({ id, path: relativePath, addedAt: Date.now() });
+    if (!entry.coverPhotoId) entry.coverPhotoId = id;
+    entry.updatedAt = Date.now();
+    mediaCache.delete(relativePath);
+    await saveStore();
   }
 
   async function renderDetail(dateKey) {
@@ -270,10 +317,17 @@
       + pickerField("weather", entry)
       + pickerField("mood", entry)
       + "</div>"
-      + '<label class="lifelog-note-label" for="lifeLogNote">一两句话</label>'
-      + '<textarea id="lifeLogNote" class="lifelog-note" rows="3" maxlength="280" placeholder="今天发生了什么…">' + (entry.note || "").replace(/</g, "&lt;") + "</textarea>"
-      + '<div class="lifelog-photos">'
-      + (cover ? '<img class="lifelog-photo-thumb" src="' + cover + '" alt="">' : '<div class="lifelog-photo-empty">demo 封面会显示在这里；真实选图下一步再加</div>')
+      + '<label class="lifelog-note-label" for="lifeLogNote">今日絮语</label>'
+      + '<textarea id="lifeLogNote" class="lifelog-note" rows="3" maxlength="280" placeholder="写给今天的一句，不必很长…">' + (entry.note || "").replace(/</g, "&lt;") + "</textarea>"
+      + '<div class="lifelog-photos" tabindex="0" aria-label="添加图片，可粘贴">'
+      + (cover
+        ? '<img class="lifelog-photo-thumb" src="' + cover + '" alt="">'
+          + '<button type="button" class="lifelog-photo-add is-overlay" aria-label="再加一张">＋</button>'
+        : '<button type="button" class="lifelog-photo-empty" aria-label="添加图片">'
+          + '<span class="lifelog-photo-plus">＋</span>'
+          + '<span class="lifelog-photo-hint">添加图片 · 也可粘贴</span>'
+          + "</button>")
+      + '<input class="lifelog-photo-file" type="file" accept="image/*" hidden>'
       + "</div>";
 
     function closeMenus(except) {
@@ -305,7 +359,7 @@
         }
       });
       menu?.addEventListener("click", async (event) => {
-        const chip = event.target.closest(".lifelog-chip");
+        const chip = event.target.closest(".lifelog-emoji-opt");
         if (!chip) return;
         event.preventDefault();
         event.stopPropagation();
@@ -332,6 +386,57 @@
         await saveStore();
         if (view === "lifelog") await renderBoard();
       }, 350);
+    });
+
+    const photos = section.querySelector(".lifelog-photos");
+    const fileInput = section.querySelector(".lifelog-photo-file");
+    const openPicker = () => fileInput?.click();
+    section.querySelector(".lifelog-photo-empty")?.addEventListener("click", openPicker);
+    section.querySelector(".lifelog-photo-add")?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openPicker();
+    });
+    fileInput?.addEventListener("change", async () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      const dataUrl = await fileToDataUrl(file);
+      await addPhotoFromDataUrl(dateKey, dataUrl);
+      await renderDetail(dateKey);
+      if (view === "lifelog") await renderBoard();
+      fileInput.value = "";
+    });
+    photos?.addEventListener("paste", async (event) => {
+      const items = event.clipboardData && event.clipboardData.items;
+      if (!items) return;
+      for (const item of items) {
+        if (!item.type.startsWith("image/")) continue;
+        event.preventDefault();
+        const file = item.getAsFile();
+        if (!file) continue;
+        const dataUrl = await fileToDataUrl(file);
+        await addPhotoFromDataUrl(dateKey, dataUrl);
+        await renderDetail(dateKey);
+        if (view === "lifelog") await renderBoard();
+        break;
+      }
+    });
+    // Also allow paste while focus is in the note/detail section
+    section.addEventListener("paste", async (event) => {
+      if (event.defaultPrevented) return;
+      const items = event.clipboardData && event.clipboardData.items;
+      if (!items) return;
+      for (const item of items) {
+        if (!item.type.startsWith("image/")) continue;
+        event.preventDefault();
+        const file = item.getAsFile();
+        if (!file) continue;
+        const dataUrl = await fileToDataUrl(file);
+        await addPhotoFromDataUrl(dateKey, dataUrl);
+        await renderDetail(dateKey);
+        if (view === "lifelog") await renderBoard();
+        break;
+      }
     });
   }
 

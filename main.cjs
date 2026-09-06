@@ -1960,6 +1960,24 @@ trustedHandle('lifelog:load', () => {
 
 trustedHandle('lifelog:save', (_event, payload) => writeLifelogStore(payload || {}));
 
+trustedHandle('lifelog:save-media', (_event, payload) => {
+  const mediaDir = lifelogMediaDir();
+  fs.mkdirSync(mediaDir, { recursive: true });
+  const mime = String(payload && payload.mime || 'image/jpeg');
+  const ext = mime === 'image/png' ? '.png' : mime === 'image/webp' ? '.webp' : mime === 'image/svg+xml' ? '.svg' : '.jpg';
+  const safeName = String(payload && payload.relativePath || (Date.now() + '-' + Math.random().toString(36).slice(2, 8) + ext))
+    .replace(/\\/g, '/')
+    .split('/')
+    .filter(Boolean)
+    .pop();
+  if (!safeName || safeName.includes('..')) throw new Error('invalid media path');
+  const abs = path.join(mediaDir, safeName);
+  const raw = String(payload && payload.dataBase64 || '');
+  const b64 = raw.includes(',') ? raw.slice(raw.indexOf(',') + 1) : raw;
+  fs.writeFileSync(abs, Buffer.from(b64, 'base64'));
+  return safeName;
+});
+
 trustedHandle('lifelog:media-data-url', (_event, relativePath) => {
   const abs = lifelogMediaAbsolute(relativePath);
   if (!abs || !fs.existsSync(abs)) return null;
