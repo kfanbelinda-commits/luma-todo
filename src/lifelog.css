@@ -165,11 +165,11 @@ html:not([data-theme="light"]) .lifelog-pill {
 }
 
 .lifelog-block-title {
-  margin: 0 0 2px;
-  color: var(--muted, rgba(90, 96, 108, .62));
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  margin: 0 0 4px;
+  color: var(--muted, rgba(90, 96, 108, .7));
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 .lifelog-detail {
   display: flex;
