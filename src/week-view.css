@@ -232,6 +232,12 @@ html[data-theme="light"] .week-mini-day.is-anchor {
 .week-day-col {
   position: relative;
 }
+/* Today column wash — Google soft tint + Apple restraint; circle header stays the hard cue. */
+.week-col-head.is-today,
+.week-allday-col.is-today,
+.week-day-col.is-today {
+  background-color: color-mix(in srgb, var(--action-primary, #3d4654) 5.5%, transparent);
+}
 .week-hour-lines {
   display: none;
 }

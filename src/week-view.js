@@ -202,11 +202,11 @@
     }).join('');
     const allDayCols = keys.map((key) => {
       const chips = splitDayTasks(key).allDay.map((task) => `<button type="button" class="week-chip" data-date="${key}" data-id="${escapeText(task.id)}" style="--event-color:${projectColor(task)}">${escapeText(task.title)}</button>`).join('');
-      return `<div class="week-allday-col" data-date="${key}">${chips}</div>`;
+      return `<div class="week-allday-col${key === todayKey() ? ' is-today' : ''}" data-date="${key}">${chips}</div>`;
     }).join('');
     const dayCols = keys.map((key) => {
       const blocks = splitDayTasks(key).timed.map((task) => blockMarkup(task, key, rangeStart, rangeMinutes)).join('');
-      return `<div class="week-day-col" data-date="${key}"><div class="week-hour-lines">${labels.map(() => '<i></i>').join('')}</div>${blocks}</div>`;
+      return `<div class="week-day-col${key === todayKey() ? ' is-today' : ''}" data-date="${key}"><div class="week-hour-lines">${labels.map(() => '<i></i>').join('')}</div>${blocks}</div>`;
     }).join('');
     const nowLine = nowLineMarkup(keys, rangeStart, rangeMinutes);
     const gutter = labels.map((hour) => `<span>${pad(hour)}:00</span>`).join('');
