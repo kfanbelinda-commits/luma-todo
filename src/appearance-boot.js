@@ -87,10 +87,10 @@
   }
 
   function bindProgressToggle(group) {
-    const actions = group.querySelector('.project-header-actions');
+    const title = group.querySelector('.project-title');
     let progress = group.querySelector('.project-progress');
-    if (!progress || !actions) return;
-    if (progress.parentElement !== actions) actions.insertBefore(progress, actions.firstChild);
+    if (!progress || !title) return;
+    if (progress.parentElement !== title) title.appendChild(progress);
 
     const hiddenToggle = group.querySelector('.completed-toggle');
     if (!hiddenToggle || progress.dataset.boundToggle === '1') return;
