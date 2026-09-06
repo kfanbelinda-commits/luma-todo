@@ -188,8 +188,15 @@
   line-height: 1.35;
 }
 .week-rail-empty {
+  display: block;
   color: var(--muted, rgba(90, 96, 108, .55));
   font-size: 11px;
+  line-height: 1.45;
+  white-space: normal;
+}
+.week-rail-notes-list > .week-rail-empty,
+.week-rail-list > .week-rail-empty {
+  grid-template-columns: none;
 }
 .week-rail-todos,
 .week-rail-notes {
