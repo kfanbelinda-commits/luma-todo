@@ -144,6 +144,17 @@
     document.querySelectorAll('.task-item').forEach(relocateOverdueChip);
   }
 
+  function loadWeekView() {
+    if (document.querySelector('script[src="src/week-view.js"]')) return;
+    const script = document.createElement('script');
+    script.src = 'src/week-view.js';
+    document.body.appendChild(script);
+  }
+
   installRowPatches();
-  document.addEventListener('DOMContentLoaded', installRowPatches);
+  loadWeekView();
+  document.addEventListener('DOMContentLoaded', () => {
+    installRowPatches();
+    loadWeekView();
+  });
 })();
