@@ -9,6 +9,32 @@
   const SNAP = 15;
   const MIN_SPAN = 15;
   const WEEKDAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
+  function weekLunarParts(date) {
+    try {
+      if (typeof formatLunarDate === 'function') {
+        const full = formatLunarDate(date).replace(/^农历/, '');
+        const match = full.match(/^(.+?)((?:初|十|廿|三十).+)$/);
+        if (match) return { month: match[1], day: match[2], text: full };
+        return { month: '', day: full, text: full };
+      }
+      const parts = new Intl.DateTimeFormat('zh-CN-u-ca-chinese', { month: 'long', day: 'numeric' }).formatToParts(date);
+      const month = parts.find((part) => part.type === 'month')?.value || '';
+      const rawDay = parts.find((part) => part.type === 'day')?.value || '';
+      const day = /^\d+$/.test(rawDay) && typeof formatChineseLunarDay === 'function'
+        ? formatChineseLunarDay(rawDay)
+        : rawDay;
+      return { month, day, text: `${month}${day}` };
+    } catch {
+      return { month: '', day: '', text: '' };
+    }
+  }
+  function weekLunarLabel(date, previous) {
+    const current = weekLunarParts(date);
+    if (!current.text) return '';
+    if (!previous) return current.text;
+    const prev = weekLunarParts(previous);
+    return current.month && current.month === prev.month ? current.day : current.text;
+  }
   let view = 'month';
   let anchorKey = todayKey();
   let drag = null;
@@ -196,9 +222,13 @@
     }
     const rangeStart = DAY_START * 60;
     const rangeMinutes = (DAY_END - DAY_START) * 60;
-    const header = keys.map((key) => {
+    const header = keys.map((key, index) => {
       const date = parseKey(key);
-      return `<button type="button" class="week-col-head${key === todayKey() ? ' is-today' : ''}" data-date="${key}"><span>${WEEKDAY_LABELS[(date.getDay() + 6) % 7]}</span><strong>${date.getDate()}</strong></button>`;
+      const dow = date.getDay();
+      const weekend = dow === 0 || dow === 6;
+      const prev = index > 0 ? parseKey(keys[index - 1]) : null;
+      const lunar = weekLunarLabel(date, prev);
+      return `<button type="button" class="week-col-head${key === todayKey() ? ' is-today' : ''}${weekend ? ' is-weekend' : ''}" data-date="${key}"><span class="week-col-primary"><strong>${date.getDate()}</strong> 周${WEEKDAY_LABELS[(dow + 6) % 7]}</span>${lunar ? `<span class="week-col-lunar">${lunar}</span>` : ''}</button>`;
     }).join('');
     const allDayCols = keys.map((key) => {
       const chips = splitDayTasks(key).allDay.map((task) => `<button type="button" class="week-chip" data-date="${key}" data-id="${escapeText(task.id)}" style="--event-color:${projectColor(task)}">${escapeText(task.title)}</button>`).join('');

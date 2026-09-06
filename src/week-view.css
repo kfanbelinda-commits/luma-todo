@@ -134,30 +134,53 @@ html[data-theme="light"] .week-mini-day.is-anchor {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1px;
-  padding: 8px 0 6px;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 2px 7px;
   border: 0;
   background: transparent;
   color: inherit;
   font: inherit;
   cursor: pointer;
 }
-.week-col-head span {
+.week-col-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ink, inherit);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.week-col-primary strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+.week-col-lunar {
   color: var(--muted, rgba(90, 96, 108, .62));
   font-size: 10px;
+  font-weight: 400;
+  line-height: 1.2;
+  white-space: nowrap;
 }
-.week-col-head strong {
-  font-size: 15px;
-  font-weight: 600;
+.week-col-head.is-weekend .week-col-primary {
+  color: var(--muted, rgba(90, 96, 108, .55));
+  font-weight: 500;
 }
-.week-col-head.is-today strong {
-  width: 24px;
-  height: 24px;
+.week-col-head.is-today .week-col-primary {
+  color: var(--ink, inherit);
+}
+.week-col-head.is-today .week-col-primary strong {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: var(--action-primary, #3d4654);
   color: var(--action-on-primary, #fff);
-  line-height: 24px;
-  text-align: center;
+  font-size: 12px;
+  line-height: 22px;
 }
 
 .week-gutter-spacer,
