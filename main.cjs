@@ -57,6 +57,67 @@ function ensureDemoData() {
   fs.writeFileSync(target, JSON.stringify(buildDemoState(), null, 2), 'utf8');
 }
 
+function lifelogPath() {
+  return path.join(app.getPath('userData'), 'lifelog.json');
+}
+
+function lifelogMediaDir() {
+  return path.join(app.getPath('userData'), 'lifelog-media');
+}
+
+function readLifelogStore() {
+  const target = lifelogPath();
+  if (!fs.existsSync(target)) return { version: 1, entries: {} };
+  try {
+    const parsed = JSON.parse(fs.readFileSync(target, 'utf8'));
+    return {
+      version: Number(parsed && parsed.version) || 1,
+      entries: parsed && parsed.entries && typeof parsed.entries === 'object' ? parsed.entries : {},
+    };
+  } catch {
+    return { version: 1, entries: {} };
+  }
+}
+
+function writeLifelogStore(store) {
+  const target = lifelogPath();
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  const payload = {
+    version: 1,
+    entries: store && store.entries && typeof store.entries === 'object' ? store.entries : {},
+  };
+  fs.writeFileSync(target, JSON.stringify(payload, null, 2), 'utf8');
+  return payload;
+}
+
+function ensureDemoLifelog() {
+  if (!DEMO_MODE) return;
+  const target = lifelogPath();
+  const mediaDir = lifelogMediaDir();
+  if (DEMO_RESET_MODE) {
+    if (fs.existsSync(target)) fs.unlinkSync(target);
+    if (fs.existsSync(mediaDir)) fs.rmSync(mediaDir, { recursive: true, force: true });
+  }
+  if (fs.existsSync(target)) return;
+  const { buildDemoLifelog } = require('./demo/lifelog-demo.cjs');
+  const demo = buildDemoLifelog(new Date());
+  fs.mkdirSync(mediaDir, { recursive: true });
+  for (const item of demo.media || []) {
+    fs.writeFileSync(path.join(mediaDir, item.relativePath), item.svg, 'utf8');
+  }
+  writeLifelogStore({ version: 1, entries: demo.entries });
+}
+
+function lifelogMediaAbsolute(relativePath) {
+  const safe = String(relativePath || '').replace(/\\/g, '/').split('/').filter(Boolean);
+  if (!safe.length || safe.some((part) => part === '..')) return null;
+  const rootDir = path.resolve(lifelogMediaDir());
+  const abs = path.resolve(rootDir, ...safe);
+  const rootWithSep = rootDir.endsWith(path.sep) ? rootDir : rootDir + path.sep;
+  if (abs !== rootDir && !abs.toLowerCase().startsWith(rootWithSep.toLowerCase())) return null;
+  return abs;
+}
+
 function desktopWindowHelperPath() {
   return app.isPackaged
     ? path.join(process.resourcesPath, 'desktop-window.ps1')
@@ -1764,6 +1825,7 @@ app.on('second-instance', () => {
 app.whenReady().then(() => {
   if (!hasSingleInstanceLock) return;
   ensureDemoData();
+  ensureDemoLifelog();
   ensureDailyBackup();
   createWindow();
   createTray();
@@ -1889,6 +1951,22 @@ trustedHandle('data:export', async (_event, payload) => {
     nativeModalDepth = Math.max(0, nativeModalDepth - 1);
     if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused()) scheduleDesktopAttach();
   }
+});
+
+trustedHandle('lifelog:load', () => {
+  ensureDemoLifelog();
+  return readLifelogStore();
+});
+
+trustedHandle('lifelog:save', (_event, payload) => writeLifelogStore(payload || {}));
+
+trustedHandle('lifelog:media-data-url', (_event, relativePath) => {
+  const abs = lifelogMediaAbsolute(relativePath);
+  if (!abs || !fs.existsSync(abs)) return null;
+  const buf = fs.readFileSync(abs);
+  const ext = path.extname(abs).toLowerCase();
+  const mime = ext === '.svg' ? 'image/svg+xml' : ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
+  return 'data:' + mime + ';base64,' + buf.toString('base64');
 });
 
 trustedHandle('google:status', () => {
