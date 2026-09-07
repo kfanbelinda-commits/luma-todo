@@ -1181,6 +1181,7 @@ html[data-theme="light"] .task-item.menu-open .task-more {
 .settings-modal .settings-section small,
 .settings-modal .account-card small { margin-top: 2px; font-size: 11px; line-height: 15px; }
 .settings-modal .opacity-control { min-width: 122px; grid-template-columns: 34px 1fr; gap: 6px; }
+.settings-modal #closeActionSelect { font-size: 12px; }
 .settings-modal .account-card {
   min-height: 56px;
   margin-top: 11px;

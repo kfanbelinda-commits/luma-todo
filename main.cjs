@@ -44,6 +44,13 @@ const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
 if (!hasSingleInstanceLock) app.quit();
 
+const EDGE_TAB_W = 36;
+const EDGE_TAB_H = 40;
+let edgeWindow = null;
+let closeAction = 'hide';
+let edgeTabY = null;
+let edgeTabSide = null;
+
 function dataPath() {
   return path.join(app.getPath('userData'), 'luma-data.json');
 }
@@ -210,6 +217,7 @@ function cancelDesktopAttach() {
 }
 
 async function activateMainWindow() {
+  hideEdgeWindow();
   if (!mainWindow || mainWindow.isDestroyed()) return;
   isExplicitlyHidden = false;
   cancelDesktopAttach();
@@ -249,6 +257,80 @@ async function activateMainWindow() {
 
 async function revealMainWindow() {
   await activateMainWindow();
+}
+
+function hideEdgeWindow() {
+  if (edgeWindow && !edgeWindow.isDestroyed()) edgeWindow.hide();
+}
+
+function placeEdgeWindow(area, right, y) {
+  edgeWindow.setBounds({
+    x: right ? area.x + area.width - EDGE_TAB_W : area.x,
+    y: Math.max(area.y, Math.min(area.y + area.height - EDGE_TAB_H, y)),
+    width: EDGE_TAB_W,
+    height: EDGE_TAB_H,
+  });
+}
+
+function ensureEdgeWindow() {
+  if (edgeWindow && !edgeWindow.isDestroyed()) return edgeWindow;
+  edgeWindow = new BrowserWindow({
+    width: EDGE_TAB_W,
+    height: EDGE_TAB_H,
+    frame: false,
+    resizable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    show: false,
+    backgroundColor: '#303339',
+    webPreferences: {
+      preload: path.join(__dirname, 'main', 'edge-preload.cjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+  edgeWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  edgeWindow.webContents.on('will-navigate', (event) => event.preventDefault());
+  edgeWindow.loadFile(path.join(__dirname, 'src', 'edge.html')).catch((error) => {
+    console.error('Luma edge failed to load:', error.message);
+    revealMainWindow();
+  });
+  edgeWindow.once('ready-to-show', () => {
+    if (isExplicitlyHidden && closeAction === 'edge' && edgeWindow && !edgeWindow.isDestroyed()) {
+      edgeWindow.showInactive();
+    }
+  });
+  return edgeWindow;
+}
+
+function closeToPreference() {
+  isExplicitlyHidden = true;
+  cancelDesktopAttach();
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide();
+  if (closeAction !== 'edge') {
+    hideEdgeWindow();
+    return;
+  }
+  const bounds = mainWindow.getBounds();
+  const area = screen.getDisplayMatching(bounds).workArea;
+  const right = edgeTabSide === 'right' ? true
+    : edgeTabSide === 'left' ? false
+    : bounds.x + bounds.width / 2 >= area.x + area.width / 2;
+  const y = Number.isFinite(edgeTabY)
+    ? edgeTabY
+    : Math.max(area.y, Math.min(area.y + area.height - EDGE_TAB_H, bounds.y + 70));
+  ensureEdgeWindow();
+  placeEdgeWindow(area, right, y);
+  if (!edgeWindow.webContents.isLoading()) edgeWindow.showInactive();
+}
+
+function isTrustedEdgeSender(event) {
+  if (!edgeWindow || edgeWindow.isDestroyed()) return false;
+  if (!event || event.sender !== edgeWindow.webContents) return false;
+  const frameUrl = String(event.senderFrame?.url || '');
+  const pageUrl = String(edgeWindow.webContents.getURL() || '');
+  return Boolean(frameUrl && pageUrl && frameUrl === pageUrl && frameUrl.startsWith('file:'));
 }
 
 function scheduleDesktopAttach() {
@@ -1491,7 +1573,11 @@ function windowStatePath() {
 
 function loadWindowState() {
   try {
-    return JSON.parse(fs.readFileSync(windowStatePath(), 'utf8'));
+    const saved = JSON.parse(fs.readFileSync(windowStatePath(), 'utf8'));
+    if (saved.closeAction === 'edge' || saved.closeAction === 'hide') closeAction = saved.closeAction;
+    if (Number.isFinite(saved.edgeTabY)) edgeTabY = saved.edgeTabY;
+    if (saved.edgeTabSide === 'left' || saved.edgeTabSide === 'right') edgeTabSide = saved.edgeTabSide;
+    return saved;
   } catch {
     return {};
   }
@@ -1523,6 +1609,9 @@ function saveWindowState() {
     expandedBounds,
     compactDisplayState,
     expandedDisplayState,
+    closeAction,
+    edgeTabY,
+    edgeTabSide,
   }, null, 2), 'utf8');
 }
 
@@ -1724,9 +1813,7 @@ function createWindow() {
   mainWindow.on('close', (event) => {
     if (!app.isQuitting) {
       event.preventDefault();
-      isExplicitlyHidden = true;
-      cancelDesktopAttach();
-      mainWindow.hide();
+      closeToPreference();
     }
   });
   mainWindow.on('minimize', (event) => {
@@ -1765,10 +1852,7 @@ function createTray() {
     { label: '退出', click: () => { app.isQuitting = true; app.quit(); } },
   ]));
   tray.on('click', () => {
-    if (mainWindow.isVisible() && mainWindow.isFocused()) {
-      isExplicitlyHidden = true;
-      mainWindow.hide();
-    }
+    if (mainWindow.isVisible() && mainWindow.isFocused()) closeToPreference();
     else revealMainWindow();
   });
 }
@@ -1820,6 +1904,10 @@ function trustedHandle(channel, handler) {
 
 function trustedOn(channel, handler) {
   ipcMain.on(channel, (event, ...args) => {
+    if (channel === 'edge:restore' || channel === 'edge:move') {
+      if (!isTrustedEdgeSender(event)) return;
+      return handler(event, ...args);
+    }
     if (!isTrustedIpcSender(event)) return;
     return handler(event, ...args);
   });
@@ -1843,6 +1931,7 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {});
 app.on('before-quit', () => {
   cancelDesktopAttach();
+  hideEdgeWindow();
   if (updateCheckTimer) clearInterval(updateCheckTimer);
 });
 
@@ -1921,9 +2010,36 @@ trustedOn('window:resize-end', () => {
 });
 
 trustedOn('window:hide', () => {
-  isExplicitlyHidden = true;
-  cancelDesktopAttach();
-  mainWindow.hide();
+  closeToPreference();
+});
+
+trustedHandle('window:get-close-action', () => closeAction);
+
+trustedHandle('window:set-close-action', (_event, value) => {
+  if (value !== 'hide' && value !== 'edge') throw new Error('无效关闭行为');
+  closeAction = value;
+  saveWindowState();
+  if (closeAction !== 'edge') hideEdgeWindow();
+  return closeAction;
+});
+
+trustedOn('edge:restore', () => {
+  revealMainWindow();
+});
+
+trustedOn('edge:move', (_event, payload) => {
+  if (!edgeWindow || edgeWindow.isDestroyed()) return;
+  const bounds = edgeWindow.getBounds();
+  const area = screen.getDisplayMatching(bounds).workArea;
+  const right = bounds.x + bounds.width / 2 >= area.x + area.width / 2;
+  const dy = Number(payload?.dy) || 0;
+  const nextY = Math.max(area.y, Math.min(area.y + area.height - EDGE_TAB_H, bounds.y + dy));
+  placeEdgeWindow(area, right, nextY);
+  if (payload?.persist) {
+    edgeTabY = nextY;
+    edgeTabSide = right ? 'right' : 'left';
+    saveWindowState();
+  }
 });
 
 trustedHandle('data:load', () => {

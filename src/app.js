@@ -416,6 +416,14 @@ function applyPanelOpacity(value) {
   return opacity;
 }
 
+function paintHideButton(action) {
+  const title = action === 'edge' ? '贴边收起' : '隐藏到托盘';
+  const hideButton = $('#hideButton');
+  if (!hideButton) return;
+  hideButton.title = title;
+  hideButton.setAttribute('aria-label', title);
+}
+
 function schedulePanelOpacitySave() {
   clearTimeout(opacitySaveTimer);
   opacitySaveTimer = setTimeout(() => {
@@ -2555,6 +2563,11 @@ function bindEvents() {
     $('#lightModeToggle').checked = Boolean(state.settings.lightMode);
     $('#opacitySlider').value = state.settings.panelOpacity;
     applyPanelOpacity(state.settings.panelOpacity);
+    try {
+      const action = await window.luma?.getCloseAction();
+      $('#closeActionSelect').value = action === 'edge' ? 'edge' : 'hide';
+      paintHideButton($('#closeActionSelect').value);
+    } catch {}
     openSettingsDialog();
     await Promise.all([refreshGoogleStatus(), refreshIcloudStatus()]);
   });
@@ -2587,6 +2600,17 @@ function bindEvents() {
     event.target.checked = Boolean(actual);
     state.settings.autoStart = Boolean(actual);
     await persist();
+  });
+  $('#closeActionSelect').addEventListener('change', async (event) => {
+    const next = event.target.value === 'edge' ? 'edge' : 'hide';
+    try {
+      const actual = await window.luma?.setCloseAction(next);
+      event.target.value = actual === 'edge' ? 'edge' : 'hide';
+      paintHideButton(event.target.value);
+    } catch {
+      event.target.value = 'hide';
+      paintHideButton('hide');
+    }
   });
   $('#exportButton').addEventListener('click', async () => {
     const success = await window.luma?.exportData(state);
@@ -2626,6 +2650,9 @@ async function init() {
   bindTimePickers();
   renderColorChoices();
   render();
+  try {
+    paintHideButton(await window.luma?.getCloseAction());
+  } catch {}
   await Promise.all([refreshGoogleStatus(), refreshIcloudStatus()]);
 }
 

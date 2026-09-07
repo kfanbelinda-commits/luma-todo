@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('luma', {
   setAlwaysOnTop: (enabled) => ipcRenderer.invoke('window:set-always-on-top', enabled),
   activate: () => ipcRenderer.send('window:activate'),
   hide: () => ipcRenderer.send('window:hide'),
+  getCloseAction: () => ipcRenderer.invoke('window:get-close-action'),
+  setCloseAction: (value) => ipcRenderer.invoke('window:set-close-action', value),
   load: () => ipcRenderer.invoke('data:load'),
   save: (payload) => ipcRenderer.invoke('data:save', payload),
   exportData: (payload) => ipcRenderer.invoke('data:export', payload),
