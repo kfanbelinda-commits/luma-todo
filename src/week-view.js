@@ -239,15 +239,14 @@
     const statRows = stats.rows.map((row) => (
       `<tr class="week-rail-stat is-${row.tone}"><td><i aria-hidden="true"></i></td><td>${row.label}</td><td>${row.count}</td><td>${row.ratio}</td></tr>`
     )).join('');
-    const todoItems = stats.open.slice(0, 12).map((task, index) => (
+    const todoItems = stats.open.slice(0, 12).map((task) => (
       `<li class="week-rail-todo" data-id="${escapeText(task.id)}">`
-      + `<span class="week-rail-todo-index">${index + 1}</span>`
-      + `<button type="button" class="week-rail-todo-title" data-date="${escapeText(task.dueDate || '')}">${escapeText(task.title)}</button>`
       + `<button type="button" class="week-rail-check" data-id="${escapeText(task.id)}" aria-label="完成待办"></button>`
+      + `<button type="button" class="week-rail-todo-title" data-date="${escapeText(task.dueDate || '')}">${escapeText(task.title)}</button>`
       + `</li>`
     )).join('') || '<li class="week-rail-empty">本月暂无待办</li>';
-    const noteItems = stats.notes.map((task, index) => (
-      `<li><span>${index + 1}.</span><span>${escapeText(task.title)}</span></li>`
+    const noteItems = stats.notes.map((task) => (
+      `<li class="week-rail-note"><i class="week-rail-note-dot" aria-hidden="true"></i><span>${escapeText(task.title)}</span></li>`
     )).join('') || '<li class="week-rail-empty">完成待办后会出现在这里</li>';
     host.innerHTML = [
       `<div class="week-rail-top">`
@@ -263,11 +262,11 @@
       + `</section>`
       + `<section class="week-rail-section week-rail-todos">`
       + `<h3>To Do <em>本月待办</em></h3>`
-      + `<ol class="week-rail-list">${todoItems}</ol>`
+      + `<ul class="week-rail-list">${todoItems}</ul>`
       + `</section>`
       + `<section class="week-rail-section week-rail-notes">`
       + `<h3>Notes <em>本月成果</em></h3>`
-      + `<ol class="week-rail-notes-list">${noteItems}</ol>`
+      + `<ul class="week-rail-notes-list">${noteItems}</ul>`
       + `</section></div>`
     ].join('');
     host.querySelectorAll('.week-rail-check').forEach((button) => {

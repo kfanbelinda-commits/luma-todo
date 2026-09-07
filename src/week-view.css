@@ -142,17 +142,16 @@
   padding: 0;
   list-style: none;
 }
-.week-rail-todo {
+.week-rail-todo,
+.week-rail-note {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) 18px;
-  gap: 6px;
+  grid-template-columns: 14px minmax(0, 1fr);
+  column-gap: 6px;
+  align-items: start;
+}
+.week-rail-todo {
   align-items: center;
   min-height: 26px;
-}
-.week-rail-todo-index {
-  color: var(--muted, rgba(90, 96, 108, .55));
-  font-size: 10px;
-  text-align: right;
 }
 .week-rail-todo-title {
   overflow: hidden;
@@ -166,6 +165,10 @@
   white-space: nowrap;
   cursor: pointer;
 }
+.week-rail-check,
+.week-rail-note-dot {
+  justify-self: center;
+}
 .week-rail-check {
   width: 14px;
   height: 14px;
@@ -178,14 +181,18 @@
 .week-rail-check:hover {
   border-color: var(--action-primary, #3d4654);
 }
-.week-rail-notes-list li {
-  display: grid;
-  grid-template-columns: 16px minmax(0, 1fr);
-  gap: 6px;
+.week-rail-note {
   margin-bottom: 6px;
   color: var(--muted, rgba(90, 96, 108, .78));
   font-size: 11px;
   line-height: 1.35;
+}
+.week-rail-note-dot {
+  width: 4px;
+  height: 4px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: currentColor;
 }
 .week-rail-empty {
   color: var(--muted, rgba(90, 96, 108, .55));
