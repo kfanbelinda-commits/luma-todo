@@ -1,0 +1,33 @@
+.day-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-height: 26px;
+}
+.day-holiday {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  flex: 0 0 auto;
+}
+.day-holiday-off {
+  color: #c45c5c;
+  background: rgba(196, 92, 92, 0.14);
+}
+.day-holiday-work {
+  color: #5b6b88;
+  background: rgba(91, 107, 136, 0.16);
+}
+.calendar-day.muted .day-holiday { opacity: 0.55; }
+html[data-theme="light"] .day-holiday-off {
+  color: #b42318;
+  background: rgba(180, 35, 24, 0.10);
+}
+html[data-theme="light"] .day-holiday-work {
+  color: #3d4a63;
+  background: rgba(61, 74, 99, 0.10);
+}
