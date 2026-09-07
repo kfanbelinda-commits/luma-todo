@@ -23,6 +23,16 @@
   color: #5b6b88;
   background: rgba(91, 107, 136, 0.16);
 }
+.calendar-day.holiday-off .day-number {
+  color: #c45c5c;
+}
+.calendar-day.holiday-work .day-number {
+  color: #5b6b88;
+}
+.calendar-day.today.holiday-off .day-number,
+.calendar-day.today.holiday-work .day-number {
+  color: var(--action-on-primary, #fff);
+}
 .calendar-day.muted .day-holiday { opacity: 0.55; }
 html[data-theme="light"] .day-holiday-off {
   color: #b42318;
@@ -31,4 +41,10 @@ html[data-theme="light"] .day-holiday-off {
 html[data-theme="light"] .day-holiday-work {
   color: #3d4a63;
   background: rgba(61, 74, 99, 0.10);
+}
+html[data-theme="light"] .calendar-day.holiday-off .day-number { color: #b42318; }
+html[data-theme="light"] .calendar-day.holiday-work .day-number { color: #3d4a63; }
+html[data-theme="light"] .calendar-day.today.holiday-off .day-number,
+html[data-theme="light"] .calendar-day.today.holiday-work .day-number {
+  color: var(--action-on-primary, #fff);
 }
