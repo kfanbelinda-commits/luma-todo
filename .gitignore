@@ -9,7 +9,17 @@ icloud-calendar.enc
 **/luma-data.json
 **/luma-window-state.json
 **/Backups/
+**/lifelog.json
+**/lifelog-media/
+**/lifelog-imports.json
+**/local-preferences.json
+**/window-state.json
 *.zip
 *.lnk
 assets/preview-*.png
 .DS_Store
+
+.grokforge/
+/luma-todo/
+LifeLog-UI*.md
+

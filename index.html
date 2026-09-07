@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="src/styles.css" />
     <link rel="stylesheet" href="src/theme-graphite.css" />
     <link rel="stylesheet" href="src/palettes.css" />
+    <link rel="stylesheet" href="src/local-settings.css" />
   </head>
   <body>
     <div class="resize-handle resize-edge resize-n" data-edge="n"></div>
@@ -243,6 +244,10 @@
             </div>
           </section>
           <input id="lightModeToggle" type="checkbox" hidden />
+          <section class="settings-section">
+            <div><strong>点击关闭时</strong><small>仍在后台运行</small></div>
+            <select id="closeActionSelect" aria-label="点击关闭时"><option value="hide">隐藏到托盘</option><option value="edge">贴边收起</option></select>
+          </section>
           <fieldset class="settings-section palette-setting">
             <legend>外观</legend>
             <div class="palette-options">
@@ -253,6 +258,7 @@
             </div>
           </fieldset>
         </div>
+        <details class="local-settings"><summary>账户与同步 <span>Google · Apple</span></summary>
         <div class="sync-settings">
           <section class="sync-card google-sync-card">
             <div class="sync-card-header">
@@ -291,13 +297,28 @@
             <p id="icloudNote" class="settings-note apple-sync-note">连接 iCloud Calendar。</p>
           </section>
         </div>
-        <button id="exportButton" type="button" class="secondary-button settings-export">导出本地备份</button>
+        </details>
+        <details class="local-settings">
+          <summary>数据与导入 <span>存储位置 · 手机日记</span></summary>
+          <div class="local-settings-body">
+            <div class="local-settings-row"><strong>数据存储位置</strong><button id="chooseStorage" type="button" class="soft-button">更换</button></div>
+            <p id="storagePathText" class="local-path"></p>
+            <p class="local-hint">待办、日记、照片与备份。选空文件夹后复制并切换，原数据保留。</p>
+            <div class="local-settings-row"><strong>手机日记收件箱</strong><label class="switch"><input id="inboxEnabledToggle" type="checkbox" aria-label="启用手机日记收件箱" /><span></span></label></div>
+            <p id="inboxPathText" class="local-path">未选择文件夹</p>
+            <div class="local-settings-row"><button id="chooseInbox" type="button" class="soft-button">选择文件夹</button><button id="scanInbox" type="button" class="soft-button">立即导入</button></div>
+            <p class="local-hint">开启后每次启动导入新日记；同日已有内容时保留原文件，不覆盖。</p>
+            <p id="localSettingsStatus" class="local-hint" role="status" aria-live="polite"></p>
+            <button id="exportButton" type="button" class="secondary-button settings-export">导出待办备份</button>
+          </div>
+        </details>
       </form>
     </dialog>
 
     <script src="src/appearance.js"></script>
     <script src="src/appearance-boot.js"></script>
     <script src="src/lifelog-boot.js"></script>
-    <script src="src/app.js"></script>
+      <script src="src/app.js"></script>
+      <script src="src/local-settings.js"></script>
   </body>
 </html>
