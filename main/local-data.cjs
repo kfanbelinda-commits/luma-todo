@@ -64,7 +64,16 @@ function createLocalData(home) {
           if (name !== `lifelog-${pack.dateKey}.json`) throw new Error('文件名与日期不一致');
           const existing = store.entries[pack.dateKey];
           if (!ledger[hash] && existing?.inboxHash !== hash) {
-            if (existing && (existing.note || existing.weather || existing.mood || existing.photos?.length)) { conflicts++; continue; }
+            if (existing && (existing.note || existing.weather || existing.mood || existing.photos?.length)) {
+              conflicts++;
+              const conflictsDir = path.join(inbox, 'conflicts');
+              fs.mkdirSync(conflictsDir, { recursive: true });
+              if (fs.lstatSync(conflictsDir).isSymbolicLink() || fs.realpathSync(conflictsDir) !== path.join(inbox, 'conflicts')) throw new Error('冲突目录不能是链接');
+              let conflicted = path.join(conflictsDir, `${path.basename(name, '.json')}-${hash}.json`);
+              if (fs.existsSync(conflicted)) conflicted = path.join(conflictsDir, `${path.basename(name, '.json')}-${hash}-${crypto.randomUUID()}.json`);
+              fs.renameSync(file, conflicted);
+              continue;
+            }
             const media = path.join(root(), 'lifelog-media');
             fs.mkdirSync(media, { recursive: true });
             const savedPhotos = photos.map((photo, i) => {

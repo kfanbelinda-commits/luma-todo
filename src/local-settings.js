@@ -23,7 +23,7 @@
     catch (error) {
       if (current) paint(current);
       $('#localSettingsStatus').textContent = error.message;
-      $('.local-settings').open = true;
+      $('#localSettingsStatus').closest('details').open = true;
     } finally {
       busy = false;
       controls.forEach(el => { el.disabled = false; });

@@ -37,6 +37,11 @@ test('date conflicts and malformed packages keep originals without overwriting',
   service.configure({ inboxPath: inbox, inboxEnabled: true });
   assert.match(service.scan().lastImport, /1 篇日期冲突/);
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(home, 'lifelog.json'))), old);
+  assert.equal(fs.existsSync(path.join(inbox, 'lifelog-2026-09-06.json')), false);
+  assert.equal(fs.readdirSync(path.join(inbox, 'conflicts')).length, 1);
+  const second = service.scan().lastImport;
+  assert.match(second, /导入 0 篇/);
+  assert.doesNotMatch(second, /冲突/);
   drop(inbox, { ...pack(), photos: [{ mime: 'image/svg+xml', dataBase64: 'bad' }] });
   assert.match(service.scan().lastImport, /1 个文件待重试/);
   assert.equal(fs.existsSync(path.join(inbox, 'lifelog-2026-09-06.json')), true);
