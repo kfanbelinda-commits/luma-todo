@@ -1,0 +1,10 @@
+{
+  "name": "Luma Life Log",
+  "short_name": "LifeLog",
+  "lang": "zh-CN",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4efe6",
+  "theme_color": "#f4efe6",
+  "description": "每天记一笔，写进同一个 lifelog.md"
+}
