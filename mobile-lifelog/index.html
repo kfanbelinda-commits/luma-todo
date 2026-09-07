@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="theme-color" content="#f4efe6" />
+  <title>日子与片刻</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <style>
+    :root {
+      --bg: #f4efe6;
+      --paper: #fffaf2;
+      --ink: #3a342c;
+      --muted: #8a7f72;
+      --line: rgba(58, 52, 44, 0.12);
+      --accent: #c45c5c;
+      --ok: #5d7a68;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--ink);
+      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", sans-serif; }
+    body { padding: calc(18px + env(safe-area-inset-top)) 18px calc(28px + env(safe-area-inset-bottom)); }
+    .wrap { max-width: 440px; margin: 0 auto; }
+    .eyebrow { margin: 0; font-size: 12px; letter-spacing: .12em; color: var(--muted); }
+    h1 { margin: 4px 0 2px; font-size: 26px; font-weight: 650; }
+    .sub { margin: 0 0 18px; color: var(--muted); font-size: 13px; }
+    .card { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-bottom: 12px; }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    label.date { font-size: 13px; color: var(--muted); }
+    input[type="date"], textarea, button, input[type="file"] { font: inherit; }
+    input[type="date"] { border: 0; background: transparent; color: var(--ink); font-size: 16px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .chip { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 10px; color: var(--ink); }
+    .chip[aria-pressed="true"] { border-color: var(--ink); background: #efe6d6; }
+    textarea { width: 100%; min-height: 120px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; resize: vertical; background: #fff; }
+    .photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+    .photo { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: #ece4d6; }
+    .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .photo button { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border: 0; border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; }
+    .add-photo { aspect-ratio: 1; border: 1px dashed var(--line); border-radius: 10px; display: grid; place-items: center; color: var(--muted); background: #fff; cursor: pointer; }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .actions button, .full { border: 0; border-radius: 12px; padding: 12px; background: #3a342c; color: #fff; }
+    .actions button.ghost, .ghost { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+    .status { min-height: 20px; font-size: 13px; color: var(--ok); margin: 8px 0 0; }
+    .status.err { color: var(--accent); }
+    .hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+    #fileInput { display: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <p class="eyebrow">LUMA · LIFE LOG</p>
+    <h1>日子与片刻</h1>
+    <p class="sub">看起来每天新记一笔，实际写进同一个 <code>lifelog.md</code></p>
+    <section class="card">
+      <div class="row">
+        <label class="date" for="day">日期</label>
+        <input id="day" type="date" />
+      </div>
+      <p id="dayLabel" class="hint"></p>
+    </section>
+    <section class="card">
+      <div class="row"><strong>天气</strong></div>
+      <div id="weather" class="chips" role="group" aria-label="天气"></div>
+    </section>
+    <section class="card">
+      <div class="row"><strong>心情</strong></div>
+      <div id="mood" class="chips" role="group" aria-label="心情"></div>
+    </section>
+    <section class="card">
+      <div class="row"><strong>今日絮语</strong><span id="saveHint" class="hint"></span></div>
+      <textarea id="note" maxlength="2000" placeholder="留下一句今天"></textarea>
+    </section>
+    <section class="card">
+      <div class="row"><strong>照片</strong><span id="photoCount" class="hint">0 / 9</span></div>
+      <div id="photos" class="photos"></div>
+      <input id="fileInput" type="file" accept="image/*" multiple />
+      <p class="hint">可从相册选，也可长按输入框粘贴。iPhone 建议用 JPEG。HEIC 在部分浏览器无法解码。</p>
+    </section>
+    <div class="actions">
+      <button id="shareMd" type="button">分享 lifelog.md</button>
+      <button id="downloadMd" class="ghost" type="button">下载 .md</button>
+      <button id="downloadJson" class="ghost" type="button">下载 .json</button>
+      <button id="copyMd" class="ghost" type="button">复制 Markdown</button>
+    </div>
+    <p id="status" class="status"></p>
+    <p class="hint">浏览器不能静默写 iCloud。分享到「文件」后放到 Obsidian 库或 Luma 监听目录即可。</p>
+  </div>
+  <script>
+    const WEATHER = [
+      ["sunny", "晴"], ["cloudy", "云"], ["rainy", "雨"],
+      ["foggy", "雾"], ["snowy", "雪"], ["storm", "雷"]
+    ];
+    const MOODS = [
+      ["great", "超棒"], ["good", "不错"], ["okay", "还行"],
+      ["calm", "平静"], ["low", "低落"], ["awful", "糟糕"]
+    ];
+    const KEY = "luma.mobile.lifelog.v1";
+    const MAX_PHOTOS = 9;
+    const WEEK = "日一二三四五六";
+    const $ = (id) => document.getElementById(id);
+    const pad = (n) => String(n).padStart(2, "0");
+    const todayKey = () => {
+      const d = new Date();
+      return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+    };
+    const empty = () => ({ weather: "", mood: "", note: "", photos: [], coverPhotoId: null, updatedAt: 0 });
+    let store = { version: 1, entries: {} };
+    try { store = Object.assign(store, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch {}
+    if (!store.entries || typeof store.entries !== "object") store.entries = {};
+    function entry(key) {
+      if (!store.entries[key]) store.entries[key] = empty();
+      return store.entries[key];
+    }
+    function persist() {
+      localStorage.setItem(KEY, JSON.stringify(store));
+      $("saveHint").textContent = "已记在本机";
+    }
+    function currentKey() { return $("day").value || todayKey(); }
+    function spoken(key) {
+      const [y, m, d] = key.split("-").map(Number);
+      const dt = new Date(y, m - 1, d);
+      return y + "年" + m + "月" + d + "日 周" + WEEK[dt.getDay()];
+    }
+    function chips(root, items, field) {
+      root.innerHTML = "";
+      const cur = entry(currentKey())[field];
+      items.forEach(([id, label]) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "chip";
+        btn.textContent = label;
+        btn.setAttribute("aria-pressed", id === cur ? "true" : "false");
+        btn.addEventListener("click", () => {
+          const e = entry(currentKey());
+          e[field] = e[field] === id ? "" : id;
+          e.updatedAt = Date.now();
+          persist();
+          chips(root, items, field);
+        });
+        root.appendChild(btn);
+      });
+    }
+    function renderPhotos() {
+      const e = entry(currentKey());
+      const box = $("photos");
+      box.innerHTML = "";
+      e.photos.forEach((p) => {
+        const cell = document.createElement("div");
+        cell.className = "photo";
+        cell.innerHTML = '<img alt="" /><button type="button" aria-label="删除">×</button>';
+        cell.querySelector("img").src = p.dataUrl;
+        cell.querySelector("button").addEventListener("click", () => {
+          e.photos = e.photos.filter((x) => x.id !== p.id);
+          if (e.coverPhotoId === p.id) e.coverPhotoId = e.photos[0]?.id || null;
+          e.updatedAt = Date.now();
+          persist();
+          renderPhotos();
+        });
+        box.appendChild(cell);
+      });
+      if (e.photos.length < MAX_PHOTOS) {
+        const add = document.createElement("button");
+        add.type = "button";
+        add.className = "add-photo";
+        add.textContent = "+";
+        add.addEventListener("click", () => $("fileInput").click());
+        box.appendChild(add);
+      }
+      $("photoCount").textContent = e.photos.length + " / " + MAX_PHOTOS;
+    }
+    function paint() {
+      const key = currentKey();
+      const e = entry(key);
+      $("dayLabel").textContent = spoken(key);
+      $("note").value = e.note || "";
+      chips($("weather"), WEATHER, "weather");
+      chips($("mood"), MOODS, "mood");
+      renderPhotos();
+    }
+    function fileToJpeg(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          const max = 1280;
+          let w = img.naturalWidth || img.width;
+          let h = img.naturalHeight || img.height;
+          const scale = Math.min(1, max / Math.max(w, h));
+          w = Math.round(w * scale); h = Math.round(h * scale);
+          const canvas = document.createElement("canvas");
+          canvas.width = w; canvas.height = h;
+          canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+          URL.revokeObjectURL(url);
+          resolve(canvas.toDataURL("image/jpeg", 0.82));
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("无法读取这张图")); };
+        img.src = url;
+      });
+    }
+    async function addFiles(files) {
+      const e = entry(currentKey());
+      for (const file of files) {
+        if (e.photos.length >= MAX_PHOTOS) break;
+        try {
+          const dataUrl = await fileToJpeg(file);
+          const id = "p" + Date.now() + Math.random().toString(16).slice(2, 6);
+          e.photos.push({ id, name: file.name || id + ".jpg", dataUrl });
+          if (!e.coverPhotoId) e.coverPhotoId = id;
+        } catch (err) {
+          setStatus(err.message || "照片加入失败", true);
+        }
+      }
+      e.updatedAt = Date.now();
+      persist();
+      renderPhotos();
+    }
+    function toMarkdown() {
+      const keys = Object.keys(store.entries).sort();
+      const lines = ["# Life Log", "", "> 单文件日记。每天改同一篇，供 Obsidian / Luma 读取。", ""];
+      keys.forEach((key) => {
+        const e = store.entries[key];
+        if (!e || !(e.note || e.weather || e.mood || (e.photos && e.photos.length))) return;
+        const w = WEATHER.find((x) => x[0] === e.weather);
+        const m = MOODS.find((x) => x[0] === e.mood);
+        lines.push("## " + key);
+        if (w) lines.push("- weather: " + e.weather + "  #" + w[1]);
+        if (m) lines.push("- mood: " + e.mood + "  #" + m[1]);
+        if (e.photos && e.photos.length) lines.push("- photos: " + e.photos.length);
+        if (e.updatedAt) lines.push("- updated: " + new Date(e.updatedAt).toISOString());
+        if (e.note) { lines.push(""); lines.push(e.note.trim()); }
+        lines.push("");
+      });
+      return lines.join("\n");
+    }
+    function toInboxJson() {
+      const entries = {};
+      Object.keys(store.entries).forEach((key) => {
+        const e = store.entries[key];
+        entries[key] = {
+          weather: e.weather || "",
+          mood: e.mood || "",
+          note: e.note || "",
+          photos: (e.photos || []).map((p) => ({ id: p.id, name: p.name })),
+          coverPhotoId: e.coverPhotoId || null,
+          updatedAt: e.updatedAt || 0
+        };
+      });
+      return JSON.stringify({ version: 1, source: "mobile-lifelog", entries }, null, 2);
+    }
+    function download(name, text, type) {
+      const blob = new Blob([text], { type: type || "text/plain;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+    function setStatus(text, err) {
+      const el = $("status");
+      el.textContent = text;
+      el.className = "status" + (err ? " err" : "");
+    }
+    $("day").value = todayKey();
+    $("day").addEventListener("change", paint);
+    $("note").addEventListener("input", () => {
+      const e = entry(currentKey());
+      e.note = $("note").value;
+      e.updatedAt = Date.now();
+      persist();
+    });
+    $("fileInput").addEventListener("change", (ev) => {
+      addFiles([].slice.call(ev.target.files));
+      ev.target.value = "";
+    });
+    document.addEventListener("paste", (ev) => {
+      const files = [].slice.call((ev.clipboardData && ev.clipboardData.items) || [])
+        .filter((item) => item.type.indexOf("image/") === 0)
+        .map((item) => item.getAsFile())
+        .filter(Boolean);
+      if (files.length) addFiles(files);
+    });
+    $("downloadMd").addEventListener("click", () => { download("lifelog.md", toMarkdown(), "text/markdown"); setStatus("已开始下载 lifelog.md"); });
+    $("downloadJson").addEventListener("click", () => { download("lifelog-inbox.json", toInboxJson(), "application/json"); setStatus("已开始下载 lifelog-inbox.json"); });
+    $("copyMd").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(toMarkdown());
+        setStatus("已复制 Markdown");
+      } catch (e) { setStatus("复制失败，改用下载", true); }
+    });
+    $("shareMd").addEventListener("click", async () => {
+      const file = new File([toMarkdown()], "lifelog.md", { type: "text/markdown" });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: "lifelog.md" }); setStatus("已交给系统分享"); return; } catch (e) {}
+      }
+      download("lifelog.md", toMarkdown(), "text/markdown");
+      setStatus("当前环境不支持分享文件，已改为下载");
+    });
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(function () {});
+    paint();
+  </script>
+</body>
+</html>
