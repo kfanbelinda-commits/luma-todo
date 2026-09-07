@@ -109,7 +109,16 @@
     return mark.type === "work" ? `${mark.name} · 调休上班` : `${mark.name} · 放假`;
   }
 
+  function cnHolidayBadgeText(mark) {
+    if (!mark) return "";
+    if (mark.type === "work") return "班";
+    const name = String(mark.name || "");
+    if (name.endsWith("节") && name.length > 2) return name.slice(0, -1);
+    return name || "休";
+  }
+
   root.getCnHolidayMark = getCnHolidayMark;
   root.cnHolidayDetailLabel = cnHolidayDetailLabel;
+  root.cnHolidayBadgeText = cnHolidayBadgeText;
   root.CN_HOLIDAY_YEARS = YEARS;
 })(typeof globalThis !== "undefined" ? globalThis : window);

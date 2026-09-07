@@ -30,3 +30,11 @@ test('leaves ordinary days unmarked', () => {
   assert.equal(sandbox.getCnHolidayMark('2027-01-01'), null);
   assert.equal(sandbox.getCnHolidayMark(''), null);
 });
+
+test('short grid badges stay lightweight', () => {
+  assert.equal(sandbox.cnHolidayBadgeText(sandbox.getCnHolidayMark('2026-02-17')), '春节');
+  assert.equal(sandbox.cnHolidayBadgeText(sandbox.getCnHolidayMark('2026-05-01')), '劳动');
+  assert.equal(sandbox.cnHolidayBadgeText(sandbox.getCnHolidayMark('2026-10-01')), '国庆');
+  assert.equal(sandbox.cnHolidayBadgeText(sandbox.getCnHolidayMark('2026-10-10')), '班');
+  assert.equal(sandbox.cnHolidayBadgeText(null), '');
+});
