@@ -5,6 +5,7 @@ const fs = require('fs');
 const http = require('http');
 const crypto = require('crypto');
 const { execFile } = require('child_process');
+const { createLocalData, atomicJson } = require('./main/local-data.cjs');
 
 const DEMO_MODE = !app.isPackaged && process.argv.includes('--demo');
 const DEMO_RESET_MODE = DEMO_MODE && process.argv.includes('--demo-reset');
@@ -47,12 +48,10 @@ if (!hasSingleInstanceLock) app.quit();
 const EDGE_TAB_W = 36;
 const EDGE_TAB_H = 40;
 let edgeWindow = null;
-let closeAction = 'hide';
-let edgeTabY = null;
-let edgeTabSide = null;
+const localData = createLocalData(app.getPath('userData'));
 
 function dataPath() {
-  return path.join(app.getPath('userData'), 'luma-data.json');
+  return path.join(localData.root(), 'luma-data.json');
 }
 
 function ensureDemoData() {
@@ -66,11 +65,11 @@ function ensureDemoData() {
 }
 
 function lifelogPath() {
-  return path.join(app.getPath('userData'), 'lifelog.json');
+  return path.join(localData.root(), 'lifelog.json');
 }
 
 function lifelogMediaDir() {
-  return path.join(app.getPath('userData'), 'lifelog-media');
+  return path.join(localData.root(), 'lifelog-media');
 }
 
 function readLifelogStore() {
@@ -94,7 +93,7 @@ function writeLifelogStore(store) {
     version: 1,
     entries: store && store.entries && typeof store.entries === 'object' ? store.entries : {},
   };
-  fs.writeFileSync(target, JSON.stringify(payload, null, 2), 'utf8');
+  atomicJson(target, payload);
   return payload;
 }
 
@@ -297,7 +296,7 @@ function ensureEdgeWindow() {
     revealMainWindow();
   });
   edgeWindow.once('ready-to-show', () => {
-    if (isExplicitlyHidden && closeAction === 'edge' && edgeWindow && !edgeWindow.isDestroyed()) {
+    if (isExplicitlyHidden && localData.status().closeAction === 'edge' && edgeWindow && !edgeWindow.isDestroyed()) {
       edgeWindow.showInactive();
     }
   });
@@ -308,17 +307,18 @@ function closeToPreference() {
   isExplicitlyHidden = true;
   cancelDesktopAttach();
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide();
-  if (closeAction !== 'edge') {
+  const st = localData.status();
+  if (st.closeAction !== 'edge') {
     hideEdgeWindow();
     return;
   }
   const bounds = mainWindow.getBounds();
   const area = screen.getDisplayMatching(bounds).workArea;
-  const right = edgeTabSide === 'right' ? true
-    : edgeTabSide === 'left' ? false
+  const right = st.edgeTabSide === 'right' ? true
+    : st.edgeTabSide === 'left' ? false
     : bounds.x + bounds.width / 2 >= area.x + area.width / 2;
-  const y = Number.isFinite(edgeTabY)
-    ? edgeTabY
+  const y = Number.isFinite(st.edgeTabY)
+    ? st.edgeTabY
     : Math.max(area.y, Math.min(area.y + area.height - EDGE_TAB_H, bounds.y + 70));
   ensureEdgeWindow();
   placeEdgeWindow(area, right, y);
@@ -1574,9 +1574,14 @@ function windowStatePath() {
 function loadWindowState() {
   try {
     const saved = JSON.parse(fs.readFileSync(windowStatePath(), 'utf8'));
-    if (saved.closeAction === 'edge' || saved.closeAction === 'hide') closeAction = saved.closeAction;
-    if (Number.isFinite(saved.edgeTabY)) edgeTabY = saved.edgeTabY;
-    if (saved.edgeTabSide === 'left' || saved.edgeTabSide === 'right') edgeTabSide = saved.edgeTabSide;
+    const prefsFile = path.join(app.getPath('userData'), 'local-preferences.json');
+    let prefs = {};
+    try { prefs = JSON.parse(fs.readFileSync(prefsFile, 'utf8')); } catch {}
+    const patch = {};
+    if (!prefs.closeAction && (saved.closeAction === 'edge' || saved.closeAction === 'hide')) patch.closeAction = saved.closeAction;
+    if (!Number.isFinite(prefs.edgeTabY) && Number.isFinite(saved.edgeTabY)) patch.edgeTabY = saved.edgeTabY;
+    if (!prefs.edgeTabSide && (saved.edgeTabSide === 'left' || saved.edgeTabSide === 'right')) patch.edgeTabSide = saved.edgeTabSide;
+    if (Object.keys(patch).length) localData.configure(patch);
     return saved;
   } catch {
     return {};
@@ -1609,16 +1614,13 @@ function saveWindowState() {
     expandedBounds,
     compactDisplayState,
     expandedDisplayState,
-    closeAction,
-    edgeTabY,
-    edgeTabSide,
   }, null, 2), 'utf8');
 }
 
 function ensureDailyBackup() {
   const source = dataPath();
   if (!fs.existsSync(source)) return;
-  const backupDir = path.join(app.getPath('userData'), 'backups');
+  const backupDir = path.join(localData.root(), 'backups');
   fs.mkdirSync(backupDir, { recursive: true });
   const stamp = new Date().toISOString().slice(0, 10);
   const target = path.join(backupDir, `luma-backup-${stamp}.json`);
@@ -1920,9 +1922,18 @@ app.on('second-instance', () => {
 
 app.whenReady().then(() => {
   if (!hasSingleInstanceLock) return;
+  try {
+    localData.root();
+  } catch {
+    dialog.showErrorBox('Luma 数据位置不可用', '请重新连接数据所在磁盘或恢复文件夹后，再启动 Luma。未切换到空数据库。');
+    app.isQuitting = true;
+    app.quit();
+    return;
+  }
   ensureDemoData();
   try { ensureDemoLifelog(); } catch (err) { console.warn("demo lifelog seed skipped:", err && err.message); }
   ensureDailyBackup();
+  localData.scan();
   createWindow();
   createTray();
   setupAutoUpdates();
@@ -2013,14 +2024,37 @@ trustedOn('window:hide', () => {
   closeToPreference();
 });
 
-trustedHandle('window:get-close-action', () => closeAction);
+trustedHandle('local:status', () => localData.status());
 
-trustedHandle('window:set-close-action', (_event, value) => {
-  if (value !== 'hide' && value !== 'edge') throw new Error('无效关闭行为');
-  closeAction = value;
-  saveWindowState();
-  if (closeAction !== 'edge') hideEdgeWindow();
-  return closeAction;
+trustedHandle('local:configure', (_event, values) => {
+  if (!values || typeof values !== 'object' || Object.keys(values).some(key => !['closeAction', 'inboxEnabled'].includes(key))) throw new Error('无效设置');
+  if ('closeAction' in values && !['hide', 'edge'].includes(values.closeAction)) throw new Error('无效关闭行为');
+  if ('inboxEnabled' in values && typeof values.inboxEnabled !== 'boolean') throw new Error('无效收件箱设置');
+  if (values.inboxEnabled && !localData.status().inboxPath) throw new Error('请先选择收件箱文件夹');
+  const result = localData.configure(values);
+  if (result.closeAction !== 'edge') hideEdgeWindow();
+  return result;
+});
+
+trustedHandle('local:scan', () => localData.scan());
+
+trustedHandle('local:choose', async (_event, kind) => {
+  if (!['storage', 'inbox'].includes(kind)) throw new Error('无效文件夹类型');
+  nativeModalDepth += 1;
+  cancelDesktopAttach();
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: kind === 'storage' ? '选择空文件夹存放 Luma 数据（原数据保留）' : '选择手机日记收件箱',
+      properties: ['openDirectory', 'createDirectory'],
+    });
+    if (result.canceled || !result.filePaths[0]) return localData.status();
+    const selected = fs.realpathSync(result.filePaths[0]);
+    if (kind === 'storage') return localData.migrate(selected);
+    return localData.configure({ inboxPath: selected });
+  } finally {
+    nativeModalDepth = Math.max(0, nativeModalDepth - 1);
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused()) scheduleDesktopAttach();
+  }
 });
 
 trustedOn('edge:restore', () => {
@@ -2035,11 +2069,7 @@ trustedOn('edge:move', (_event, payload) => {
   const dy = Number(payload?.dy) || 0;
   const nextY = Math.max(area.y, Math.min(area.y + area.height - EDGE_TAB_H, bounds.y + dy));
   placeEdgeWindow(area, right, nextY);
-  if (payload?.persist) {
-    edgeTabY = nextY;
-    edgeTabSide = right ? 'right' : 'left';
-    saveWindowState();
-  }
+  if (payload?.persist) localData.configure({ edgeTabY: nextY, edgeTabSide: right ? 'right' : 'left' });
 });
 
 trustedHandle('data:load', () => {

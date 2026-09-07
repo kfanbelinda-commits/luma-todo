@@ -990,6 +990,7 @@
     reload: loadStore,
     renderBoard,
     renderDetail,
+    flush: flushAllNotes,
     getStore: () => store,
   };
 

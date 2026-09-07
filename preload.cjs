@@ -1,12 +1,14 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('luma', {
+  localStatus: () => ipcRenderer.invoke('local:status'),
+  localConfigure: (values) => ipcRenderer.invoke('local:configure', values),
+  localChoose: (kind) => ipcRenderer.invoke('local:choose', kind),
+  localScan: () => ipcRenderer.invoke('local:scan'),
   setExpanded: (expanded) => ipcRenderer.invoke('window:set-expanded', expanded),
   setAlwaysOnTop: (enabled) => ipcRenderer.invoke('window:set-always-on-top', enabled),
   activate: () => ipcRenderer.send('window:activate'),
   hide: () => ipcRenderer.send('window:hide'),
-  getCloseAction: () => ipcRenderer.invoke('window:get-close-action'),
-  setCloseAction: (value) => ipcRenderer.invoke('window:set-close-action', value),
   load: () => ipcRenderer.invoke('data:load'),
   save: (payload) => ipcRenderer.invoke('data:save', payload),
   exportData: (payload) => ipcRenderer.invoke('data:export', payload),
