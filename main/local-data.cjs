@@ -17,7 +17,7 @@ function createLocalData(home) {
     return config.storagePath || home;
   };
   const save = (next) => { atomicJson(configFile, next); config = next; };
-  const status = () => ({ storagePath: root(), inboxPath: config.inboxPath || '', inboxEnabled: config.inboxEnabled === true, closeAction: config.closeAction === 'edge' ? 'edge' : 'hide', lastImport });
+  const status = () => ({ storagePath: root(), inboxPath: config.inboxPath || '', inboxEnabled: config.inboxEnabled === true, closeAction: config.closeAction === 'edge' ? 'edge' : 'hide', edgeTabY: Number.isFinite(config.edgeTabY) ? config.edgeTabY : null, edgeTabSide: config.edgeTabSide === 'right' || config.edgeTabSide === 'left' ? config.edgeTabSide : '', lastImport });
   function migrate(destination) {
     destination = path.resolve(destination);
     const source = path.resolve(root());

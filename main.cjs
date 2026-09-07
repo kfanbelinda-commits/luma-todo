@@ -46,7 +46,18 @@ const hasSingleInstanceLock = app.requestSingleInstanceLock();
 if (!hasSingleInstanceLock) app.quit();
 
 const localData = createLocalData(app.getPath('userData'));
+const EDGE_TAB_W = 36;
+const EDGE_TAB_H = 40;
 let edgeWindow = null;
+
+function placeEdgeWindow(area, right, y) {
+  edgeWindow.setBounds({
+    x: right ? area.x + area.width - EDGE_TAB_W : area.x,
+    y: Math.max(area.y, Math.min(area.y + area.height - EDGE_TAB_H, y)),
+    width: EDGE_TAB_W,
+    height: EDGE_TAB_H,
+  });
+}
 
 function closeToPreference() {
   isExplicitlyHidden = true;
@@ -55,9 +66,15 @@ function closeToPreference() {
   if (localData.status().closeAction !== 'edge') return;
   const bounds = mainWindow.getBounds();
   const area = screen.getDisplayMatching(bounds).workArea;
-  const right = bounds.x + bounds.width / 2 >= area.x + area.width / 2;
+  const st = localData.status();
+  const right = st.edgeTabSide === 'right' ? true
+    : st.edgeTabSide === 'left' ? false
+    : bounds.x + bounds.width / 2 >= area.x + area.width / 2;
+  const y = Number.isFinite(st.edgeTabY)
+    ? st.edgeTabY
+    : Math.max(area.y, Math.min(area.y + area.height - EDGE_TAB_H, bounds.y + 70));
   if (!edgeWindow || edgeWindow.isDestroyed()) {
-    edgeWindow = new BrowserWindow({ width: 28, height: 96, frame: false, resizable: false, skipTaskbar: true, alwaysOnTop: true, show: false, backgroundColor: '#303339', webPreferences: { preload: path.join(__dirname, 'main', 'edge-preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
+    edgeWindow = new BrowserWindow({ width: EDGE_TAB_W, height: EDGE_TAB_H, frame: false, resizable: false, skipTaskbar: true, alwaysOnTop: true, show: false, backgroundColor: '#303339', webPreferences: { preload: path.join(__dirname, 'main', 'edge-preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
     edgeWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     edgeWindow.webContents.on('will-navigate', event => event.preventDefault());
     edgeWindow.loadFile(path.join(__dirname, 'src', 'edge.html')).catch(error => {
@@ -66,10 +83,22 @@ function closeToPreference() {
     });
     edgeWindow.once('ready-to-show', () => { if (isExplicitlyHidden) edgeWindow.showInactive(); });
   }
-  edgeWindow.setBounds({ x: right ? area.x + area.width - 28 : area.x, y: Math.max(area.y, Math.min(area.y + area.height - 96, bounds.y + 70)), width: 28, height: 96 });
+  placeEdgeWindow(area, right, y);
   if (!edgeWindow.webContents.isLoading()) edgeWindow.showInactive();
 }
 trustedOn('edge:restore', () => revealMainWindow());
+trustedOn('edge:move', (_event, payload) => {
+  if (!edgeWindow || edgeWindow.isDestroyed()) return;
+  const bounds = edgeWindow.getBounds();
+  const area = screen.getDisplayMatching(bounds).workArea;
+  const right = bounds.x + bounds.width / 2 >= area.x + area.width / 2;
+  const dy = Number(payload?.dy) || 0;
+  const nextY = Math.max(area.y, Math.min(area.y + area.height - EDGE_TAB_H, bounds.y + dy));
+  placeEdgeWindow(area, right, nextY);
+  if (payload?.persist) {
+    localData.configure({ edgeTabY: nextY, edgeTabSide: right ? 'right' : 'left' });
+  }
+});
 
 function dataPath() {
   return path.join(localData.root(), 'luma-data.json');
@@ -1846,7 +1875,7 @@ function trustedHandle(channel, handler) {
 
 function trustedOn(channel, handler) {
   ipcMain.on(channel, (event, ...args) => {
-    if (channel === 'edge:restore') {
+    if (channel === 'edge:restore' || channel === 'edge:move') {
       if (!edgeWindow || edgeWindow.isDestroyed() || event.sender !== edgeWindow.webContents || event.senderFrame?.url !== edgeWindow.webContents.getURL() || !event.senderFrame.url.startsWith('file:')) return;
       return handler(event, ...args);
     }
