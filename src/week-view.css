@@ -214,6 +214,7 @@
   text-align: center;
 }
 .week-mini-day {
+  position: relative;
   height: 22px;
   padding: 0;
   border: 0;
@@ -246,6 +247,28 @@
 html[data-theme="light"] .week-mini-day.is-anchor {
   background: #2c3340;
   color: #f6f7f9;
+}
+.week-mini-day.is-holiday-off:not(.is-anchor) {
+  color: #c45c5c;
+}
+html[data-theme="light"] .week-mini-day.is-holiday-off:not(.is-anchor) {
+  color: #b42318;
+}
+.week-mini-workdot {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #5b6b88;
+  pointer-events: none;
+}
+html[data-theme="light"] .week-mini-workdot {
+  background: #3d4a63;
+}
+.week-mini-day.is-anchor .week-mini-workdot {
+  background: color-mix(in srgb, var(--action-on-primary, #f6f7f9) 82%, #5b6b88);
 }
 
 .week-main {
@@ -286,11 +309,14 @@ html[data-theme="light"] .week-mini-day.is-anchor {
   z-index: 4;
 }
 .week-col-head {
+  container-type: inline-size;
+  container-name: weekcol;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
+  min-width: 0;
   padding: 8px 2px 7px;
   border: 0;
   background: transparent;
@@ -318,6 +344,43 @@ html[data-theme="light"] .week-mini-day.is-anchor {
   font-weight: 400;
   line-height: 1.2;
   white-space: nowrap;
+}
+.week-col-lunar.is-holiday {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  min-width: 0;
+}
+.week-col-fest {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: clip;
+}
+.week-col-lunar.is-holiday .week-col-mark {
+  display: none;
+  flex: 0 0 auto;
+  font-weight: 700;
+}
+.week-col-lunar.is-holiday-off {
+  color: #c45c5c;
+}
+.week-col-lunar.is-holiday-work {
+  color: #5b6b88;
+}
+html[data-theme="light"] .week-col-lunar.is-holiday-off {
+  color: #b42318;
+}
+html[data-theme="light"] .week-col-lunar.is-holiday-work {
+  color: #3d4a63;
+}
+@container weekcol (max-width: 58px) {
+  .week-col-lunar.is-holiday .week-col-fest {
+    display: none;
+  }
+  .week-col-lunar.is-holiday .week-col-mark {
+    display: inline;
+  }
 }
 .week-col-head.is-weekend .week-col-primary {
   color: var(--muted, rgba(90, 96, 108, .55));

@@ -117,8 +117,58 @@
     return name || "休";
   }
 
+  function cnFestivalName(mark) {
+    if (!mark || mark.type !== "off") return "";
+    const name = String(mark.name || "");
+    if (!name) return "";
+    if (name.endsWith("节") && name.length > 2) return name.slice(0, -1);
+    return name;
+  }
+
+  function shiftDateKey(dateKey, delta) {
+    const parts = String(dateKey || "").split("-").map(Number);
+    if (parts.length !== 3 || parts.some((value) => !Number.isFinite(value))) return "";
+    const date = new Date(parts[0], parts[1] - 1, parts[2] + delta);
+    if (Number.isNaN(date.getTime())) return "";
+    const pad = (value) => String(value).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  }
+
+  function cnHolidayIsLeadDay(dateKey, mark) {
+    const current = mark || getCnHolidayMark(dateKey);
+    if (!current || current.type !== "off") return false;
+    const previous = getCnHolidayMark(shiftDateKey(dateKey, -1));
+    return !(previous && previous.type === "off" && previous.name === current.name);
+  }
+
+  function cnHolidayWeekCaption(dateKey) {
+    const mark = getCnHolidayMark(dateKey);
+    if (!mark) return null;
+    const detail = cnHolidayDetailLabel(mark);
+    if (mark.type === "work") {
+      return {
+        type: "work",
+        badge: cnHolidayBadgeText(mark) || "班",
+        full: "调休上班",
+        fest: "",
+        detail
+      };
+    }
+    const fest = cnHolidayIsLeadDay(dateKey, mark) ? cnFestivalName(mark) : "";
+    return {
+      type: "off",
+      badge: "休",
+      full: fest ? `${fest} · 休` : "休息日",
+      fest,
+      detail
+    };
+  }
+
   root.getCnHolidayMark = getCnHolidayMark;
   root.cnHolidayDetailLabel = cnHolidayDetailLabel;
   root.cnHolidayBadgeText = cnHolidayBadgeText;
+  root.cnFestivalName = cnFestivalName;
+  root.cnHolidayIsLeadDay = cnHolidayIsLeadDay;
+  root.cnHolidayWeekCaption = cnHolidayWeekCaption;
   root.CN_HOLIDAY_YEARS = YEARS;
 })(typeof globalThis !== "undefined" ? globalThis : window);

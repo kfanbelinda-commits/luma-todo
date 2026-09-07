@@ -31,6 +31,36 @@
     if (isMonday || current.isFirst) return current.text;
     return current.day || current.text;
   }
+  function holidayMark(dateKey) {
+    return typeof getCnHolidayMark === 'function' ? getCnHolidayMark(dateKey) : null;
+  }
+  function holidayDetail(mark) {
+    return typeof cnHolidayDetailLabel === 'function' ? cnHolidayDetailLabel(mark) : '';
+  }
+  function holidayCaption(dateKey) {
+    if (typeof cnHolidayWeekCaption === 'function') return cnHolidayWeekCaption(dateKey);
+    const mark = holidayMark(dateKey);
+    if (!mark) return null;
+    const detail = holidayDetail(mark);
+    if (mark.type === 'work') {
+      const badge = typeof cnHolidayBadgeText === 'function' ? (cnHolidayBadgeText(mark) || '班') : '班';
+      return { type: 'work', badge, full: '调休上班', fest: '', detail };
+    }
+    const prev = parseKey(dateKey);
+    prev.setDate(prev.getDate() - 1);
+    const previous = holidayMark(toKey(prev));
+    const lead = !(previous && previous.type === 'off' && previous.name === mark.name);
+    const fest = lead && typeof cnFestivalName === 'function' ? cnFestivalName(mark) : (lead ? String(mark.name || '') : '');
+    return { type: 'off', badge: '休', full: fest ? `${fest} · 休` : '休息日', fest, detail };
+  }
+  function weekHolidaySubline(dateKey, lunar) {
+    const caption = holidayCaption(dateKey);
+    if (!caption) {
+      return lunar ? `<span class="week-col-lunar">${lunar}</span>` : '';
+    }
+    const title = caption.detail ? ` title="${escapeText(caption.detail)}"` : '';
+    return `<span class="week-col-lunar is-holiday is-holiday-${caption.type}"${title}><span class="week-col-fest">${escapeText(caption.full)}</span><span class="week-col-mark" aria-hidden="true">${escapeText(caption.badge)}</span></span>`;
+  }
   let view = 'month';
   let anchorKey = todayKey();
   let drag = null;
@@ -197,7 +227,13 @@
       date.setDate(start.getDate() + index);
       const key = toKey(date);
       const muted = date.getMonth() !== month;
-      cells.push(`<button type="button" class="week-mini-day${muted ? ' is-muted' : ''}${weekSet.has(key) ? ' is-week' : ''}${key === today ? ' is-today' : ''}${key === anchorKey ? ' is-anchor' : ''}" data-date="${key}">${date.getDate()}</button>`);
+      const mark = holidayMark(key);
+      const detail = holidayDetail(mark);
+      const holidayClass = mark?.type === 'off' ? ' is-holiday-off' : (mark?.type === 'work' ? ' is-holiday-work' : '');
+      const title = detail ? ` title="${escapeText(detail)}"` : '';
+      const aria = detail ? ` aria-label="${date.getDate()}日，${escapeText(detail)}"` : '';
+      const workdot = mark?.type === 'work' ? '<i class="week-mini-workdot" aria-hidden="true"></i>' : '';
+      cells.push(`<button type="button" class="week-mini-day${muted ? ' is-muted' : ''}${weekSet.has(key) ? ' is-week' : ''}${key === today ? ' is-today' : ''}${key === anchorKey ? ' is-anchor' : ''}${holidayClass}" data-date="${key}"${title}${aria}>${date.getDate()}${workdot}</button>`);
     }
     const stats = monthStats(year, month);
     const statRows = stats.rows.map((row) => (
@@ -323,7 +359,11 @@
       const dow = date.getDay();
       const weekend = dow === 0 || dow === 6;
       const lunar = weekLunarLabel(date, { isMonday: index === 0 });
-      return `<button type="button" class="week-col-head${key === todayKey() ? ' is-today' : ''}${weekend ? ' is-weekend' : ''}" data-date="${key}"><span class="week-col-primary"><strong>${date.getDate()}</strong> 周${WEEKDAY_LABELS[(dow + 6) % 7]}</span>${lunar ? `<span class="week-col-lunar">${lunar}</span>` : ''}</button>`;
+      const caption = holidayCaption(key);
+      const weekday = WEEKDAY_LABELS[(dow + 6) % 7];
+      const sub = weekHolidaySubline(key, lunar);
+      const aria = caption?.detail ? ` aria-label="${date.getDate()} 周${weekday}，${escapeText(caption.detail)}"` : '';
+      return `<button type="button" class="week-col-head${key === todayKey() ? ' is-today' : ''}${weekend ? ' is-weekend' : ''}" data-date="${key}"${aria}><span class="week-col-primary"><strong>${date.getDate()}</strong> 周${weekday}</span>${sub}</button>`;
     }).join('');
     const allDayCols = keys.map((key) => {
       const chips = splitDayTasks(key).allDay.map((task) => `<button type="button" class="week-chip" data-date="${key}" data-id="${escapeText(task.id)}" style="--event-color:${projectColor(task)}">${escapeText(task.title)}</button>`).join('');
