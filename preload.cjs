@@ -1,6 +1,10 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('luma', {
+  localStatus: () => ipcRenderer.invoke('local:status'),
+  localConfigure: (values) => ipcRenderer.invoke('local:configure', values),
+  localChoose: (kind) => ipcRenderer.invoke('local:choose', kind),
+  localScan: () => ipcRenderer.invoke('local:scan'),
   setExpanded: (expanded) => ipcRenderer.invoke('window:set-expanded', expanded),
   setAlwaysOnTop: (enabled) => ipcRenderer.invoke('window:set-always-on-top', enabled),
   activate: () => ipcRenderer.send('window:activate'),

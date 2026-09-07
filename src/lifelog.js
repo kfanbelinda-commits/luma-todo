@@ -988,6 +988,7 @@
     boot,
     setView,
     reload: loadStore,
+    flush: async () => { if (!ready) return; await flushAllNotes(); if (persistStatus === 'error') throw new Error('请先重试保存日记'); },
     renderBoard,
     renderDetail,
     getStore: () => store,
