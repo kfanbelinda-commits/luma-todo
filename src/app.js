@@ -2535,19 +2535,23 @@ function bindEvents() {
       settingsCloseTimer = null;
     }, 150);
   };
+  const positionSettingsDialog = () => {
+    if (!settingsDialog.open) return;
+    const anchor = $('#settingsButton').getBoundingClientRect();
+    const bounds = settingsDialog.getBoundingClientRect();
+    const left = Math.max(10, Math.min(anchor.right - bounds.width, window.innerWidth - bounds.width - 10));
+    const top = Math.max(10, Math.min(anchor.bottom + 7, window.innerHeight - bounds.height - 10));
+    settingsDialog.style.left = `${Math.round(left)}px`;
+    settingsDialog.style.top = `${Math.round(top)}px`;
+  };
+  new ResizeObserver(positionSettingsDialog).observe(settingsDialog);
+  window.addEventListener('resize', positionSettingsDialog);
   const openSettingsDialog = () => {
     if (settingsCloseTimer) clearTimeout(settingsCloseTimer);
     settingsCloseTimer = null;
     settingsDialog.classList.remove('closing');
     if (!settingsDialog.open) settingsDialog.show();
-    requestAnimationFrame(() => {
-      const anchor = $('#settingsButton').getBoundingClientRect();
-      const bounds = settingsDialog.getBoundingClientRect();
-      const left = Math.max(10, Math.min(anchor.right - bounds.width, window.innerWidth - bounds.width - 10));
-      const top = Math.max(10, Math.min(anchor.bottom + 7, window.innerHeight - bounds.height - 10));
-      settingsDialog.style.left = `${Math.round(left)}px`;
-      settingsDialog.style.top = `${Math.round(top)}px`;
-    });
+    requestAnimationFrame(positionSettingsDialog);
   };
 
   $('#settingsButton').addEventListener('click', async () => {
