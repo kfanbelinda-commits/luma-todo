@@ -92,6 +92,75 @@ function taskToIcloudIcs(task, uid) {
   return lines.join('\r\n');
 }
 
+function lifelogExcerpt(note) {
+  const compact = String(note || '').replace(/\s+/g, ' ').trim();
+  if (!compact) return '日记';
+  return compact.length > 24 ? compact.slice(0, 24) + '…' : compact;
+}
+
+function lifelogHasContent(entry) {
+  return Boolean(entry && (
+    String(entry.note || '').trim()
+    || entry.mood
+    || entry.weather
+    || (Array.isArray(entry.photos) && entry.photos.length)
+  ));
+}
+
+function lifelogToIcloudIcs(entry, dateKey, uid) {
+  const updatedAt = Number(entry && entry.updatedAt || Date.now());
+  const stamp = new Date(updatedAt);
+  const dtstamp = stamp.getUTCFullYear()
+    + String(stamp.getUTCMonth() + 1).padStart(2, '0')
+    + String(stamp.getUTCDate()).padStart(2, '0')
+    + 'T'
+    + String(stamp.getUTCHours()).padStart(2, '0')
+    + String(stamp.getUTCMinutes()).padStart(2, '0')
+    + String(stamp.getUTCSeconds()).padStart(2, '0')
+    + 'Z';
+  const note = String(entry && entry.note || '');
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Luma Todo//iCloud Calendar//EN',
+    'CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT',
+    'UID:' + uid,
+    'DTSTAMP:' + dtstamp,
+    'LAST-MODIFIED:' + dtstamp,
+    'SUMMARY:' + icsEscapeText(lifelogExcerpt(note)),
+    'DESCRIPTION:' + icsEscapeText(note),
+    'X-LUMA-TODO:TRUE',
+    'X-LUMA-ITEM-TYPE:lifelog',
+    'X-LUMA-DATE:' + String(dateKey || ''),
+    'X-LUMA-UPDATED-AT:' + updatedAt,
+    'DTSTART;VALUE=DATE:' + compactDateKey(dateKey),
+    'DTEND;VALUE=DATE:' + compactDateKey(nextDateKeyLocal(dateKey))
+  ];
+  if (entry && entry.mood) lines.push('X-LUMA-LIFELOG-MOOD:' + icsEscapeText(entry.mood));
+  if (entry && entry.weather) lines.push('X-LUMA-LIFELOG-WEATHER:' + icsEscapeText(entry.weather));
+  lines.push('END:VEVENT', 'END:VCALENDAR', '');
+  return lines.join('\r\n');
+}
+
+function mergeLifelogFromRemote(local, remote) {
+  const current = local && typeof local === 'object' ? local : {};
+  const photos = Array.isArray(current.photos) ? current.photos.slice() : [];
+  const localNote = String(current.note || '');
+  return {
+    weather: current.weather || remote.weather || '',
+    mood: current.mood || remote.mood || '',
+    note: localNote.trim() ? current.note : String(remote.note || ''),
+    photos,
+    coverPhotoId: current.coverPhotoId || null,
+    updatedAt: Number(current.updatedAt || 0) || Number(remote.remoteUpdatedAt || Date.now()),
+    icloudHref: remote.href || current.icloudHref || '',
+    icloudUid: remote.uid || current.icloudUid || '',
+    icloudEtag: remote.etag || current.icloudEtag || '',
+    lastIcloudEtag: remote.etag || current.lastIcloudEtag || ''
+  };
+}
+
 function unfoldIcsLines(ics) {
   return String(ics || '').replace(/\r?\n[ \t]/g, '').split(/\r?\n/);
 }
@@ -161,6 +230,10 @@ function parseIcloudEvent(ics, href, etag, calendar) {
   const lumaTaskId = unescapeIcsText(icsProperty(lines, 'X-LUMA-TASK-ID')?.value || '');
   const lumaItemType = String(icsProperty(lines, 'X-LUMA-ITEM-TYPE')?.value || '').toLowerCase();
   const lumaCompleted = String(icsProperty(lines, 'X-LUMA-COMPLETED')?.value || '').toLowerCase() === 'true';
+  const lumaDate = unescapeIcsText(icsProperty(lines, 'X-LUMA-DATE')?.value || '');
+  const lifelogMood = unescapeIcsText(icsProperty(lines, 'X-LUMA-LIFELOG-MOOD')?.value || '');
+  const lifelogWeather = unescapeIcsText(icsProperty(lines, 'X-LUMA-LIFELOG-WEATHER')?.value || '');
+  const description = unescapeIcsText(icsProperty(lines, 'DESCRIPTION')?.value || '');
   const color = String(icsProperty(lines, 'X-LUMA-EVENT-COLOR')?.value || '');
   const lastModifiedRaw = icsProperty(lines, 'LAST-MODIFIED') || icsProperty(lines, 'DTSTAMP');
   const lastModified = parseIcsDateProperty(lastModifiedRaw);
@@ -193,6 +266,10 @@ function parseIcloudEvent(ics, href, etag, calendar) {
     lumaTaskId,
     lumaItemType,
     lumaCompleted,
+    lumaDate,
+    lifelogMood,
+    lifelogWeather,
+    note: lumaItemType === 'lifelog' ? description : '',
     eventColor: /^#[0-9a-f]{6}$/i.test(color) ? color : DEFAULT_EVENT_COLOR,
     remoteUpdatedAt: Number.isFinite(remoteUpdatedAt) ? remoteUpdatedAt : Date.now(),
     calendarUrl: calendar.url,
@@ -203,4 +280,7 @@ function parseIcloudEvent(ics, href, etag, calendar) {
 module.exports = {
   taskToIcloudIcs,
   parseIcloudEvent,
+  lifelogToIcloudIcs,
+  lifelogHasContent,
+  mergeLifelogFromRemote,
 };

@@ -871,6 +871,19 @@
     await renderBoard();
   }
 
+  function wrapRenderDetail() {
+    if (typeof renderCalendarDetail !== "function") return;
+    if (renderCalendarDetail.__lifelogWrapped) return;
+    const original = renderCalendarDetail;
+    renderCalendarDetail = function lifelogAwareDetail() {
+      captureLiveNote();
+      original();
+      const dateKey = typeof calendarDetailDate === "string" ? calendarDetailDate : currentDetailDate;
+      if (dateKey) queueMicrotask(() => { renderDetail(dateKey); });
+    };
+    renderCalendarDetail.__lifelogWrapped = true;
+  }
+
   function wrapOpenDetail() {
     if (typeof openCalendarDetail !== "function") return;
     if (openCalendarDetail.__lifelogWrapped) return;
@@ -925,11 +938,13 @@
   function ensureNav() {
     wrapOpenDetail();
     wrapCloseDetail();
+    wrapRenderDetail();
     wrapMonthNav();
     bindDirectNav();
     const wrapsReady = Boolean(
       (typeof openCalendarDetail === "function" && openCalendarDetail.__lifelogWrapped)
       && (typeof closeCalendarDetail === "function" && closeCalendarDetail.__lifelogWrapped)
+      && (typeof renderCalendarDetail === "function" && renderCalendarDetail.__lifelogWrapped)
       && navHooked
     );
     if (!wrapsReady && navTries < 40) {
@@ -988,6 +1003,7 @@
     boot,
     setView,
     reload: loadStore,
+    flush: flushAllNotes,
     renderBoard,
     renderDetail,
     getStore: () => store,
@@ -998,6 +1014,7 @@
   window.addEventListener("load", () => {
     wrapOpenDetail();
     wrapCloseDetail();
+    wrapRenderDetail();
     ensureNav();
   });
 })();

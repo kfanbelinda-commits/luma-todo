@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { taskToIcloudIcs, parseIcloudEvent } = require('../main/icloud-ics.cjs');
+const { taskToIcloudIcs, parseIcloudEvent, lifelogToIcloudIcs, mergeLifelogFromRemote } = require('../main/icloud-ics.cjs');
 
 const calendar = { name: 'QA Calendar', url: 'https://qa.invalid/calendar/' };
 const fixedUpdatedAt = Date.parse('2026-09-05T00:00:00Z');
@@ -121,4 +121,70 @@ test('native Apple all-day Event parses without Luma linkage metadata', () => {
   assert.equal(parsed.lumaItemType, '');
   assert.equal(parsed.dueDate, '2026-09-10');
   assert.equal(parsed.endDate, '2026-09-11');
+});
+
+test('Life Log ICS round-trips note mood and weather without photos', () => {
+  const ics = lifelogToIcloudIcs({
+    note: '今天风很轻',
+    mood: 'calm',
+    weather: 'sunny',
+    photos: [{ id: 'local-only' }],
+    updatedAt: fixedUpdatedAt,
+  }, '2026-09-07', 'luma-lifelog-2026-09-07@luma-todo');
+
+  assert.match(ics, /X-LUMA-ITEM-TYPE:lifelog/);
+  assert.match(ics, /X-LUMA-DATE:2026-09-07/);
+  assert.match(ics, /X-LUMA-LIFELOG-MOOD:calm/);
+  assert.match(ics, /DESCRIPTION:今天风很轻/);
+  assert.doesNotMatch(ics, /local-only/);
+
+  const parsed = parseIcloudEvent(ics, '/qa/lifelog.ics', '"life-etag"', calendar);
+  assert.equal(parsed.lumaItemType, 'lifelog');
+  assert.equal(parsed.lumaDate, '2026-09-07');
+  assert.equal(parsed.note, '今天风很轻');
+  assert.equal(parsed.lifelogMood, 'calm');
+  assert.equal(parsed.lifelogWeather, 'sunny');
+  assert.equal(parsed.dueDate, '2026-09-07');
+});
+
+test('pulling iCloud Life Log does not overwrite local note mood or photos', () => {
+  const merged = mergeLifelogFromRemote({
+    note: '本地已写',
+    mood: 'good',
+    weather: '',
+    photos: [{ id: 'p1', path: 'a.jpg' }],
+    coverPhotoId: 'p1',
+    updatedAt: 10,
+  }, {
+    href: '/remote.ics',
+    uid: 'remote-uid',
+    etag: '"e2"',
+    note: '远端要覆盖',
+    mood: 'awful',
+    weather: 'rainy',
+    remoteUpdatedAt: 99,
+  });
+
+  assert.equal(merged.note, '本地已写');
+  assert.equal(merged.mood, 'good');
+  assert.equal(merged.weather, 'rainy');
+  assert.equal(merged.photos[0].id, 'p1');
+  assert.equal(merged.coverPhotoId, 'p1');
+  assert.equal(merged.icloudUid, 'remote-uid');
+});
+
+test('empty local Life Log can take remote text', () => {
+  const merged = mergeLifelogFromRemote(null, {
+    href: '/remote.ics',
+    uid: 'remote-uid',
+    etag: '"e3"',
+    note: '从 iPhone 写下',
+    mood: 'calm',
+    weather: 'cloudy',
+    remoteUpdatedAt: 20,
+  });
+  assert.equal(merged.note, '从 iPhone 写下');
+  assert.equal(merged.mood, 'calm');
+  assert.equal(merged.weather, 'cloudy');
+  assert.deepEqual(merged.photos, []);
 });
