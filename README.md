@@ -7,11 +7,11 @@
 ![界面预览](./assets/Lumatodo.png)
 
 
-## 下载 当前版本：v1.4.0
+## 下载 当前版本：v1.4.1
 
 **[下载最新版 Luma Todo](https://github.com/kfanbelinda-commits/luma-todo/releases/latest)**
 
-推荐下载 `Luma-Todo-Setup-1.4.0.zip`，解压后运行其中的 `Luma-Todo-Setup-1.4.0.exe`；也可以直接下载 `.exe` 安装。其他 Assets 无需手动下载。
+推荐下载 `Luma-Todo-Setup-1.4.1.zip`，解压后运行其中的 `Luma-Todo-Setup-1.4.1.exe`；也可以直接下载 `.exe` 安装。其他 Assets 无需手动下载。
 
 
 
@@ -55,4 +55,3 @@ Google 登录令牌与 Apple/iCloud 登录凭据均使用本地安全存储保�
 ## 使用说明
 
 详细的新建、编辑、拖动、分类和同步操作，请查看《Luma Todo 产品使用说明书》。
-
