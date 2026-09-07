@@ -774,6 +774,25 @@ function fitAllCalendarCells() {
   document.querySelectorAll('.calendar-day').forEach((cell) => fitCalendarCellContent(cell));
 }
 
+function calendarHolidayHeading(dateKey, dayLabel, mark) {
+  if (!mark) return `<span class="day-number">${dayLabel}</span>`;
+  const lead = typeof cnHolidayIsLeadDay === 'function' && cnHolidayIsLeadDay(dateKey, mark);
+  const fest = lead && typeof cnFestivalName === 'function' ? cnFestivalName(mark) : '';
+  const badge = typeof cnHolidayBadgeText === 'function'
+    ? cnHolidayBadgeText(mark)
+    : (mark.type === 'work' ? '班' : '休');
+  const detail = typeof cnHolidayDetailLabel === 'function' ? cnHolidayDetailLabel(mark) : '';
+  const escaped = String(detail)
+    .replace(/&/g, '&')
+    .replace(/"/g, '"')
+    .replace(/</g, '<');
+  return `<div class="day-heading">`
+    + `<span class="day-number">${dayLabel}</span>`
+    + (fest ? `<span class="day-fest">${fest}</span>` : '')
+    + `<span class="day-holiday day-holiday-${mark.type}" title="${escaped}" aria-label="${escaped}">${badge}</span>`
+    + `</div>`;
+}
+
 function renderCalendar() {
   const year = calendarCursor.getFullYear();
   const month = calendarCursor.getMonth();
@@ -831,12 +850,13 @@ function renderCalendar() {
     const cell = document.createElement('div');
     cell.dataset.date = key;
     cell.dataset.hiddenCalendarCount = String(hiddenCount);
-    cell.className = `calendar-day${date.getMonth() !== month ? ' muted' : ''}${key === dayOffset(0) ? ' today' : ''}${key === calendarDetailDate ? ' selected-date' : ''}`;
+    const holidayMark = typeof getCnHolidayMark === 'function' ? getCnHolidayMark(key) : null;
+    cell.className = `calendar-day${date.getMonth() !== month ? ' muted' : ''}${key === dayOffset(0) ? ' today' : ''}${key === calendarDetailDate ? ' selected-date' : ''}${holidayMark?.type === 'off' ? ' holiday-off' : ''}${holidayMark?.type === 'work' ? ' holiday-work' : ''}`;
     if (totalCount > 4) cell.classList.add('crowded');
     if (allCalendarItems.some((task) => task.id === highlightedTaskId)) cell.classList.add('focused-date');
 
     const dayLabel = date.getMonth() !== month ? `${date.getMonth() + 1}/${date.getDate()}` : String(date.getDate());
-    cell.innerHTML = `<span class="day-number">${dayLabel}</span><div class="day-spans"></div><div class="day-events"></div>`;
+    cell.innerHTML = `${calendarHolidayHeading(key, dayLabel, holidayMark)}<div class="day-spans"></div><div class="day-events"></div>`;
 
     const spanHost = cell.querySelector('.day-spans');
     visibleSpans.forEach((task) => {
@@ -1120,8 +1140,11 @@ function renderCalendarDetail() {
 
   const selectedDate = fromDateKey(calendarDetailDate);
   const lunar = formatLunarDate(selectedDate);
+  const holidayLine = typeof getCnHolidayMark === 'function' && typeof cnHolidayDetailLabel === 'function'
+    ? cnHolidayDetailLabel(getCnHolidayMark(calendarDetailDate))
+    : '';
   $('#calendarDetailTitle').textContent = `${selectedDate.getMonth() + 1}月${selectedDate.getDate()}日 周${WEEKDAYS[selectedDate.getDay()]}`;
-  $('#calendarDetailLunar').textContent = lunar;
+  $('#calendarDetailLunar').textContent = [lunar, holidayLine].filter(Boolean).join(' · ');
   detail.classList.remove('hidden');
   detail.setAttribute('aria-hidden', 'false');
   setCalendarDetailView(calendarDetailViewMode);

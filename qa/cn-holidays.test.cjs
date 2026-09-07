@@ -93,6 +93,7 @@ test('week captions reuse rest/work marks without a second table', () => {
 test('week view wires holiday captions into the existing header and mini calendar', () => {
   const week = fs.readFileSync(path.join(__dirname, '..', 'src', 'week-view.js'), 'utf8');
   const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'week-view.css'), 'utf8');
+  const app = fs.readFileSync(path.join(__dirname, '..', 'src', 'app.js'), 'utf8');
   const bind = fs.readFileSync(path.join(__dirname, '..', 'src', 'cn-holidays-bind.js'), 'utf8');
   assert.match(week, /function weekHolidaySubline/);
   assert.match(week, /getCnHolidayMark/);
@@ -105,7 +106,10 @@ test('week view wires holiday captions into the existing header and mini calenda
   assert.match(css, /\.week-col-lunar\.is-holiday-off/);
   assert.match(css, /\.week-mini-day\.is-holiday-off:not\(\.is-anchor\)/);
   assert.match(css, /@container weekcol/);
-  assert.match(bind, /day-fest/);
-  assert.match(bind, /cnHolidayIsLeadDay/);
+  assert.match(app, /function calendarHolidayHeading/);
+  assert.match(app, /cnHolidayIsLeadDay/);
+  assert.doesNotMatch(bind, /MutationObserver/);
+  assert.doesNotMatch(bind, /setTimeout/);
 });
+
 
