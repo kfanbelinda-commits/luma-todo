@@ -111,10 +111,7 @@
 
   function cnHolidayBadgeText(mark) {
     if (!mark) return "";
-    if (mark.type === "work") return "班";
-    const name = String(mark.name || "");
-    if (name.endsWith("节") && name.length > 2) return name.slice(0, -1);
-    return name || "休";
+    return mark.type === "work" ? "班" : "休";
   }
 
   function cnFestivalName(mark) {
@@ -157,7 +154,7 @@
     const fest = cnHolidayIsLeadDay(dateKey, mark) ? cnFestivalName(mark) : "";
     return {
       type: "off",
-      badge: "休",
+      badge: cnHolidayBadgeText(mark) || "休",
       full: fest ? `${fest} · 休` : "休息日",
       fest,
       detail

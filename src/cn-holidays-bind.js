@@ -7,7 +7,17 @@
 
   function badgeText(mark) {
     if (typeof cnHolidayBadgeText === 'function') return cnHolidayBadgeText(mark);
-    return mark?.type === 'work' ? '班' : (mark?.name || '休');
+    return mark?.type === 'work' ? '班' : '休';
+  }
+
+  function festivalText(dateKey, mark) {
+    if (!mark || mark.type !== 'off') return '';
+    const lead = typeof cnHolidayIsLeadDay === 'function'
+      ? cnHolidayIsLeadDay(dateKey, mark)
+      : true;
+    if (!lead) return '';
+    if (typeof cnFestivalName === 'function') return cnFestivalName(mark) || '';
+    return String(mark.name || '');
   }
 
   function detailText(mark) {
@@ -33,23 +43,40 @@
     }
 
     const existing = heading.querySelector('.day-holiday');
+    const existingFest = heading.querySelector('.day-fest');
     if (!mark) {
       existing?.remove();
+      existingFest?.remove();
       return;
     }
+
+    const fest = festivalText(key, mark);
+    if (!fest) existingFest?.remove();
+    else if (existingFest) existingFest.textContent = fest;
+    else {
+      const name = document.createElement('span');
+      name.className = 'day-fest';
+      name.textContent = fest;
+      number.after(name);
+    }
+
     const text = badgeText(mark);
     const title = detailText(mark);
     if (existing
       && existing.classList.contains(`day-holiday-${mark.type}`)
       && existing.textContent === text) {
       if (title && existing.title !== title) existing.title = title;
+      if (title) existing.setAttribute('aria-label', title);
       return;
     }
     existing?.remove();
     const badge = document.createElement('span');
     badge.className = `day-holiday day-holiday-${mark.type}`;
     badge.textContent = text;
-    if (title) badge.title = title;
+    if (title) {
+      badge.title = title;
+      badge.setAttribute('aria-label', title);
+    }
     heading.appendChild(badge);
   }
 

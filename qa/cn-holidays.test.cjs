@@ -32,9 +32,10 @@ test('leaves ordinary days unmarked', () => {
 });
 
 test('short grid badges stay lightweight', () => {
-  assert.equal(sandbox.cnHolidayBadgeText(sandbox.getCnHolidayMark('2026-02-17')), '春节');
-  assert.equal(sandbox.cnHolidayBadgeText(sandbox.getCnHolidayMark('2026-05-01')), '劳动');
-  assert.equal(sandbox.cnHolidayBadgeText(sandbox.getCnHolidayMark('2026-10-01')), '国庆');
+  assert.equal(sandbox.cnHolidayBadgeText(sandbox.getCnHolidayMark('2026-02-17')), '休');
+  assert.equal(sandbox.cnHolidayBadgeText(sandbox.getCnHolidayMark('2026-05-01')), '休');
+  assert.equal(sandbox.cnHolidayBadgeText(sandbox.getCnHolidayMark('2026-09-25')), '休');
+  assert.equal(sandbox.cnHolidayBadgeText(sandbox.getCnHolidayMark('2026-09-26')), '休');
   assert.equal(sandbox.cnHolidayBadgeText(sandbox.getCnHolidayMark('2026-10-10')), '班');
   assert.equal(sandbox.cnHolidayBadgeText(null), '');
 });
@@ -92,6 +93,7 @@ test('week captions reuse rest/work marks without a second table', () => {
 test('week view wires holiday captions into the existing header and mini calendar', () => {
   const week = fs.readFileSync(path.join(__dirname, '..', 'src', 'week-view.js'), 'utf8');
   const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'week-view.css'), 'utf8');
+  const bind = fs.readFileSync(path.join(__dirname, '..', 'src', 'cn-holidays-bind.js'), 'utf8');
   assert.match(week, /function weekHolidaySubline/);
   assert.match(week, /getCnHolidayMark/);
   assert.match(week, /cnHolidayBadgeText/);
@@ -103,4 +105,7 @@ test('week view wires holiday captions into the existing header and mini calenda
   assert.match(css, /\.week-col-lunar\.is-holiday-off/);
   assert.match(css, /\.week-mini-day\.is-holiday-off:not\(\.is-anchor\)/);
   assert.match(css, /@container weekcol/);
+  assert.match(bind, /day-fest/);
+  assert.match(bind, /cnHolidayIsLeadDay/);
 });
+
