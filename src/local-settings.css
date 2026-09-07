@@ -1,9 +1,82 @@
-.local-settings { margin-top: 10px; border-top: 1px solid currentColor; border-color: color-mix(in srgb, currentColor 12%, transparent); font-size: 12px; }
-.local-settings summary { cursor: pointer; padding: 12px 2px 4px; font-weight: 650; }
-.local-settings summary span { float: right; font-weight: 400; opacity: .55; font-size: 10px; }
-.local-settings-body { padding: 10px 2px 2px; }
-.local-settings-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.local-path { font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; margin: 5px 0; opacity: .8; user-select: text; }
-.local-hint { font-size: 10px; line-height: 1.6; opacity: .65; margin: 6px 0 12px; }
-#closeActionSelect { max-width: 128px; padding: 5px; color: inherit; background: transparent; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 6px; font: inherit; font-size: 11px; }
+.local-settings {
+  margin: 0;
+  border-top: 1px solid currentColor;
+  border-color: color-mix(in srgb, currentColor 12%, transparent);
+  font-size: 12px;
+}
+.local-settings summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 2px;
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 680;
+  list-style: none;
+}
+.local-settings summary::-webkit-details-marker,
+.local-settings summary::marker {
+  display: none;
+  content: none;
+}
+.local-settings summary span {
+  margin-left: auto;
+  float: none;
+  font-weight: 400;
+  opacity: .55;
+  font-size: 10px;
+}
+.local-settings summary::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  margin-left: 2px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  opacity: .4;
+  transform: rotate(-45deg);
+  transition: transform 120ms ease;
+}
+.local-settings[open] summary::after {
+  transform: rotate(45deg);
+}
+.local-settings-body {
+  padding: 2px 2px 12px;
+}
+.local-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.local-path {
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  margin: 5px 0;
+  opacity: .8;
+  user-select: text;
+}
+.local-hint {
+  font-size: 10px;
+  line-height: 1.6;
+  opacity: .65;
+  margin: 6px 0 12px;
+}
+.settings-modal .local-settings .sync-settings {
+  margin-top: 0;
+  padding: 0 0 6px;
+}
+#closeActionSelect {
+  max-width: 128px;
+  padding: 5px;
+  color: inherit;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 11px;
+}
 #closeActionSelect option { color: #252830; background: #f5f3ef; }
