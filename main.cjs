@@ -1,5 +1,5 @@
 const { app, BrowserWindow, Tray, Menu, ipcMain, dialog, screen, nativeImage, safeStorage, shell } = require('electron');
-const { taskToIcloudIcs, parseIcloudEvent, lifelogToIcloudIcs, lifelogHasContent, mergeLifelogFromRemote } = require('./main/icloud-ics.cjs');
+const { taskToIcloudIcs, parseIcloudEvent } = require('./main/icloud-ics.cjs');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -590,55 +590,6 @@ function ensureAppleCalendarProject(state) {
   return project;
 }
 
-async function syncIcloudLifelog(credentials, calendar, remoteEvents) {
-  const store = readLifelogStore();
-  store.entries = store.entries && typeof store.entries === 'object' ? store.entries : {};
-  const normalizedCalendarUrl = ensureCalendarUrl(calendar.url);
-  const remoteLogs = (remoteEvents || []).filter((event) => event && event.lumaItemType === 'lifelog');
-  let downloaded = 0;
-  let uploaded = 0;
-  const now = Date.now();
-
-  for (const remote of remoteLogs) {
-    const dateKey = remote.lumaDate || remote.dueDate;
-    if (!dateKey) continue;
-    const local = store.entries[dateKey];
-    const merged = mergeLifelogFromRemote(local, {
-      href: remote.href,
-      uid: remote.uid,
-      etag: remote.etag,
-      note: remote.note || '',
-      mood: remote.lifelogMood || '',
-      weather: remote.lifelogWeather || '',
-      remoteUpdatedAt: remote.remoteUpdatedAt
-    });
-    const localHadContent = lifelogHasContent(local);
-    store.entries[dateKey] = merged;
-    if (!localHadContent && lifelogHasContent(merged)) downloaded += 1;
-  }
-
-  for (const [dateKey, entry] of Object.entries(store.entries)) {
-    if (!lifelogHasContent(entry)) continue;
-    const lastSyncAt = Number(entry.lastIcloudSyncAt || 0);
-    const shouldUpload = !entry.icloudHref || Number(entry.updatedAt || 0) > lastSyncAt;
-    if (!shouldUpload) continue;
-
-    const uid = entry.icloudUid || ('luma-lifelog-' + dateKey + '@luma-todo');
-    const resourceUrl = entry.icloudHref || (normalizedCalendarUrl + encodeURIComponent(uid) + '.ics');
-    const ics = lifelogToIcloudIcs(entry, dateKey, uid);
-    const etag = await putIcloudEvent(resourceUrl, credentials, ics, entry.icloudEtag || '');
-    entry.icloudUid = uid;
-    entry.icloudHref = resourceUrl;
-    entry.icloudEtag = etag;
-    entry.lastIcloudEtag = etag;
-    entry.lastIcloudSyncAt = now;
-    uploaded += 1;
-  }
-
-  writeLifelogStore(store);
-  return { downloaded, uploaded };
-}
-
 async function syncIcloudEvents(state, calendarUrl) {
   const credentials = loadIcloudCredentials();
   if (!credentials) throw new Error('iCloud 尚未连接');
@@ -724,7 +675,6 @@ async function syncIcloudEvents(state, calendarUrl) {
   for (const remote of remoteEvents) {
     if (consumedRemote.has(remote.href)) continue;
     if (remote.lumaItemType === 'todo') continue;
-    if (remote.lumaItemType === 'lifelog') continue;
 
     if (remote.lumaTaskId) {
       const existing = state.tasks.find((task) => task.id === remote.lumaTaskId);
@@ -795,8 +745,6 @@ async function syncIcloudEvents(state, calendarUrl) {
     else updated += 1;
   }
 
-  const lifeSummary = await syncIcloudLifelog(credentials, calendar, remoteEvents);
-
   credentials.selectedCalendarUrl = calendar.url;
   saveIcloudCredentials(credentials);
 
@@ -810,9 +758,7 @@ async function syncIcloudEvents(state, calendarUrl) {
       deleted,
       calendarName: calendar.name,
       mirroredTodos: state.tasks.filter((task) => task && task.itemType === 'todo' && task.dueDate && !task.googleCalendarExternal).length,
-      syncedEvents: state.tasks.filter((task) => task && task.itemType === 'event' && task.dueDate && !task.googleCalendarExternal).length,
-      lifelogDownloaded: lifeSummary.downloaded,
-      lifelogUploaded: lifeSummary.uploaded
+      syncedEvents: state.tasks.filter((task) => task && task.itemType === 'event' && task.dueDate && !task.googleCalendarExternal).length
     }
   };
 }
@@ -2138,7 +2084,7 @@ trustedHandle('icloud:disconnect', () => {
 });
 
 trustedHandle('icloud:sync', (_event, payload) => {
-  if (DEMO_MODE) return { state: payload?.state, summary: { created: 0, updated: 0, unchanged: 0, downloaded: 0, deleted: 0, calendarName: '', lifelogDownloaded: 0, lifelogUploaded: 0 } };
+  if (DEMO_MODE) return { state: payload?.state, summary: { created: 0, updated: 0, unchanged: 0, calendarName: '' } };
   return syncIcloudEvents(payload?.state || {}, String(payload?.calendarUrl || ''));
 });
 
