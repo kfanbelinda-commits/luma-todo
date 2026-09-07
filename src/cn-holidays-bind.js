@@ -7,7 +7,7 @@
 
   function badgeText(mark) {
     if (typeof cnHolidayBadgeText === 'function') return cnHolidayBadgeText(mark);
-    return mark?.type === 'work' ? '班' : (mark?.name || '休');
+    return mark ? (mark.type === 'work' ? '班' : '休') : '';
   }
 
   function detailText(mark) {
@@ -32,6 +32,18 @@
       heading.appendChild(number);
     }
 
+    const festivalName = typeof cnFestivalName === 'function' ? cnFestivalName(key) : '';
+    let festival = heading.querySelector('.day-festival');
+    if (festivalName) {
+      if (!festival) {
+        festival = document.createElement('span');
+        festival.className = 'day-festival';
+        number.after(festival);
+      }
+      if (festival.textContent !== festivalName) festival.textContent = festivalName;
+      if (festival.title !== festivalName) festival.title = festivalName;
+    } else festival?.remove();
+
     const existing = heading.querySelector('.day-holiday');
     if (!mark) {
       existing?.remove();
@@ -43,12 +55,14 @@
       && existing.classList.contains(`day-holiday-${mark.type}`)
       && existing.textContent === text) {
       if (title && existing.title !== title) existing.title = title;
+      if (existing.getAttribute('aria-label') !== title) existing.setAttribute('aria-label', title);
       return;
     }
     existing?.remove();
     const badge = document.createElement('span');
     badge.className = `day-holiday day-holiday-${mark.type}`;
     badge.textContent = text;
+    badge.setAttribute('aria-label', title);
     if (title) badge.title = title;
     heading.appendChild(badge);
   }

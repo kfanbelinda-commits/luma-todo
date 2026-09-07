@@ -32,9 +32,20 @@ test('leaves ordinary days unmarked', () => {
 });
 
 test('short grid badges stay lightweight', () => {
-  assert.equal(sandbox.cnHolidayBadgeText(sandbox.getCnHolidayMark('2026-02-17')), '春节');
-  assert.equal(sandbox.cnHolidayBadgeText(sandbox.getCnHolidayMark('2026-05-01')), '劳动');
-  assert.equal(sandbox.cnHolidayBadgeText(sandbox.getCnHolidayMark('2026-10-01')), '国庆');
+  assert.equal(sandbox.cnHolidayBadgeText(sandbox.getCnHolidayMark('2026-02-17')), '休');
+  assert.equal(sandbox.cnHolidayBadgeText(sandbox.getCnHolidayMark('2026-05-01')), '休');
+  assert.equal(sandbox.cnHolidayBadgeText(sandbox.getCnHolidayMark('2026-10-01')), '休');
   assert.equal(sandbox.cnHolidayBadgeText(sandbox.getCnHolidayMark('2026-10-10')), '班');
   assert.equal(sandbox.cnHolidayBadgeText(null), '');
+});
+
+test('festival names identify the day, not the beginning or continuation of a break', () => {
+  assert.equal(sandbox.cnFestivalName('2026-02-15'), '');
+  assert.equal(sandbox.cnFestivalName('2026-02-17'), '春节');
+  assert.equal(sandbox.cnFestivalName('2026-04-04'), '');
+  assert.equal(sandbox.cnFestivalName('2026-04-05'), '清明');
+  assert.equal(sandbox.cnFestivalName('2026-09-25'), '中秋');
+  assert.equal(sandbox.cnFestivalName('2026-09-26'), '');
+  assert.equal(sandbox.cnFestivalName('2025-10-06'), '中秋');
+  assert.equal(sandbox.cnFestivalName('2027-01-01'), '');
 });

@@ -961,7 +961,7 @@ select:focus-visible {
 }
 .task-item {
   min-height: 38px;
-  grid-template-columns: 16px minmax(0, 1fr) 100px;
+  grid-template-columns: 12px 16px minmax(0, 1fr) 100px;
   align-items: center;
   gap: 7px;
   padding: 5px 6px;
@@ -972,6 +972,20 @@ select:focus-visible {
   transform: none;
 }
 .task-item:last-child { border-bottom: 0; }
+.task-drag-handle {
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 24px;
+  text-align: center;
+  cursor: grab;
+  user-select: none;
+  opacity: 0;
+  transition: opacity 100ms ease;
+}
+.task-item:hover .task-drag-handle { opacity: .45; }
+.task-item .task-drag-handle:hover { opacity: 1; }
+.task-drag-handle:active { cursor: grabbing; }
+.task-drag-handle[draggable="false"] { visibility: hidden; }
 .task-item:hover,
 .task-item:focus-within,
 .task-item.menu-open {
@@ -986,6 +1000,8 @@ select:focus-visible {
 }
 .task-title {
   height: 20px;
+  cursor: text;
+  user-select: text;
   color: var(--ink);
   font-size: 14px;
   line-height: 20px;
@@ -4120,4 +4136,3 @@ html[data-theme="light"] .settings-modal .soft-button:focus-visible {
   padding-top: 5px;
   padding-bottom: 5px;
 }
-

@@ -86,6 +86,18 @@
     }
   };
 
+  // Festival dates are distinct from the full holiday break (which may start earlier).
+  const FESTIVALS = {
+    '2025-01-01': '元旦', '2025-01-29': '春节', '2025-04-04': '清明',
+    '2025-05-01': '劳动节', '2025-05-31': '端午', '2025-10-01': '国庆', '2025-10-06': '中秋',
+    '2026-01-01': '元旦', '2026-02-17': '春节', '2026-04-05': '清明',
+    '2026-05-01': '劳动节', '2026-06-19': '端午', '2026-09-25': '中秋', '2026-10-01': '国庆'
+  };
+
+  function cnFestivalName(dateKey) {
+    return Object.hasOwn(FESTIVALS, dateKey) ? FESTIVALS[dateKey] : '';
+  }
+
   function yearOf(dateKey) {
     const year = Number(String(dateKey || "").slice(0, 4));
     return Number.isFinite(year) ? year : 0;
@@ -111,14 +123,12 @@
 
   function cnHolidayBadgeText(mark) {
     if (!mark) return "";
-    if (mark.type === "work") return "班";
-    const name = String(mark.name || "");
-    if (name.endsWith("节") && name.length > 2) return name.slice(0, -1);
-    return name || "休";
+    return mark.type === "work" ? "班" : "休";
   }
 
   root.getCnHolidayMark = getCnHolidayMark;
   root.cnHolidayDetailLabel = cnHolidayDetailLabel;
   root.cnHolidayBadgeText = cnHolidayBadgeText;
+  root.cnFestivalName = cnFestivalName;
   root.CN_HOLIDAY_YEARS = YEARS;
 })(typeof globalThis !== "undefined" ? globalThis : window);

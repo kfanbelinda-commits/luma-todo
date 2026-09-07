@@ -444,7 +444,7 @@ function taskElement(task) {
   const visuallyCompleted = task.completed || pendingCompletion;
   const item = document.createElement('article');
   item.className = `task-item${visuallyCompleted ? ' completed' : ''}${pendingCompletion ? ' pending-completion' : ''}${externalCalendar ? ' external-calendar-event' : ''}${activeTaskMenuId === task.id ? ' menu-open' : ''}`;
-  item.draggable = !visuallyCompleted && !externalCalendar;
+  item.draggable = false;
   item.dataset.taskId = task.id;
   item.style.setProperty('--task-color', project.color);
 
@@ -457,6 +457,7 @@ function taskElement(task) {
   if (task.dueDate) scheduleParts.push(task.dueDate === dayOffset(0) ? '今天' : formatShortDate(task.dueDate));
 
   item.innerHTML = `
+    <span class="task-drag-handle" draggable="${!visuallyCompleted && !externalCalendar}" title="拖动调整顺序" aria-hidden="true">⠿</span>
     <button class="check" aria-label="${externalCalendar ? 'Google Calendar 事件' : (visuallyCompleted ? '恢复任务' : '完成任务')}"${externalCalendar ? ' disabled' : ''}></button>
     <div class="task-copy">
       <input class="task-title" value="${escapeAttribute(task.title)}" aria-label="任务标题"${externalCalendar ? ' readonly' : ''} />
@@ -477,10 +478,15 @@ function taskElement(task) {
     openTaskMenu(task.id, event.currentTarget);
   });
   item.addEventListener('dragstart', (event) => {
+    if (event.target !== item.querySelector('.task-drag-handle') || visuallyCompleted || externalCalendar) {
+      event.preventDefault();
+      return;
+    }
     draggedTaskId = task.id;
     item.classList.add('dragging');
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/plain', task.id);
+    event.dataTransfer.setDragImage(item, 16, item.offsetHeight / 2);
   });
   item.addEventListener('dragover', (event) => {
     if (!draggedTaskId || draggedTaskId === task.id) return;
