@@ -1348,6 +1348,7 @@ async function syncGoogleState(state) {
   let uploaded = 0;
   let downloaded = 0;
   let deleted = 0;
+  let conflicts = 0;
   let externalCalendarDownloaded = 0;
   const findCalendarEvent = (task) => {
     if (!task.googleCalendarEventId) return null;
@@ -1443,55 +1444,142 @@ async function syncGoogleState(state) {
         task.googleCalendarEventId = null;
         task.googleCalendarId = null;
       }
+
+      const localWasChanged = localChangedSinceSync(task);
       const foundRemote = (task.googleTaskId ? googleTasksById.get(task.googleTaskId) : null) || googleTaskByTaskId.get(task.id);
       if (foundRemote) consumedGoogleTaskIds.add(foundRemote.id);
-      const remoteDeleted = Boolean(foundRemote?.deleted);
+      const remoteDeleted = Boolean(task.googleTaskId && (!foundRemote || foundRemote.deleted));
       const remote = remoteDeleted ? null : foundRemote;
       const remoteUpdatedAt = Date.parse(foundRemote?.updated || 0);
-      const remoteDetails = remote ? (googleTaskMetadata(remote) || {}) : {};
-      const needsMetadataUpgrade = remote && Number(remoteDetails.version || 1) < 3;
+      const remoteDetails = remote ? googleTaskMetadata(remote) : null;
+      const needsMetadataUpgrade = Boolean(remote && (!remoteDetails || Number(remoteDetails.version || 1) < 4));
+      const localSnapshot = googleTaskLocalSnapshot(task);
+      const baseSnapshot = task.lastGoogleTaskSnapshot || null;
+      const previousConflict = task.googleConflict?.source === 'tasks' ? task.googleConflict : null;
+      const resolution = task.googleResolution;
+      const resolutionFresh = Boolean(
+        previousConflict
+        && resolution
+        && resolution.detectedAt === previousConflict.detectedAt
+        && (!previousConflict.remoteUpdatedAt || previousConflict.remoteUpdatedAt === remoteUpdatedAt)
+      );
 
-      if (remoteDeleted && !localChangedSinceSync(task)) {
-        deleted += 1;
-        continue;
-      }
-      if (remote && remoteShouldWin(task, remoteUpdatedAt)) {
-        applyGoogleTask(task, remote, remoteDetails);
-        ensureProject(state, remoteDetails);
-        task.googleTaskId = remote.id;
-        task.googleRemoteUpdatedAt = remoteUpdatedAt;
-        task.updatedAt = remoteUpdatedAt;
-        downloaded += 1;
-        if (needsMetadataUpgrade) {
-          const upgraded = await googleRequest(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${encodeURIComponent(remote.id)}`, {
-            method: 'PATCH',
-            body: JSON.stringify({
-              title: task.title,
-              notes: taskNotes(state, task),
-              status: task.completed ? 'completed' : 'needsAction',
-              completed: task.completed ? new Date(task.updatedAt || Date.now()).toISOString() : null,
-              due: task.dueDate ? `${task.dueDate}T00:00:00.000Z` : null,
-            }),
-          });
-          task.googleRemoteUpdatedAt = Date.parse(upgraded.updated || new Date().toISOString());
-          uploaded += 1;
+      if (remoteDeleted) {
+        if (resolutionFresh && resolution.choice === 'remote') {
+          deleted += 1;
+          continue;
         }
-      } else if (!remote || localChangedSinceSync(task) || needsMetadataUpgrade) {
-        if (remoteDeleted) task.googleTaskId = null;
-        const body = {
-          title: task.title,
-          notes: taskNotes(state, task),
-          status: task.completed ? 'completed' : 'needsAction',
-          completed: task.completed ? new Date(task.updatedAt || Date.now()).toISOString() : null,
-          due: task.dueDate ? `${task.dueDate}T00:00:00.000Z` : null,
-        };
-        const url = remote
-          ? `https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${encodeURIComponent(remote.id)}`
-          : 'https://tasks.googleapis.com/tasks/v1/lists/@default/tasks';
-        const saved = await googleRequest(url, { method: remote ? 'PATCH' : 'POST', body: JSON.stringify(body) });
+        if (!(resolutionFresh && resolution.choice === 'local')) {
+          if (localWasChanged || !baseSnapshot) {
+            task.googleConflict = {
+              source: 'tasks',
+              type: 'remote-deleted-local-modified',
+              detectedAt: syncTime,
+              remoteUpdatedAt,
+              local: localSnapshot,
+              remote: null,
+              conflictFields: [],
+            };
+            delete task.googleResolution;
+            conflicts += 1;
+            retainedTasks.push(task);
+            continue;
+          }
+          deleted += 1;
+          continue;
+        }
+
+        task.googleTaskId = null;
+        const saved = await googleRequest('https://tasks.googleapis.com/tasks/v1/lists/@default/tasks', {
+          method: 'POST',
+          body: JSON.stringify(googleTaskBody(state, task)),
+        });
         task.googleTaskId = saved.id;
         task.googleRemoteUpdatedAt = Date.parse(saved.updated || new Date().toISOString());
+        task.lastGoogleTaskSnapshot = googleTaskLocalSnapshot(task);
+        delete task.googleConflict;
+        delete task.googleResolution;
         uploaded += 1;
+      } else if (!remote) {
+        const saved = await googleRequest('https://tasks.googleapis.com/tasks/v1/lists/@default/tasks', {
+          method: 'POST',
+          body: JSON.stringify(googleTaskBody(state, task)),
+        });
+        task.googleTaskId = saved.id;
+        task.googleRemoteUpdatedAt = Date.parse(saved.updated || new Date().toISOString());
+        task.lastGoogleTaskSnapshot = googleTaskLocalSnapshot(task);
+        delete task.googleConflict;
+        delete task.googleResolution;
+        uploaded += 1;
+      } else {
+        const remoteSnapshot = googleTaskRemoteSnapshot(remote);
+        const remoteChangedHint = remoteUpdatedAt > Number(task.googleRemoteUpdatedAt || 0);
+        let decision;
+
+        if (resolutionFresh && resolution.choice === 'local') {
+          decision = { action: 'local', merged: localSnapshot, conflictFields: [] };
+        } else if (resolutionFresh && resolution.choice === 'remote') {
+          decision = { action: 'remote', merged: remoteSnapshot, conflictFields: [] };
+        } else {
+          decision = reconcileGoogleTaskNative({
+            base: baseSnapshot,
+            local: localSnapshot,
+            remote: remoteSnapshot,
+            localChangedHint: localWasChanged,
+            remoteChangedHint,
+          });
+        }
+
+        if (decision.action === 'conflict') {
+          task.googleConflict = {
+            source: 'tasks',
+            type: decision.type,
+            detectedAt: syncTime,
+            remoteUpdatedAt,
+            local: localSnapshot,
+            remote: remoteSnapshot,
+            conflictFields: decision.conflictFields,
+          };
+          delete task.googleResolution;
+          conflicts += 1;
+          retainedTasks.push(task);
+          continue;
+        }
+
+        const nativeChangedByRemote = !googleTaskSnapshotEqual(localSnapshot, decision.merged);
+        if (nativeChangedByRemote) applyGoogleTaskNative(task, decision.merged);
+
+        // Google Task title/due/status are shared. Luma-only metadata stays
+        // local when this device has pending work; otherwise valid metadata
+        // from another Luma sync may be accepted.
+        if (remoteDetails && !localWasChanged) {
+          applyGoogleTaskMetadata(task, remoteDetails);
+          ensureProject(state, remoteDetails);
+        }
+
+        if (nativeChangedByRemote) downloaded += 1;
+        if (nativeChangedByRemote && !localWasChanged) task.updatedAt = remoteUpdatedAt;
+
+        const shouldPush = decision.action === 'local'
+          || decision.action === 'merge'
+          || localWasChanged
+          || needsMetadataUpgrade;
+
+        if (shouldPush) {
+          const saved = await googleRequest(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${encodeURIComponent(remote.id)}`, {
+            method: 'PATCH',
+            body: JSON.stringify(googleTaskBody(state, task, remote.notes || '')),
+          });
+          task.googleRemoteUpdatedAt = Date.parse(saved.updated || new Date().toISOString());
+          uploaded += 1;
+        } else {
+          task.googleRemoteUpdatedAt = remoteUpdatedAt;
+        }
+
+        task.googleTaskId = remote.id;
+        task.lastGoogleTaskSnapshot = googleTaskLocalSnapshot(task);
+        delete task.googleConflict;
+        delete task.googleResolution;
       }
     }
     task.lastGoogleSyncAt = syncTime;
@@ -1555,7 +1643,9 @@ async function syncGoogleState(state) {
       googleRemoteUpdatedAt: remoteUpdatedAt,
       lastGoogleSyncAt: syncTime,
     };
-    applyGoogleTask(task, remoteTask, details);
+    applyGoogleTaskNative(task, googleTaskRemoteSnapshot(remoteTask));
+    applyGoogleTaskMetadata(task, details);
+    task.lastGoogleTaskSnapshot = googleTaskLocalSnapshot(task);
     retainedTasks.push(task);
     state.tasks.push(task);
     downloaded += 1;
@@ -1569,6 +1659,7 @@ async function syncGoogleState(state) {
       uploaded,
       downloaded,
       deleted,
+      conflicts,
       remoteDeleted: queuedRemoteDeleted,
       externalCalendarDownloaded,
       projectsUploaded,
