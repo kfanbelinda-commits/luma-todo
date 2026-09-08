@@ -240,9 +240,10 @@ test('network failure preserves baseline and pending deletion while other items 
 test('unreadable Apple resource protects linked local item while other items continue', async () => {
   const blocked = task();
   const other = task({ id: 'two', icloudHref: calendar.url + 'two.ics', icloudUid: 'two@luma' });
+  const otherRemote = remote(other);
   other.title = 'Local two';
   const unreadable = { href: blocked.icloudHref, uid: blocked.icloudUid, lumaTaskId: blocked.id, unreadable: true, readError: 'unsupported Apple event' };
-  const h = harness([blocked, other], [unreadable, remote(other)]);
+  const h = harness([blocked, other], [unreadable, otherRemote]);
   const { summary } = await h.run();
   assert.equal(h.state.tasks.length, 2);
   assert.equal(h.state.tasks[0].title, blocked.title);
