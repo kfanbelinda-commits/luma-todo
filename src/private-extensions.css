@@ -1,0 +1,289 @@
+.calendar-detail-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.luckyday-day-button {
+  width: 27px;
+  height: 27px;
+  border: 1px solid rgba(201, 151, 72, .44);
+  border-radius: 8px;
+  color: #e5bd74;
+  background: rgba(201, 151, 72, .11);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 760;
+  cursor: pointer;
+}
+.luckyday-day-button:hover,
+.luckyday-day-button:focus-visible {
+  color: #f2cf8c;
+  border-color: rgba(222, 173, 90, .66);
+  background: rgba(201, 151, 72, .18);
+  outline: none;
+}
+html[data-theme="light"] .luckyday-day-button {
+  color: #9b6419;
+  border-color: rgba(155, 100, 25, .28);
+  background: rgba(197, 151, 77, .10);
+}
+html[data-theme="light"] .luckyday-day-button:hover,
+html[data-theme="light"] .luckyday-day-button:focus-visible {
+  color: #7f4e0d;
+  border-color: rgba(155, 100, 25, .42);
+  background: rgba(197, 151, 77, .16);
+}
+
+.private-extension-body {
+  display: grid;
+  gap: 9px;
+}
+.private-extension-activation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px;
+}
+.private-extension-activation input {
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  border-radius: 8px;
+  padding: 7px 9px;
+  color: inherit;
+  background: color-mix(in srgb, currentColor 5%, transparent);
+  font: inherit;
+  font-size: 10.5px;
+  outline: none;
+}
+.private-extension-activation input:focus {
+  border-color: color-mix(in srgb, #c99748 56%, currentColor 14%);
+}
+.private-extension-installed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: color-mix(in srgb, #c99748 9%, transparent);
+}
+.private-extension-installed > div {
+  display: grid;
+  gap: 2px;
+}
+.private-extension-installed strong {
+  font-size: 11px;
+}
+.private-extension-installed small {
+  opacity: .58;
+  font-size: 9.5px;
+}
+.private-extension-enabled {
+  border-radius: 999px;
+  padding: 3px 7px;
+  color: #c99748;
+  background: color-mix(in srgb, #c99748 12%, transparent);
+  font-size: 9px;
+}
+.private-extension-install {
+  justify-self: start;
+}
+.private-extension-status {
+  min-height: 13px;
+  margin: 0;
+}
+
+.luckyday-modal {
+  width: 370px;
+  max-width: calc(100vw - 28px);
+  max-height: min(620px, calc(100vh - 36px));
+  padding: 0;
+  overflow: hidden;
+  border-color: rgba(204, 160, 87, .28);
+  background: rgba(41, 38, 34, .98);
+}
+.luckyday-modal::backdrop {
+  background: rgba(17, 18, 20, .18);
+  backdrop-filter: blur(3px);
+}
+.luckyday-shell {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  max-height: min(620px, calc(100vh - 36px));
+}
+.luckyday-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 17px 18px 12px;
+  border-bottom: 1px solid rgba(204, 160, 87, .14);
+}
+.luckyday-header h3 {
+  margin: 2px 0 0;
+  font-size: 18px;
+  font-weight: 720;
+}
+.luckyday-header .eyebrow {
+  color: #d3ab66;
+}
+.luckyday-lunar {
+  margin: 4px 0 0;
+  color: rgba(239, 231, 218, .55);
+  font-size: 10px;
+}
+.luckyday-body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 13px 18px 16px;
+}
+.luckyday-pillar-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+  margin-bottom: 9px;
+  border: 1px solid rgba(204, 160, 87, .18);
+  border-radius: 9px;
+}
+.luckyday-pillar {
+  padding: 7px 4px;
+  border-right: 1px solid rgba(204, 160, 87, .13);
+  text-align: center;
+  font-size: 10px;
+}
+.luckyday-pillar:last-child {
+  border-right: 0;
+}
+.luckyday-pillar b {
+  display: block;
+  margin-bottom: 2px;
+  color: rgba(239, 231, 218, .48);
+  font-size: 8.5px;
+  font-weight: 600;
+}
+.luckyday-tags,
+.luckyday-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.luckyday-tags {
+  margin-bottom: 9px;
+}
+.luckyday-tag,
+.luckyday-chip {
+  border-radius: 999px;
+  padding: 3px 7px;
+  color: #dfb76f;
+  background: rgba(204, 160, 87, .11);
+  font-size: 9.5px;
+}
+.luckyday-tag.is-risk {
+  color: #e9958d;
+  background: rgba(208, 93, 84, .11);
+}
+.luckyday-section {
+  padding: 10px 0;
+  border-top: 1px solid rgba(204, 160, 87, .12);
+}
+.luckyday-section:first-of-type {
+  border-top: 0;
+}
+.luckyday-section-title {
+  margin-bottom: 6px;
+  color: rgba(245, 239, 230, .92);
+  font-size: 11.5px;
+  font-weight: 720;
+}
+.luckyday-main-line {
+  color: rgba(245, 239, 230, .88);
+  font-size: 11px;
+  line-height: 1.55;
+}
+.luckyday-sub-line {
+  margin-top: 3px;
+  color: rgba(239, 231, 218, .52);
+  font-size: 9.5px;
+  line-height: 1.5;
+}
+.luckyday-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+.luckyday-mini-card {
+  border-radius: 9px;
+  padding: 8px;
+  background: rgba(255, 255, 255, .035);
+}
+.luckyday-mini-card strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #d9b36d;
+  font-size: 9.5px;
+}
+.luckyday-luma-list {
+  display: grid;
+  gap: 5px;
+}
+.luckyday-luma-item {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 7px;
+  align-items: baseline;
+  font-size: 10px;
+}
+.luckyday-luma-item time {
+  color: rgba(239, 231, 218, .48);
+  font-variant-numeric: tabular-nums;
+}
+.luckyday-luma-item span {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(245, 239, 230, .84);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.luckyday-footer {
+  padding: 10px 18px 15px;
+  border-top: 1px solid rgba(204, 160, 87, .12);
+}
+.luckyday-footer .soft-button {
+  width: 100%;
+  color: #e0b96f;
+  border-color: rgba(204, 160, 87, .20);
+  background: rgba(204, 160, 87, .08);
+}
+
+html[data-theme="light"] .luckyday-modal {
+  border-color: rgba(155, 100, 25, .16);
+  color: #3f3328;
+  background: rgba(253, 250, 244, .985);
+  box-shadow: 0 26px 72px rgba(75, 56, 35, .22);
+}
+html[data-theme="light"] .luckyday-header,
+html[data-theme="light"] .luckyday-section,
+html[data-theme="light"] .luckyday-footer {
+  border-color: rgba(155, 100, 25, .11);
+}
+html[data-theme="light"] .luckyday-lunar,
+html[data-theme="light"] .luckyday-sub-line,
+html[data-theme="light"] .luckyday-luma-item time {
+  color: rgba(81, 64, 47, .54);
+}
+html[data-theme="light"] .luckyday-pillar-row {
+  border-color: rgba(155, 100, 25, .15);
+}
+html[data-theme="light"] .luckyday-pillar {
+  border-color: rgba(155, 100, 25, .10);
+}
+html[data-theme="light"] .luckyday-pillar b {
+  color: rgba(81, 64, 47, .50);
+}
+html[data-theme="light"] .luckyday-section-title,
+html[data-theme="light"] .luckyday-main-line,
+html[data-theme="light"] .luckyday-luma-item span {
+  color: #4b3a2c;
+}
+html[data-theme="light"] .luckyday-mini-card {
+  background: rgba(155, 100, 25, .045);
+}

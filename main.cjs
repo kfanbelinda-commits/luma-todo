@@ -13,6 +13,7 @@ const {
 } = require('./main/google-reconcile.cjs');
 const { parseGoogleTaskNotes, buildGoogleTaskNotes } = require('./main/google-task-notes.cjs');
 const { collectGoogleCalendarReads, classifyLumaDuplicates } = require('./main/google-sync-safety.cjs');
+const { createPrivateExtensionManager } = require('./main/private-extensions.cjs');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -66,6 +67,17 @@ const EDGE_TAB_W = 36;
 const EDGE_TAB_H = 40;
 let edgeWindow = null;
 const localData = createLocalData(app.getPath('userData'));
+const privateExtensions = createPrivateExtensionManager({
+  rootPath: () => app.getPath('userData'),
+  protectSecret: (value) => {
+    if (!safeStorage.isEncryptionAvailable()) throw new Error('当前系统无法安全保存私人扩展授权');
+    return safeStorage.encryptString(String(value));
+  },
+  unprotectSecret: (buffer) => {
+    if (!safeStorage.isEncryptionAvailable()) throw new Error('当前系统无法读取私人扩展授权');
+    return safeStorage.decryptString(buffer);
+  },
+});
 
 function dataPath() {
   return path.join(localData.root(), 'luma-data.json');
@@ -2592,6 +2604,37 @@ app.on('before-quit', () => {
   cancelDesktopAttach();
   hideEdgeWindow();
   if (updateCheckTimer) clearInterval(updateCheckTimer);
+});
+
+trustedHandle('private-extensions:status', () => privateExtensions.status());
+
+trustedHandle('private-extensions:activate', (_event, code) => privateExtensions.activate(code));
+
+trustedHandle('private-extensions:install', async () => {
+  const choice = await dialog.showOpenDialog(mainWindow, {
+    title: '安装私人扩展',
+    properties: ['openFile'],
+    filters: [{ name: 'Luma 私人扩展', extensions: ['luma-plugin'] }],
+  });
+  if (choice.canceled || !choice.filePaths?.[0]) return { canceled: true, ...privateExtensions.status() };
+  const target = choice.filePaths[0];
+  const stat = fs.statSync(target);
+  if (!stat.isFile() || stat.size > 8 * 1024 * 1024) throw new Error('私人扩展包过大或不可用');
+  return { canceled: false, ...privateExtensions.installPackage(fs.readFileSync(target, 'utf8')) };
+});
+
+trustedHandle('private-extensions:luckyday-summary', (_event, payload) => {
+  const dateKey = String(payload?.dateKey || '');
+  const hourBranch = Number(payload?.hourBranch);
+  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dateKey)) throw new Error('LuckyDay 日期格式不正确');
+  return privateExtensions.call('luckyday', 'getSummary', { dateKey, hourBranch });
+});
+
+trustedHandle('private-extensions:open-luckyday', async () => {
+  const manifest = privateExtensions.manifest('luckyday');
+  if (!manifest?.fullUrl) throw new Error('LuckyDay 完整页面地址不可用');
+  await shell.openExternal(manifest.fullUrl);
+  return true;
 });
 
 trustedHandle('window:set-expanded', (_event, expanded) => {

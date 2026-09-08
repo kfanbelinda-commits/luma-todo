@@ -12,14 +12,14 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "check": "node --check main.cjs && node --check main/google-reconcile.cjs && node --check main/google-task-notes.cjs && node --check main/google-sync-safety.cjs && node --check preload.cjs && node --check main/edge-preload.cjs && node --check main/local-data.cjs && node --check src/appearance.js && node --check src/google-state.js && node --check src/app.js && node --check src/week-view.js && node --check src/lifelog.js && node --check src/lifelog-boot.js && node --check src/cn-holidays.js && node --check src/edge.js && npm run test:unit && node scripts/check-invariants.cjs",
+    "check": "node --check main.cjs && node --check main/google-reconcile.cjs && node --check main/google-task-notes.cjs && node --check main/google-sync-safety.cjs && node --check main/private-extensions.cjs && node --check preload.cjs && node --check main/edge-preload.cjs && node --check main/local-data.cjs && node --check src/appearance.js && node --check src/google-state.js && node --check src/app.js && node --check src/week-view.js && node --check src/lifelog.js && node --check src/lifelog-boot.js && node --check src/cn-holidays.js && node --check src/edge.js && npm run test:unit && node scripts/check-invariants.cjs",
     "dist": "electron-builder --win --publish never",
     "release": "electron-builder --win --publish always",
     "start:demo": "electron . --demo",
     "start:real": "electron .",
     "start:demo:reset": "electron . --demo --demo-reset",
     "start:icloud": "electron . --icloud-test",
-    "test:unit": "node --test qa/google-state.test.cjs qa/google-reconcile.test.cjs qa/google-task-notes.test.cjs qa/google-sync-safety.test.cjs qa/icloud-state.test.cjs qa/icloud-sync.test.cjs qa/icloud-transport.test.cjs qa/icloud-ics.test.cjs qa/appearance.test.cjs qa/week-drag.test.cjs qa/cn-holidays.test.cjs qa/local-data.test.cjs",
+    "test:unit": "node --test qa/google-state.test.cjs qa/google-reconcile.test.cjs qa/google-task-notes.test.cjs qa/google-sync-safety.test.cjs qa/private-extensions.test.cjs qa/icloud-state.test.cjs qa/icloud-sync.test.cjs qa/icloud-transport.test.cjs qa/icloud-ics.test.cjs qa/appearance.test.cjs qa/week-drag.test.cjs qa/cn-holidays.test.cjs qa/local-data.test.cjs",
     "demo:covers": "node scripts/download-lifelog-covers.cjs",
     "start:demo:reset-lifelog": "electron . --demo --demo-reset-lifelog"
   },
