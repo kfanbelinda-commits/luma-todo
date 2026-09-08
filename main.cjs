@@ -2098,7 +2098,15 @@ async function syncGoogleState(state) {
   }
 
   state.tasks = retainedTasks;
-  const projectsUploaded = await uploadProjectMetadata(state, remoteProjectMetadata);
+  let projectsUploaded = 0;
+  if (googleTasksAvailable) {
+    try {
+      projectsUploaded = await uploadProjectMetadata(state, remoteProjectMetadata);
+    } catch (error) {
+      failed += 1;
+      failureMessages.push('Google 分类同步：' + String(error.message || error));
+    }
+  }
   return {
     state,
     summary: {
@@ -2106,10 +2114,16 @@ async function syncGoogleState(state) {
       downloaded,
       deleted,
       conflicts,
+      failed,
       remoteDeleted: remoteDeletedCount,
       externalCalendarDownloaded,
       projectsUploaded,
       projectsDownloaded: remoteProjectMetadata.downloaded,
+      calendarReadFailed: (calendarRead.failures || []).length,
+      tasksReadFailed: googleTasksAvailable ? 0 : 1,
+      duplicatesRemoved,
+      duplicatesDeferred,
+      failures: failureMessages.slice(0, 20),
     },
   };
 }
