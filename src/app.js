@@ -2734,6 +2734,9 @@ function bindEvents() {
   document.addEventListener('pointerdown', (event) => {
     if (!settingsDialog.open || settingsDialog.classList.contains('closing')) return;
     if (settingsDialog.contains(event.target) || event.target.closest('#settingsButton')) return;
+    // Apple conflict resolution is launched from Settings. Interacting with
+    // that temporary dialog must not dismiss the Settings panel underneath.
+    if (event.target.closest('#icloudConflictDialog')) return;
     closeSettingsDialog();
   });
   settingsDialog.addEventListener('close', () => {
