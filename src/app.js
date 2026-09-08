@@ -83,6 +83,7 @@ const COMPLETION_GRACE_MS = 1500;
 const pendingTaskCompletions = new Map();
 let collapsedProjects = new Set();
 let privateExtensionStatus = { activated: false, plugins: [], luckyDay: null };
+let privateExtensionsRevealed = false;
 
 function normalizeState(input) {
   if (!input || !Array.isArray(input.tasks) || !Array.isArray(input.projects)) return structuredClone(seedState);
@@ -166,6 +167,8 @@ async function persist() {
 function renderPrivateExtensionStatus(status = privateExtensionStatus) {
   privateExtensionStatus = status || { activated: false, plugins: [], luckyDay: null };
   const luckyDay = privateExtensionStatus.luckyDay || null;
+  const settings = $('#privateExtensionsSettings');
+  if (settings) settings.hidden = !(privateExtensionsRevealed || privateExtensionStatus.activated || luckyDay);
   const summary = $('#privateExtensionSummary');
   const install = $('#installPrivateExtension');
   const installed = $('#privateExtensionInstalled');
@@ -3154,6 +3157,15 @@ function bindEvents() {
   $('#resolveIcloudConflicts').addEventListener('click', showIcloudConflict);
   $('#icloudCalendarSelect').addEventListener('change', refreshIcloudConflictButton);
   window.addEventListener('keydown', (event) => {
+    if (event.ctrlKey && event.altKey && event.shiftKey && event.key.toLowerCase() === 'l') {
+      event.preventDefault();
+      privateExtensionsRevealed = true;
+      renderPrivateExtensionStatus();
+      openSettingsDialog();
+      $('#privateExtensionsSettings').open = true;
+      $('#privateExtensionCode').focus();
+      return;
+    }
     if (event.key === 'Escape' && ($('#icloudConflictDialog').open || $('#googleConflictDialog').open)) return;
     if (event.key === 'Escape' && settingsDialog.open) {
       closeSettingsDialog();
