@@ -19,7 +19,7 @@ function encrypt(key, plaintext) {
   };
 }
 
-function packFor(code, entrySource = "module.exports={getSummary:()=>({ok:true})};") {
+function packFor(code, entrySource = "module.exports={getSummary:()=>({ok:true}),getDayMarks:()=>({marks:[{dateKey:'2026-09-17',type:'cheng'}]})};") {
   const contentKey = crypto.randomBytes(32);
   const salt = crypto.randomBytes(16);
   const wrapKey = crypto.scryptSync(code.toUpperCase(), salt, 32);
@@ -85,6 +85,7 @@ test("only a recipient code can decrypt and install the plugin package", () => {
     const status = manager.installPackage(packFor(right));
     assert.equal(status.luckyDay.version, "0.1.0");
     assert.deepEqual(manager.call("luckyday", "getSummary", {}), { ok: true });
+    assert.deepEqual(manager.call("luckyday", "getDayMarks", {}), { marks: [{ dateKey: "2026-09-17", type: "cheng" }] });
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
