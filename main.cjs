@@ -9,6 +9,7 @@ const {
   normalizeGoogleCalendarSnapshot,
   reconcileGoogleCalendar,
   googleCalendarSnapshotEqual,
+  remoteChangedSinceGoogleSnapshot,
 } = require('./main/google-reconcile.cjs');
 const { parseGoogleTaskNotes, buildGoogleTaskNotes } = require('./main/google-task-notes.cjs');
 const path = require('path');
@@ -1371,9 +1372,13 @@ async function syncGoogleState(state) {
       const remoteSnapshot = googleTaskRemoteSnapshot(remote);
       const baseSnapshot = entry.task?.lastGoogleTaskSnapshot || null;
       const previousRemoteUpdatedAt = Number(entry.task?.googleRemoteUpdatedAt || 0);
-      const remoteChanged = baseSnapshot
-        ? !googleTaskSnapshotEqual(baseSnapshot, remoteSnapshot)
-        : (!previousRemoteUpdatedAt || remoteUpdatedAt > previousRemoteUpdatedAt);
+      const remoteChanged = remoteChangedSinceGoogleSnapshot({
+        base: baseSnapshot,
+        remote: remoteSnapshot,
+        previousRemoteUpdatedAt,
+        remoteUpdatedAt,
+        equalSnapshot: googleTaskSnapshotEqual,
+      });
       const resolutionFresh = Boolean(
         previousConflict
         && resolution
@@ -1444,9 +1449,13 @@ async function syncGoogleState(state) {
       const remoteSnapshot = googleCalendarRemoteSnapshot(remote, entry.task || {});
       const baseSnapshot = entry.task?.lastGoogleCalendarSnapshot || null;
       const previousRemoteUpdatedAt = Number(entry.task?.googleRemoteUpdatedAt || 0);
-      const remoteChanged = baseSnapshot
-        ? !googleCalendarSnapshotEqual(baseSnapshot, remoteSnapshot)
-        : (!previousRemoteUpdatedAt || remoteUpdatedAt > previousRemoteUpdatedAt);
+      const remoteChanged = remoteChangedSinceGoogleSnapshot({
+        base: baseSnapshot,
+        remote: remoteSnapshot,
+        previousRemoteUpdatedAt,
+        remoteUpdatedAt,
+        equalSnapshot: googleCalendarSnapshotEqual,
+      });
       const resolutionFresh = Boolean(
         previousConflict
         && resolution
