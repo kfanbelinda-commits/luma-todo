@@ -655,3 +655,48 @@ html[data-theme="light"] .luckyday-modal {
   color: #46301f;
   background: #f6efe3;
 }
+
+
+.private-extension-divider {
+  height: 1px;
+  margin: 2px 0 0;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+.private-extension-subtitle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.private-extension-subtitle strong {
+  font-size: 11px;
+}
+.private-extension-subtitle small {
+  color: #c99748;
+  font-size: 9px;
+}
+.luckyday-icloud-panel {
+  display: grid;
+  gap: 8px;
+}
+.luckyday-icloud-target {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+}
+.luckyday-icloud-target span {
+  color: var(--muted, rgba(90, 96, 108, .72));
+}
+.luckyday-icloud-target select {
+  min-width: 0;
+  height: 28px;
+  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  border-radius: 8px;
+  padding: 0 8px;
+  color: inherit;
+  background: color-mix(in srgb, currentColor 5%, transparent);
+  font: inherit;
+  font-size: 10px;
+}
