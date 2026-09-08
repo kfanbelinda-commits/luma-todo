@@ -235,6 +235,7 @@ function renderPrivateExtensionStatus(status = privateExtensionStatus) {
   const install = $('#installPrivateExtension');
   const installed = $('#privateExtensionInstalled');
   const dayButton = $('#luckyDayButton');
+  const icloudPanel = $('#luckyDayIcloudPanel');
 
   if (summary) summary.textContent = luckyDay
     ? `LuckyDay ${luckyDay.version}`
@@ -244,6 +245,7 @@ function renderPrivateExtensionStatus(status = privateExtensionStatus) {
   if ($('#privateExtensionName')) $('#privateExtensionName').textContent = luckyDay?.name || 'LuckyDay 吉课';
   if ($('#privateExtensionVersion')) $('#privateExtensionVersion').textContent = luckyDay ? `版本 ${luckyDay.version}` : '';
   if (dayButton) dayButton.hidden = !luckyDay;
+  if (icloudPanel) icloudPanel.hidden = !luckyDay;
 }
 
 async function refreshPrivateExtensionStatus() {
@@ -254,6 +256,10 @@ async function refreshPrivateExtensionStatus() {
   try {
     const status = await window.luma.privateExtensionsStatus();
     renderPrivateExtensionStatus(status);
+    if (status?.luckyDay) {
+      renderCalendar();
+      refreshLuckyDayIcloudStatus();
+    }
     return status;
   } catch (error) {
     renderPrivateExtensionStatus({ activated: false, plugins: [], luckyDay: null });
@@ -300,9 +306,74 @@ async function installPrivateExtension() {
     status.textContent = result?.luckyDay
       ? `LuckyDay ${result.luckyDay.version} 已安装并启用。`
       : '扩展安装完成。';
+    renderCalendar();
     if (calendarDetailDate) renderCalendarDetail();
+    if (result?.luckyDay) refreshLuckyDayIcloudStatus();
   } catch (error) {
     status.textContent = error?.message || '扩展安装失败';
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function luckyDayIcloudRange() {
+  const start = new Date();
+  start.setHours(12, 0, 0, 0);
+  start.setDate(start.getDate() - 30);
+  const end = new Date();
+  end.setHours(12, 0, 0, 0);
+  end.setMonth(end.getMonth() + 18);
+  return { startDate: toDateKey(start), endDate: toDateKey(end) };
+}
+
+async function refreshLuckyDayIcloudStatus() {
+  const panel = $('#luckyDayIcloudPanel');
+  const select = $('#luckyDayIcloudCalendar');
+  const statusText = $('#luckyDayIcloudStatus');
+  if (!panel || panel.hidden || !privateExtensionStatus.luckyDay || !window.luma?.luckyDayIcloudStatus) return null;
+  try {
+    const status = await window.luma.luckyDayIcloudStatus();
+    select.innerHTML = '<option value="">选择 LuckyDay 日历…</option>';
+    for (const calendar of status?.calendars || []) {
+      const option = document.createElement('option');
+      option.value = calendar.url;
+      option.textContent = calendar.name;
+      select.appendChild(option);
+    }
+    if (status?.selectedCalendarUrl) select.value = status.selectedCalendarUrl;
+    if (!status?.connected) {
+      statusText.textContent = '请先在「账户与同步」连接 Apple 日历。';
+      $('#syncLuckyDayIcloud').disabled = true;
+    } else {
+      statusText.textContent = status.selectedCalendarUrl
+        ? '已设置。以后正常 Apple 同步时会一并更新成日 / 除日。'
+        : '建议在 iCloud 先建一个名为 LuckyDay 的独立日历，再在这里选择。';
+      $('#syncLuckyDayIcloud').disabled = false;
+    }
+    return status;
+  } catch (error) {
+    statusText.textContent = '无法读取 LuckyDay iCloud 设置：' + googleErrorMessage(error);
+    return null;
+  }
+}
+
+async function syncLuckyDayIcloud() {
+  const button = $('#syncLuckyDayIcloud');
+  const select = $('#luckyDayIcloudCalendar');
+  const statusText = $('#luckyDayIcloudStatus');
+  const calendarUrl = String(select?.value || '');
+  if (!calendarUrl) {
+    statusText.textContent = '请选择一个单独的 iCloud 日历。';
+    return;
+  }
+  button.disabled = true;
+  statusText.textContent = '正在同步成日 / 除日…';
+  try {
+    const result = await window.luma.luckyDaySyncIcloud({ calendarUrl, ...luckyDayIcloudRange() });
+    statusText.textContent = `已同步到 ${result.calendarName}：新增 ${result.created}，更新 ${result.updated}，删除旧标记 ${result.deleted}，保持 ${result.unchanged}。`;
+    await refreshLuckyDayIcloudStatus();
+  } catch (error) {
+    statusText.textContent = '同步失败：' + googleErrorMessage(error);
   } finally {
     button.disabled = false;
   }
@@ -3298,6 +3369,12 @@ function bindEvents() {
   $('#luckyDayNextDate').addEventListener('click', () => shiftLuckyDayDate(1));
   $('#activatePrivateExtension').addEventListener('click', activatePrivateExtension);
   $('#installPrivateExtension').addEventListener('click', installPrivateExtension);
+  $('#syncLuckyDayIcloud').addEventListener('click', syncLuckyDayIcloud);
+  $('#luckyDayIcloudCalendar').addEventListener('change', () => {
+    $('#luckyDayIcloudStatus').textContent = $('#luckyDayIcloudCalendar').value
+      ? '点击「同步成日 / 除日」保存选择并写入 iCloud。'
+      : '请选择一个单独的 iCloud 日历。';
+  });
   $('#connectGoogle').addEventListener('click', connectOrSyncGoogle);
   $('#disconnectGoogle').addEventListener('click', disconnectGoogle);
   $('#resolveGoogleConflicts').addEventListener('click', showGoogleConflict);
