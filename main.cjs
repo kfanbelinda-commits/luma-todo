@@ -620,6 +620,31 @@ async function putIcloudEvent(resourceUrl, credentials, ics, etag) {
   return response.headers.get('etag') || etag || '';
 }
 
+async function deleteIcloudEvent(resourceUrl, credentials, etag) {
+  const headers = {
+    Authorization: icloudAuthHeader(credentials),
+    'User-Agent': 'Luma-Todo/1.0 CalDAV'
+  };
+  if (etag) headers['If-Match'] = etag;
+
+  const response = await fetch(resourceUrl, {
+    method: 'DELETE',
+    redirect: 'follow',
+    headers
+  });
+
+  if (response.ok || response.status === 404 || response.status === 410) return true;
+  const text = await response.text();
+  if (response.status === 412) {
+    throw new Error('iCloud 日程已在其他设备发生变化，暂未删除；请重新同步后再试');
+  }
+  const requestId = response.headers.get('x-apple-request-uuid')
+    || response.headers.get('x-apple-jingle-correlation-key')
+    || '';
+  const suffix = requestId ? ' · Apple Request ID: ' + requestId : '';
+  throw new Error('删除 iCloud 日历事项失败（HTTP ' + response.status + '）' + suffix + (text ? '' : ''));
+}
+
 
 async function listIcloudCalendarEvents(credentials, calendar) {
   const body = '<?xml version="1.0" encoding="UTF-8"?>'
@@ -686,6 +711,16 @@ async function syncIcloudEvents(state, calendarUrl) {
 
   state.tasks ??= [];
   state.projects ??= [];
+  state.icloudDeletedItems = Array.isArray(state.icloudDeletedItems) ? state.icloudDeletedItems : [];
+
+  let remoteDeleted = 0;
+  for (const deletedItem of state.icloudDeletedItems) {
+    if (!deletedItem?.href || deletedItem.calendarUrl !== calendar.url) continue;
+    await deleteIcloudEvent(deletedItem.href, credentials, deletedItem.etag || '');
+    remoteDeleted += 1;
+  }
+  state.icloudDeletedItems = state.icloudDeletedItems.filter((deletedItem) => deletedItem?.calendarUrl !== calendar.url);
+
   const normalizedCalendarUrl = ensureCalendarUrl(calendar.url);
   const remoteEvents = await listIcloudCalendarEvents(credentials, calendar);
   const remoteByHref = new Map(remoteEvents.map((event) => [event.href, event]));
@@ -842,6 +877,7 @@ async function syncIcloudEvents(state, calendarUrl) {
       unchanged,
       downloaded,
       deleted,
+      remoteDeleted,
       calendarName: calendar.name,
       mirroredTodos: state.tasks.filter((task) => task && task.itemType === 'todo' && task.dueDate && !task.googleCalendarExternal).length,
       syncedEvents: state.tasks.filter((task) => task && task.itemType === 'event' && task.dueDate && !task.googleCalendarExternal).length
@@ -1743,11 +1779,12 @@ function createWindow() {
         }
         try {
           const runSyncProtocolSmokeTests = require(path.join(__dirname, 'qa', 'sync-protocol-smoke.cjs'));
-          const tested = runSyncProtocolSmokeTests({
+          const tested = await runSyncProtocolSmokeTests({
             taskToIcloudIcs,
             parseIcloudEvent,
             calendarBody,
             applyCalendarEvent,
+            deleteIcloudEvent,
           });
           console.log('[Luma Todo] Sync protocol smoke: ' + tested.join(', '));
         } catch (error) {
