@@ -812,6 +812,24 @@ async function syncIcloudEvents(state, calendarUrl) {
   return result;
 }
 
+function localCalendarDateKey(date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
+function luckyDayDefaultSyncRange() {
+  const start = new Date();
+  start.setHours(12, 0, 0, 0);
+  start.setDate(start.getDate() - 30);
+  const end = new Date();
+  end.setHours(12, 0, 0, 0);
+  end.setMonth(end.getMonth() + 18);
+  return { startDate: localCalendarDateKey(start), endDate: localCalendarDateKey(end) };
+}
+
 function luckyDayIcloudStatus() {
   const credentials = loadIcloudCredentials();
   if (!credentials) return { connected: false, calendars: [], selectedCalendarUrl: '' };
@@ -3034,7 +3052,16 @@ trustedHandle('icloud:sync', async (_event, payload) => {
   if (DEMO_MODE) return { state: payload?.state, summary: { created: 0, updated: 0, unchanged: 0, calendarName: '' } };
   icloudSyncInFlight = true;
   try {
-    return await syncIcloudEvents(payload?.state || {}, String(payload?.calendarUrl || ''));
+    const result = await syncIcloudEvents(payload?.state || {}, String(payload?.calendarUrl || ''));
+    const credentials = loadIcloudCredentials();
+    if (credentials?.luckyDayCalendarUrl && privateExtensions.manifest('luckyday')) {
+      try {
+        result.luckyDay = await syncLuckyDayIcloudMarkers(credentials.luckyDayCalendarUrl, luckyDayDefaultSyncRange());
+      } catch (error) {
+        result.luckyDay = { error: String(error?.message || error || 'LuckyDay iCloud 同步失败') };
+      }
+    }
+    return result;
   } finally {
     icloudSyncInFlight = false;
   }
