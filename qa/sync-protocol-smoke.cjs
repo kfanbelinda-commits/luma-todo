@@ -4,6 +4,7 @@ module.exports = async function runSyncProtocolSmokeTests({
   calendarBody,
   applyCalendarEvent,
   deleteIcloudEvent,
+  shouldRemoveMissingIcloudItem,
 }) {
   const qaAssert = (condition, message) => {
     if (!condition) throw new Error(message);
@@ -135,6 +136,24 @@ module.exports = async function runSyncProtocolSmokeTests({
   qaAssert(appliedEvent.itemType === 'event', 'Google Event round-trip changed item type');
   qaAssert(appliedEvent.dueDate === allDayEvent.dueDate && appliedEvent.endDate === allDayEvent.endDate, 'Google Event round-trip changed date range');
 
+  const linkedTodo = {
+    ...timedTodo,
+    icloudHref: 'https://qa.invalid/calendar/qa-timed-todo.ics',
+    icloudCalendarUrl: calendar.url,
+  };
+  qaAssert(
+    shouldRemoveMissingIcloudItem(linkedTodo, calendar.url),
+    'Deleting a Todo mirror in Apple Calendar must remove the linked Luma Todo'
+  );
+  qaAssert(
+    shouldRemoveMissingIcloudItem({ ...linkedTodo, itemType: 'event' }, calendar.url),
+    'Deleting an Apple Event must remove the linked Luma Event'
+  );
+  qaAssert(
+    !shouldRemoveMissingIcloudItem(linkedTodo, 'https://qa.invalid/other-calendar/'),
+    'A missing item from another Apple calendar must not remove the Luma item'
+  );
+
   const originalFetch = global.fetch;
   try {
     let deleteRequest = null;
@@ -163,6 +182,7 @@ module.exports = async function runSyncProtocolSmokeTests({
   }
 
   return [
+    'Apple remote deletion removes linked Todo/Event',
     'iCloud DELETE with etag',
     'iCloud DELETE missing remote is idempotent',
     'iCloud timed Todo round-trip',
