@@ -286,6 +286,7 @@ html[data-theme="light"] .week-mini-workdot {
   flex-direction: column;
 }
 .week-main-head,
+.week-todos,
 .week-allday {
   display: grid;
   /* Trailing spacer matches timed-grid scrollbar so 7 cols share one width. */
@@ -293,6 +294,7 @@ html[data-theme="light"] .week-mini-workdot {
   align-items: stretch;
 }
 .week-col-heads,
+.week-todo-cols,
 .week-allday-cols,
 .week-days {
   display: grid;
@@ -301,6 +303,7 @@ html[data-theme="light"] .week-mini-workdot {
 }
 /* Verticals on track edges only — never fragment a horizontal hairline. */
 .week-col-head:not(:first-child),
+.week-todo-col:not(:first-child),
 .week-allday-col:not(:first-child),
 .week-day-col:not(:first-child) {
   border-left: 1px solid rgba(128, 128, 128, .12);
@@ -414,11 +417,111 @@ html[data-theme="light"] .week-col-lunar.is-holiday-work {
   font-size: 10px;
 }
 .week-gutter-label { display: grid; place-items: center; }
+.week-todos {
+  min-height: 58px;
+}
+.week-todo-col {
+  display: flex;
+  min-width: 0;
+  min-height: 58px;
+  flex-direction: column;
+  gap: 3px;
+  padding: 5px 4px;
+}
+.week-todo-item {
+  display: grid;
+  grid-template-columns: 15px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  min-height: 20px;
+  color: inherit;
+}
+.week-todo-check {
+  display: grid;
+  width: 14px;
+  height: 14px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--todo-color, #91a9c7) 60%, rgba(128, 128, 128, .5));
+  border-radius: 3px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+.week-todo-check:hover {
+  background: color-mix(in srgb, var(--todo-color, #91a9c7) 10%, transparent);
+}
+.week-todo-check.is-checked {
+  border-color: color-mix(in srgb, var(--todo-color, #91a9c7) 78%, rgba(70, 80, 95, .2));
+  background: color-mix(in srgb, var(--todo-color, #91a9c7) 74%, #5d6878 26%);
+}
+.week-todo-check.is-checked::before {
+  content: '✓';
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+.week-todo-title {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 4px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 10.5px;
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
+}
+.week-todo-title em {
+  flex: 0 0 auto;
+  color: var(--muted, rgba(90, 96, 108, .62));
+  font-size: 9px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+.week-todo-title span {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.week-todo-item.is-checked .week-todo-title {
+  color: var(--muted, rgba(90, 96, 108, .6));
+  text-decoration: line-through;
+}
+.week-todo-item.is-pending {
+  opacity: .72;
+}
+.week-overflow {
+  align-self: center;
+  min-width: 28px;
+  height: 18px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(128, 128, 128, .09);
+  color: var(--muted, rgba(90, 96, 108, .68));
+  font: inherit;
+  font-size: 9.5px;
+  line-height: 18px;
+  cursor: pointer;
+}
+.week-overflow:hover {
+  background: rgba(128, 128, 128, .15);
+  color: var(--ink, inherit);
+}
 .week-allday {
   min-height: 34px;
 }
 .week-allday-col {
   display: flex;
+  min-width: 0;
   min-height: 34px;
   flex-direction: column;
   gap: 2px;
@@ -515,6 +618,7 @@ html[data-theme="light"] .week-col-lunar.is-holiday-work {
   background: transparent;
 }
 .week-col-heads.has-today,
+.week-todo-cols.has-today,
 .week-allday-cols.has-today {
   background-image: linear-gradient(
     to right,
