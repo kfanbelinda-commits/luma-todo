@@ -112,6 +112,19 @@
   applyPanelOpacity(previousPanelOpacity);
   applyColorMode(previousLightMode);
 
+  // Apple conflict resolution is opened from Settings and must return to the
+  // same Settings panel instead of triggering the generic outside-click close.
+  const settingsDialog = document.querySelector('#settingsDialog');
+  const conflictDialog = document.querySelector('#icloudConflictDialog');
+  assertQa(settingsDialog && conflictDialog, 'Settings or iCloud conflict dialog is missing');
+  if (!settingsDialog.open) settingsDialog.show();
+  if (!conflictDialog.open) conflictDialog.showModal();
+  const conflictButton = document.querySelector('#icloudKeepLocal');
+  conflictButton.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+  assertQa(settingsDialog.open, 'Interacting with Apple conflict dialog closed Settings');
+  conflictDialog.close();
+  settingsDialog.close();
+
   // Cleanup is demo-only and keeps repeated CI runs deterministic.
   state.tasks = state.tasks.filter((item) => item.id !== task.id);
   await persist();
@@ -126,7 +139,8 @@
       'completed todo stays on calendar',
       'restore completed todo',
       'expand collapse',
-      'opacity survives calendar expand'
+      'opacity survives calendar expand',
+      'iCloud conflict keeps settings open'
     ]
   };
 })()
