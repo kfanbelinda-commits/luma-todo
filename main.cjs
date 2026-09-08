@@ -34,6 +34,10 @@ let expandedBounds = null;
 let compactDisplayState = null;
 let expandedDisplayState = null;
 let updateCheckTimer = null;
+let autoUpdaterRef = null;
+let downloadedUpdateInfo = null;
+let updateCheckInFlight = null;
+let installPromptOpen = false;
 let isPinnedAlwaysOnTop = false;
 let isDesktopHosted = false;
 let desktopAttachTimer = null;
@@ -1859,29 +1863,107 @@ function createTray() {
   });
 }
 
-function setupAutoUpdates() {
-  if (!app.isPackaged) return;
+function getAutoUpdater() {
+  if (autoUpdaterRef) return autoUpdaterRef;
   const { autoUpdater } = require('electron-updater');
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.on('error', (error) => console.warn(`[Luma Todo] Update check failed: ${error.message}`));
-  autoUpdater.once('update-downloaded', (info) => {
-    dialog.showMessageBox(mainWindow, {
-      type: 'info',
-      title: 'Luma Todo 更新已就绪',
-      message: `新版本 ${info.version} 已下载完成`,
-      detail: '可以立即重启安装，也可以稍后在退出软件时自动安装。',
-      buttons: ['立即重启安装', '稍后'],
-      defaultId: 0,
-      cancelId: 1,
-      noLink: true,
-    }).then(({ response }) => {
-      if (response !== 0) return;
-      app.isQuitting = true;
-      autoUpdater.quitAndInstall(false, true);
-    });
+  autoUpdater.on('update-downloaded', (info) => {
+    downloadedUpdateInfo = info;
+    promptUpdateInstall(info);
   });
-  const check = () => autoUpdater.checkForUpdates().catch((error) => {
+  autoUpdaterRef = autoUpdater;
+  return autoUpdater;
+}
+
+function promptUpdateInstall(info) {
+  if (!mainWindow || mainWindow.isDestroyed() || installPromptOpen) return;
+  installPromptOpen = true;
+  dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    title: 'Luma Todo 更新已就绪',
+    message: `新版本 ${info.version} 已下载完成`,
+    detail: '可以立即重启安装，也可以稍后在退出软件时自动安装。',
+    buttons: ['立即重启安装', '稍后'],
+    defaultId: 0,
+    cancelId: 1,
+    noLink: true,
+  }).then(({ response }) => {
+    installPromptOpen = false;
+    if (response !== 0) return;
+    app.isQuitting = true;
+    getAutoUpdater().quitAndInstall(false, true);
+  });
+}
+
+function appVersionStatus() {
+  return {
+    currentVersion: app.getVersion(),
+    packaged: app.isPackaged,
+    downloaded: downloadedUpdateInfo?.version || '',
+  };
+}
+
+async function checkForAppUpdates({ fromUser = false } = {}) {
+  const currentVersion = app.getVersion();
+  if (!app.isPackaged) {
+    return {
+      status: 'dev',
+      currentVersion,
+      message: `当前 ${currentVersion}（开发模式，安装包才会检查更新）`,
+    };
+  }
+  if (downloadedUpdateInfo) {
+    if (fromUser) promptUpdateInstall(downloadedUpdateInfo);
+    return {
+      status: 'ready',
+      currentVersion,
+      version: downloadedUpdateInfo.version,
+      message: `新版本 ${downloadedUpdateInfo.version} 已下载，可立即安装`,
+    };
+  }
+  if (!updateCheckInFlight) {
+    updateCheckInFlight = getAutoUpdater().checkForUpdates().finally(() => {
+      updateCheckInFlight = null;
+    });
+  }
+  try {
+    const result = await updateCheckInFlight;
+    const info = result?.updateInfo;
+    const available = Boolean(result?.isUpdateAvailable) || Boolean(info?.version && info.version !== currentVersion);
+    if (!available) {
+      return { status: 'current', currentVersion, message: `已是最新版本 ${currentVersion}` };
+    }
+    if (downloadedUpdateInfo) {
+      if (fromUser) promptUpdateInstall(downloadedUpdateInfo);
+      return {
+        status: 'ready',
+        currentVersion,
+        version: downloadedUpdateInfo.version,
+        message: `新版本 ${downloadedUpdateInfo.version} 已下载，可立即安装`,
+      };
+    }
+    return {
+      status: 'downloading',
+      currentVersion,
+      version: info.version,
+      message: `发现 ${info.version}，正在下载…`,
+    };
+  } catch (error) {
+    const detail = error?.message || String(error);
+    return {
+      status: 'error',
+      currentVersion,
+      message: fromUser ? `检查失败：${detail}` : detail,
+    };
+  }
+}
+
+function setupAutoUpdates() {
+  if (!app.isPackaged) return;
+  getAutoUpdater();
+  const check = () => checkForAppUpdates({ fromUser: false }).catch((error) => {
     console.warn(`[Luma Todo] Update check failed: ${error.message}`);
   });
   setTimeout(check, 5000);
@@ -2241,3 +2323,5 @@ trustedHandle('settings:auto-start', (_event, enabled) => {
 });
 
 trustedHandle('settings:get-auto-start', () => DEMO_MODE ? false : app.getLoginItemSettings().openAtLogin);
+trustedHandle('app:version', () => appVersionStatus());
+trustedHandle('app:check-updates', () => checkForAppUpdates({ fromUser: true }));

@@ -2303,6 +2303,23 @@ async function refreshIcloudStatus() {
   }
 }
 
+async function refreshUpdateStatus() {
+  const status = $('#updateStatusText');
+  if (!status) return;
+  try {
+    const info = await window.luma?.appVersion();
+    if (!info) {
+      status.textContent = '无法读取版本';
+      return;
+    }
+    status.textContent = info.downloaded
+      ? `当前 ${info.currentVersion} · ${info.downloaded} 已下载`
+      : `当前 ${info.currentVersion}`;
+  } catch (_) {
+    status.textContent = '无法读取版本';
+  }
+}
+
 async function connectIcloud() {
   const button = $('#connectIcloud');
   const email = $('#icloudEmail').value.trim();
@@ -2566,7 +2583,25 @@ function bindEvents() {
     $('#opacitySlider').value = state.settings.panelOpacity;
     applyPanelOpacity(state.settings.panelOpacity);
     openSettingsDialog();
-    await Promise.all([refreshGoogleStatus(), refreshIcloudStatus()]);
+    await Promise.all([refreshGoogleStatus(), refreshIcloudStatus(), refreshUpdateStatus()]);
+  });
+  $('#checkUpdatesButton').addEventListener('click', async () => {
+    const button = $('#checkUpdatesButton');
+    const status = $('#updateStatusText');
+    if (!window.luma?.checkUpdates) {
+      status.textContent = '当前环境不支持检查更新';
+      return;
+    }
+    button.disabled = true;
+    status.textContent = '正在检查…';
+    try {
+      const result = await window.luma.checkUpdates();
+      status.textContent = result?.message || `当前 ${result?.currentVersion || ''}`.trim();
+    } catch (error) {
+      status.textContent = error?.message || '检查失败';
+    } finally {
+      button.disabled = false;
+    }
   });
   $('#closeSettingsButton').addEventListener('click', closeSettingsDialog);
   settingsDialog.addEventListener('cancel', (event) => {

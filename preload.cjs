@@ -14,6 +14,8 @@ contextBridge.exposeInMainWorld('luma', {
   exportData: (payload) => ipcRenderer.invoke('data:export', payload),
   setAutoStart: (enabled) => ipcRenderer.invoke('settings:auto-start', enabled),
   getAutoStart: () => ipcRenderer.invoke('settings:get-auto-start'),
+  appVersion: () => ipcRenderer.invoke('app:version'),
+  checkUpdates: () => ipcRenderer.invoke('app:check-updates'),
   resizeStart: (payload) => ipcRenderer.send('window:resize-start', payload),
   resizeMove: (payload) => ipcRenderer.send('window:resize-move', payload),
   resizeEnd: () => ipcRenderer.send('window:resize-end'),
