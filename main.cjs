@@ -1482,8 +1482,14 @@ async function syncGoogleState(state) {
   // states and ask the user instead of silently deleting unseen edits.
   const pendingGoogleDeletes = [];
   const deleteOtherGoogleIdentity = async (entry, source) => {
-    if (source !== 'tasks' && entry.googleTaskId) await deleteGoogleTasksItem(entry.googleTaskId);
+    if (source !== 'tasks' && entry.googleTaskId) {
+      if (!googleTasksAvailable) throw new Error('Google Tasks 暂时无法读取，保留待删除记录');
+      await deleteGoogleTasksItem(entry.googleTaskId);
+    }
     if (source !== 'calendar' && entry.googleCalendarEventId) {
+      if (calendarUnavailable(entry.googleCalendarId || 'primary')) {
+        throw new Error('对应 Google Calendar 暂时无法读取，保留待删除记录');
+      }
       await deleteGoogleCalendarEvent(entry.googleCalendarId || 'primary', entry.googleCalendarEventId);
     }
   };
@@ -1491,7 +1497,20 @@ async function syncGoogleState(state) {
     const source = entry.source === 'calendar' ? 'calendar' : 'tasks';
     const previousConflict = entry.googleConflict;
     const resolution = entry.googleResolution;
+    delete entry.googleSyncError;
 
+    if (source === 'tasks' && !googleTasksAvailable) {
+      entry.googleSyncError = 'Google Tasks 暂时无法读取；未判断远端删除';
+      pendingGoogleDeletes.push(entry);
+      continue;
+    }
+    if (source === 'calendar' && calendarUnavailable(entry.googleCalendarId || 'primary')) {
+      entry.googleSyncError = '对应 Google Calendar 暂时无法读取；未判断远端删除';
+      pendingGoogleDeletes.push(entry);
+      continue;
+    }
+
+    try {
     if (source === 'tasks' && entry.googleTaskId) {
       const remote = googleTasksById.get(entry.googleTaskId) || null;
       if (remote) consumedGoogleTaskIds.add(remote.id);
@@ -1644,6 +1663,12 @@ async function syncGoogleState(state) {
 
     // No usable remote identity remains; the local delete is already complete.
     remoteDeletedCount += 1;
+    } catch (error) {
+      entry.googleSyncError = String(error.message || error || 'Google 删除失败');
+      failed += 1;
+      failureMessages.push('待删除事项：' + entry.googleSyncError);
+      if (!pendingGoogleDeletes.includes(entry)) pendingGoogleDeletes.push(entry);
+    }
   }
   state.googleDeletedItems = pendingGoogleDeletes;
 
