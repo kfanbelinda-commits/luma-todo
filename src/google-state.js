@@ -144,5 +144,27 @@
     return result;
   }
 
-  return { mergeResult };
+
+  function removeExternalCalendarItems(input) {
+    const state = structuredClone(input || {});
+    state.tasks = Array.isArray(state.tasks) ? state.tasks : [];
+    state.projects = Array.isArray(state.projects) ? state.projects : [];
+
+    const beforeCount = state.tasks.length;
+    state.tasks = state.tasks.filter((task) => !(
+      task?.googleCalendarExternal || task?.syncTarget === 'external-calendar'
+    ));
+    const removed = beforeCount - state.tasks.length;
+
+    const googleProjectId = 'google-calendar';
+    const googleProjectStillUsed = state.tasks.some((task) => task?.projectId === googleProjectId);
+    if (!googleProjectStillUsed && state.projects.some((project) => project?.id === googleProjectId)) {
+      state.projects = state.projects.filter((project) => project?.id !== googleProjectId);
+      state.projectsUpdatedAt = Date.now();
+    }
+
+    return { state, removed };
+  }
+
+  return { mergeResult, removeExternalCalendarItems };
 });
