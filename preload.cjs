@@ -33,4 +33,9 @@ contextBridge.exposeInMainWorld('luma', {
   lifelogMediaDataUrl: (relativePath) => ipcRenderer.invoke('lifelog:media-data-url', relativePath),
   lifelogSaveMedia: (payload) => ipcRenderer.invoke('lifelog:save-media', payload),
   lifelogDeleteMedia: (relativePath) => ipcRenderer.invoke('lifelog:delete-media', relativePath),
+  privateExtensionsStatus: () => ipcRenderer.invoke('private-extensions:status'),
+  privateExtensionsActivate: (code) => ipcRenderer.invoke('private-extensions:activate', code),
+  privateExtensionsInstall: () => ipcRenderer.invoke('private-extensions:install'),
+  luckyDaySummary: (payload) => ipcRenderer.invoke('private-extensions:luckyday-summary', payload),
+  openLuckyDay: () => ipcRenderer.invoke('private-extensions:open-luckyday'),
 });
