@@ -4,15 +4,16 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
-const { parseIcloudEvent, taskToIcloudIcs } = require('../main/icloud-ics.cjs');
+const { parseIcloudEvent, parseIcloudEventIdentity, taskToIcloudIcs } = require('../main/icloud-ics.cjs');
 const source = fs.readFileSync(path.join(__dirname, '../main.cjs'), 'utf8');
 // Exercise the actual main-process transport functions with an isolated fetch.
 function transport(fetch) {
-  const context = vm.createContext({ fetch, URL, Buffer, parseIcloudEvent });
+  const context = vm.createContext({ fetch, URL, Buffer, parseIcloudEvent, parseIcloudEventIdentity });
   const xml = source.slice(source.indexOf('function decodeXmlText('), source.indexOf('async function', source.indexOf('function resolveCaldavHref(')));
+  const helpers = source.slice(source.indexOf('function ensureCalendarUrl('), source.indexOf('async function putIcloudEvent('));
   const writeAndList = source.slice(source.indexOf('async function putIcloudEvent('), source.indexOf('function ensureAppleCalendarProject('));
   const get = source.slice(source.indexOf('async function getIcloudEvent('), source.indexOf('async function syncIcloudEvents('));
-  vm.runInContext(xml + '\n' + writeAndList + '\n' + get, context);
+  vm.runInContext(xml + '\n' + helpers + '\n' + writeAndList + '\n' + get, context);
   return context;
 }
 const response = (status, body = '', etag = '') => ({ ok: status >= 200 && status < 300, status,
@@ -48,12 +49,54 @@ test('GET distinguishes missing resources from unreadable content and server fai
   await assert.rejects(() => transport(async () => response(200, 'broken')).getIcloudEvent(calendar.url + 'qa.ics', {}, calendar), /无法解析/);
   await assert.rejects(() => transport(async () => response(503)).getIcloudEvent(calendar.url + 'qa.ics', {}, calendar), /503/);
 });
-test('REPORT rejects invalid or incomplete item data before sync can infer deletion', async () => {
-  for (const xml of ['<html>error</html>', '<d:multistatus xmlns:d="DAV:">', '<d:multistatus xmlns:d="DAV:"><d:response></d:multistatus>', '<d:multistatus xmlns:d="DAV:"><d:response><d:href>/calendar/qa.ics</d:href><d:status>HTTP/1.1 403 Forbidden</d:status></d:response></d:multistatus>']) {
-    await assert.rejects(() => transport(async () => response(207, xml)).listIcloudCalendarEvents({}, calendar), /停止同步/);
+test('REPORT still rejects structurally incomplete lists before sync can infer deletion', async () => {
+  for (const xml of ['<html>error</html>', '<d:multistatus xmlns:d="DAV:">', '<d:multistatus xmlns:d="DAV:"><d:response></d:multistatus>', '<d:multistatus xmlns:d="DAV:"><d:response><d:status>HTTP/1.1 403 Forbidden</d:status></d:response></d:multistatus>']) {
+    await assert.rejects(() => transport(async () => response(207, xml)).listIcloudCalendarEvents({}, calendar), /停止同步|缺少事项地址/);
   }
   const list = await transport(async () => response(207, '<d:multistatus xmlns:d="DAV:"></d:multistatus>')).listIcloudCalendarEvents({}, calendar);
   assert.equal(list.length, 0);
+});
+
+test('REPORT retries one unreadable item with GET and keeps the rest usable', async () => {
+  const validIcs = taskToIcloudIcs({ id: 'valid', itemType: 'event', title: 'Valid', completed: false, dueDate: '2026-09-08', endDate: '2026-09-08' }, 'valid@luma');
+  const brokenIcs = [
+    'BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'UID:broken@apple', 'SUMMARY:Broken Apple item',
+    'STATUS:CANCELLED', 'END:VEVENT', 'END:VCALENDAR', ''
+  ].join('\r\n');
+  const escapeXml = (value) => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+  const report = '<d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">'
+    + '<d:response><d:href>/calendar/valid.ics</d:href><d:getetag>&quot;1&quot;</d:getetag><c:calendar-data>' + escapeXml(validIcs) + '</c:calendar-data></d:response>'
+    + '<d:response><d:href>/calendar/broken.ics</d:href><d:getetag>&quot;2&quot;</d:getetag><c:calendar-data>' + escapeXml(brokenIcs) + '</c:calendar-data></d:response>'
+    + '</d:multistatus>';
+  const methods = [];
+  const api = transport(async (url, options) => {
+    methods.push([options.method, url]);
+    if (options.method === 'REPORT') return response(207, report);
+    if (String(url).endsWith('/broken.ics')) return response(200, brokenIcs, '"2b"');
+    throw new Error('unexpected request');
+  });
+  const list = await api.listIcloudCalendarEvents({}, calendar);
+  assert.equal(list.length, 2);
+  assert.equal(list[0].title, 'Valid');
+  assert.equal(list[1].unreadable, true);
+  assert.equal(list[1].uid, 'broken@apple');
+  assert.equal(list[1].href, calendar.url + 'broken.ics');
+  assert.deepEqual(methods.map((item) => item[0]), ['REPORT', 'GET']);
+});
+
+test('REPORT GET fallback can recover an item omitted from calendar-data', async () => {
+  const recoveredIcs = taskToIcloudIcs({ id: 'recover', itemType: 'event', title: 'Recovered', completed: false, dueDate: '2026-09-08', endDate: '2026-09-08' }, 'recover@luma');
+  const report = '<d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">'
+    + '<d:response><d:href>/calendar/recover.ics</d:href><d:getetag>&quot;1&quot;</d:getetag></d:response>'
+    + '</d:multistatus>';
+  const api = transport(async (_url, options) => options.method === 'REPORT'
+    ? response(207, report)
+    : response(200, recoveredIcs, '"2"'));
+  const list = await api.listIcloudCalendarEvents({}, calendar);
+  assert.equal(list.length, 1);
+  assert.equal(list[0].title, 'Recovered');
+  assert.equal(list[0].unreadable, undefined);
+  assert.equal(list[0].etag, '"2"');
 });
 test('GET parses Apple snapshot and latest etag', async () => {
   const ics = taskToIcloudIcs({ id: 'qa', itemType: 'todo', title: '买水果', completed: true, dueDate: '2026-09-08' }, 'qa@luma');
