@@ -1179,21 +1179,28 @@ function fitAllCalendarCells() {
 }
 
 function calendarHolidayHeading(dateKey, dayLabel, mark) {
-  if (!mark) return `<span class="day-number">${dayLabel}</span>`;
-  const lead = typeof cnHolidayIsLeadDay === 'function' && cnHolidayIsLeadDay(dateKey, mark);
+  const luckyMark = luckyDayMarkForDate(dateKey);
+  if (!mark && !luckyMark) return `<span class="day-number">${dayLabel}</span>`;
+  const lead = mark && typeof cnHolidayIsLeadDay === 'function' && cnHolidayIsLeadDay(dateKey, mark);
   const fest = lead && typeof cnFestivalName === 'function' ? cnFestivalName(mark) : '';
-  const badge = typeof cnHolidayBadgeText === 'function'
-    ? cnHolidayBadgeText(mark)
-    : (mark.type === 'work' ? '班' : '休');
-  const detail = typeof cnHolidayDetailLabel === 'function' ? cnHolidayDetailLabel(mark) : '';
+  const badge = mark
+    ? (typeof cnHolidayBadgeText === 'function' ? cnHolidayBadgeText(mark) : (mark.type === 'work' ? '班' : '休'))
+    : '';
+  const detail = mark && typeof cnHolidayDetailLabel === 'function' ? cnHolidayDetailLabel(mark) : '';
   const escaped = String(detail)
     .replace(/&/g, '&')
     .replace(/"/g, '"')
     .replace(/</g, '<');
+  const holidayBadge = mark
+    ? `<span class="day-holiday day-holiday-${mark.type}" title="${escaped}" aria-label="${escaped}">${badge}</span>`
+    : '';
+  const luckyBadge = luckyMark
+    ? `<span class="day-luckyday day-luckyday-${luckyMark.type}" title="${luckyMark.label}" aria-label="${luckyMark.label}">${luckyMark.short}</span>`
+    : '';
   return `<div class="day-heading">`
     + `<span class="day-number">${dayLabel}</span>`
     + (fest ? `<span class="day-fest">${fest}</span>` : '')
-    + `<span class="day-holiday day-holiday-${mark.type}" title="${escaped}" aria-label="${escaped}">${badge}</span>`
+    + `<span class="day-heading-marks">${luckyBadge}${holidayBadge}</span>`
     + `</div>`;
 }
 
@@ -1213,6 +1220,9 @@ function renderCalendar() {
   const first = new Date(year, month, 1);
   const mondayIndex = (first.getDay() + 6) % 7;
   const start = new Date(year, month, 1 - mondayIndex);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 41);
+  ensureLuckyDayMarksRange(toDateKey(start), toDateKey(end));
   const host = $('#calendarGrid');
   host.innerHTML = '';
 
