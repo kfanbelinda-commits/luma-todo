@@ -701,6 +701,15 @@ function ensureAppleCalendarProject(state) {
   return project;
 }
 
+function shouldRemoveMissingIcloudItem(task, calendarUrl) {
+  return Boolean(
+    task
+    && task.icloudHref
+    && task.icloudCalendarUrl === calendarUrl
+    && (task.itemType === 'event' || task.itemType === 'todo')
+  );
+}
+
 async function syncIcloudEvents(state, calendarUrl) {
   const credentials = loadIcloudCredentials();
   if (!credentials) throw new Error('iCloud 尚未连接');
@@ -775,18 +784,11 @@ async function syncIcloudEvents(state, calendarUrl) {
       continue;
     }
 
-    if (task.icloudHref && task.icloudCalendarUrl === calendar.url) {
-      if (task.itemType === 'event') {
-        // Event deleted on iPhone/iCloud -> remove from Luma.
-        deleted += 1;
-        continue;
-      }
-      // Todo is only a calendar mirror. If its mirror was deleted, keep the Todo
-      // and clear the link so the mirror can be recreated.
-      task.icloudHref = '';
-      task.icloudUid = '';
-      task.icloudEtag = '';
-      task.lastIcloudEtag = '';
+    if (shouldRemoveMissingIcloudItem(task, calendar.url)) {
+      // A previously linked Apple Calendar item disappeared remotely.
+      // Treat that as a deletion of the corresponding Luma Event or Todo.
+      deleted += 1;
+      continue;
     }
     retained.push(task);
   }
@@ -1785,6 +1787,7 @@ function createWindow() {
             calendarBody,
             applyCalendarEvent,
             deleteIcloudEvent,
+            shouldRemoveMissingIcloudItem,
           });
           console.log('[Luma Todo] Sync protocol smoke: ' + tested.join(', '));
         } catch (error) {
