@@ -843,7 +843,18 @@ function luckyDayIcloudStatus() {
   };
 }
 
+let luckyDayIcloudSyncInFlight = false;
 async function syncLuckyDayIcloudMarkers(calendarUrl, options = {}) {
+  if (luckyDayIcloudSyncInFlight) throw new Error('LuckyDay iCloud 同步正在进行');
+  luckyDayIcloudSyncInFlight = true;
+  try {
+    return await performLuckyDayIcloudSync(calendarUrl, options);
+  } finally {
+    luckyDayIcloudSyncInFlight = false;
+  }
+}
+
+async function performLuckyDayIcloudSync(calendarUrl, options = {}) {
   const credentials = loadIcloudCredentials();
   if (!credentials) throw new Error('请先连接 Apple 日历');
   const calendar = (credentials.calendars || []).find((item) => item.url === calendarUrl);
@@ -2745,19 +2756,12 @@ trustedHandle('private-extensions:luckyday-icloud-status', async () => {
   return luckyDayIcloudStatus();
 });
 
-let luckyDayIcloudSyncInFlight = false;
 trustedHandle('private-extensions:luckyday-sync-icloud', async (_event, payload) => {
-  if (luckyDayIcloudSyncInFlight) throw new Error('LuckyDay iCloud 同步正在进行');
   if (DEMO_MODE) throw new Error('演示模式不会写入真实 iCloud');
-  luckyDayIcloudSyncInFlight = true;
-  try {
-    return await syncLuckyDayIcloudMarkers(
-      String(payload?.calendarUrl || ''),
-      { startDate: String(payload?.startDate || ''), endDate: String(payload?.endDate || '') }
-    );
-  } finally {
-    luckyDayIcloudSyncInFlight = false;
-  }
+  return syncLuckyDayIcloudMarkers(
+    String(payload?.calendarUrl || ''),
+    { startDate: String(payload?.startDate || ''), endDate: String(payload?.endDate || '') }
+  );
 });
 
 trustedHandle('private-extensions:open-luckyday', async () => {

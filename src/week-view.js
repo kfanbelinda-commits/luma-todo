@@ -231,6 +231,9 @@
       start = new Date(start.getFullYear(), start.getMonth(), start.getDate() - 7);
     }
     const weekSet = new Set(keys);
+    const miniEnd = new Date(start);
+    miniEnd.setDate(start.getDate() + 41);
+    window.LumaLuckyDayMarks?.ensureRange?.(toKey(start), toKey(miniEnd));
     const today = todayKey();
     const cells = [];
     for (let index = 0; index < 42; index += 1) {

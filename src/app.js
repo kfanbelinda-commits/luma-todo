@@ -370,8 +370,8 @@ async function syncLuckyDayIcloud() {
   statusText.textContent = '正在同步成日 / 除日…';
   try {
     const result = await window.luma.luckyDaySyncIcloud({ calendarUrl, ...luckyDayIcloudRange() });
-    statusText.textContent = `已同步到 ${result.calendarName}：新增 ${result.created}，更新 ${result.updated}，删除旧标记 ${result.deleted}，保持 ${result.unchanged}。`;
     await refreshLuckyDayIcloudStatus();
+    statusText.textContent = `已同步到 ${result.calendarName}：新增 ${result.created}，更新 ${result.updated}，删除旧标记 ${result.deleted}，保持 ${result.unchanged}。`;
   } catch (error) {
     statusText.textContent = '同步失败：' + googleErrorMessage(error);
   } finally {
