@@ -2386,7 +2386,7 @@ async function syncIcloud() {
     $('#icloudNote').textContent =
       '同步完成：从 iCloud 下载 ' + (summary.downloaded || 0) + ' 项、本地移除 ' + (summary.deleted || 0)
       + ' 项；远端删除 ' + (summary.remoteDeleted || 0) + ' 项；上传新增 ' + (summary.created || 0) + '、更新 ' + (summary.updated || 0)
-      + '。当前日程 ' + (summary.syncedEvents || 0) + ' 项，待办镜像 ' + (summary.mirroredTodos || 0) + ' 项。';
+      + '；冲突 ' + (summary.conflicts || 0) + ' 项。当前日程 ' + (summary.syncedEvents || 0) + ' 项，待办镜像 ' + (summary.mirroredTodos || 0) + ' 项。';
   } catch (error) {
     $('#icloudNote').textContent = '同步失败：' + googleErrorMessage(error);
   } finally {
