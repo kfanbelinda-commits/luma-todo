@@ -211,6 +211,19 @@
       </div>
     </dialog>
 
+    <dialog id="googleDisconnectDialog" class="modal" aria-labelledby="googleDisconnectTitle">
+      <form method="dialog">
+        <div class="modal-title"><h3 id="googleDisconnectTitle">断开 Google</h3><button type="submit" class="icon-button" aria-label="关闭">×</button></div>
+        <p class="settings-note">断开后，如何处理从 Google Calendar 导入到 Luma 的日程？</p>
+        <p class="settings-note">“从 Luma 移除”只清理 Google 原生日历的本地显示，不会删除 Google Calendar 原数据，也不会删除 Luma 自己创建并同步到 Google 的待办或日程。</p>
+        <div class="project-form-actions">
+          <button type="submit" class="soft-button">取消</button>
+          <button id="googleDisconnectKeep" type="button" class="soft-button">保留在 Luma</button>
+          <button id="googleDisconnectRemove" type="button" class="soft-button">从 Luma 移除</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="googleConflictDialog" class="modal" aria-labelledby="googleConflictTitle">
       <form method="dialog">
         <div class="modal-title"><h3 id="googleConflictTitle">Google 同步冲突</h3><button type="submit" class="icon-button" aria-label="关闭">×</button></div>
@@ -364,7 +377,10 @@
               </div>
             </div>
             <p id="googleNote" class="settings-note sync-note">同步 Luma 待办与 Google Calendar。</p>
-            <button id="resolveGoogleConflicts" type="button" class="soft-button" hidden>处理同步冲突</button>
+            <div class="sync-actions">
+              <button id="resolveGoogleConflicts" type="button" class="soft-button" hidden>处理同步冲突</button>
+              <button id="cleanupGoogleCalendarResidue" type="button" class="soft-button" hidden>清理 Google 日历遗留</button>
+            </div>
           </section>
 
           <section class="sync-card apple-sync-card">

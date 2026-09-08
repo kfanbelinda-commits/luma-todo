@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { mergeResult } = require('../src/google-state.js');
+const { mergeResult, removeExternalCalendarItems } = require('../src/google-state.js');
 
 const baseTask = (overrides = {}) => ({
   id: 'one',
@@ -126,4 +126,74 @@ test('concurrent project edit is not overwritten by returned state', () => {
   const merged = mergeResult(before, current, returned);
   assert.equal(merged.projects[0].name, 'My Inbox');
   assert.equal(merged.projectsUpdatedAt, 30);
+});
+
+
+test('Google disconnect cleanup removes only imported external calendar items', () => {
+  const localTask = baseTask({
+    id: 'local-task',
+    googleTaskId: 'g-local-task',
+    projectId: 'inbox',
+  });
+  const localEvent = baseTask({
+    id: 'local-event',
+    itemType: 'event',
+    syncTarget: 'calendar',
+    googleTaskId: '',
+    googleCalendarEventId: 'g-local-event',
+    projectId: 'inbox',
+  });
+  const externalEvent = baseTask({
+    id: 'external-event',
+    itemType: 'event',
+    syncTarget: 'external-calendar',
+    googleTaskId: '',
+    googleCalendarEventId: 'g-external-event',
+    googleCalendarExternal: true,
+    projectId: 'google-calendar',
+  });
+  const input = state(localTask, {
+    tasks: [localTask, localEvent, externalEvent],
+    projects: [
+      { id: 'inbox', name: '未分类', color: '#9aa4b8', order: 0, updatedAt: 1 },
+      { id: 'google-calendar', name: 'Google 日历', color: '#8b93a3', order: 1, updatedAt: 2 },
+    ],
+    googleDeletedItems: [{ source: 'tasks', googleTaskId: 'queued-delete', task: { id: 'old' } }],
+  });
+
+  const result = removeExternalCalendarItems(input);
+  assert.equal(result.removed, 1);
+  assert.deepEqual(result.state.tasks.map((task) => task.id), ['local-task', 'local-event']);
+  assert.equal(result.state.tasks[0].googleTaskId, 'g-local-task');
+  assert.equal(result.state.tasks[1].googleCalendarEventId, 'g-local-event');
+  assert.equal(result.state.projects.some((project) => project.id === 'google-calendar'), false);
+  assert.equal(result.state.googleDeletedItems.length, 1);
+});
+
+test('Google disconnect cleanup keeps Google project when a remaining local item still uses it', () => {
+  const local = baseTask({
+    id: 'local-google-project',
+    projectId: 'google-calendar',
+    googleTaskId: 'g-local',
+  });
+  const external = baseTask({
+    id: 'external',
+    itemType: 'event',
+    syncTarget: 'external-calendar',
+    googleCalendarExternal: true,
+    googleTaskId: '',
+    googleCalendarEventId: 'g-external',
+    projectId: 'google-calendar',
+  });
+  const input = state(local, {
+    tasks: [local, external],
+    projects: [
+      { id: 'inbox', name: '未分类', color: '#9aa4b8', order: 0, updatedAt: 1 },
+      { id: 'google-calendar', name: 'Google 日历', color: '#8b93a3', order: 1, updatedAt: 2 },
+    ],
+  });
+
+  const result = removeExternalCalendarItems(input);
+  assert.equal(result.removed, 1);
+  assert.equal(result.state.projects.some((project) => project.id === 'google-calendar'), true);
 });
