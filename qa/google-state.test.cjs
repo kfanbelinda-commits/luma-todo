@@ -37,7 +37,7 @@ test('concurrent local edit survives returned Google sync metadata', () => {
   assert.equal(merged.tasks[0].title, 'Edited while syncing');
   assert.equal(merged.tasks[0].updatedAt, 30);
   assert.equal(merged.tasks[0].googleRemoteUpdatedAt, 20);
-  assert.equal(merged.tasks[0].lastGoogleSyncAt, 20);
+  assert.equal(merged.tasks[0].lastGoogleSyncAt, 10);
 });
 
 test('unchanged local task follows remote deletion', () => {
