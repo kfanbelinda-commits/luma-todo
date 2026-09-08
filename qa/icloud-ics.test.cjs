@@ -138,7 +138,7 @@ test('identity survives unsupported or cancelled VEVENT without DTSTART', () => 
     'END:VEVENT',
     'END:VCALENDAR',
     '',
-  ].join('\\r\\n');
+  ].join('\r\n');
 
   assert.equal(parseIcloudEvent(ics, '/qa/cancelled.ics', '"1"', calendar), null);
   assert.deepEqual(parseIcloudEventIdentity(ics), {
