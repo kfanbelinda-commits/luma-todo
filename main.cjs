@@ -6,6 +6,10 @@ const {
   googleTaskRemoteSnapshot,
   reconcileGoogleTaskNative,
   googleTaskSnapshotEqual,
+  normalizeGoogleCalendarSnapshot,
+  reconcileGoogleCalendar,
+  googleCalendarSnapshotEqual,
+  remoteChangedSinceGoogleSnapshot,
 } = require('./main/google-reconcile.cjs');
 const { parseGoogleTaskNotes, buildGoogleTaskNotes } = require('./main/google-task-notes.cjs');
 const path = require('path');
@@ -1124,6 +1128,23 @@ function applyCalendarEvent(task, event) {
   if (details.lumaOrder) task.order = Number(details.lumaOrder);
 }
 
+function googleCalendarLocalSnapshot(task) {
+  return normalizeGoogleCalendarSnapshot(task);
+}
+
+function googleCalendarRemoteSnapshot(event, fallbackTask) {
+  const copy = structuredClone(fallbackTask || {});
+  applyCalendarEvent(copy, event);
+  return normalizeGoogleCalendarSnapshot(copy);
+}
+
+function applyGoogleCalendarSnapshot(task, snapshot) {
+  for (const field of [
+    'title', 'dueDate', 'time', 'endDate', 'endTime',
+    'itemType', 'eventColor', 'projectId', 'completed', 'reminder', 'order',
+  ]) task[field] = snapshot[field];
+}
+
 function applyGoogleTaskNative(task, snapshot) {
   task.title = snapshot.title || task.title;
   task.itemType = 'todo';
@@ -1224,13 +1245,6 @@ function localChangedSinceSync(task) {
   return Number(task.updatedAt || task.createdAt || 0) > Number(task.lastGoogleSyncAt || 0);
 }
 
-function remoteShouldWin(task, remoteUpdatedAt) {
-  const remoteChanged = Number(remoteUpdatedAt || 0) > Number(task.googleRemoteUpdatedAt || 0);
-  if (!remoteChanged) return false;
-  if (!localChangedSinceSync(task)) return true;
-  return Number(remoteUpdatedAt || 0) > Number(task.updatedAt || task.createdAt || 0);
-}
-
 function applyRemoteProjectMetadata(state, googleTasks) {
   const metadataTask = googleTasks.find((task) => !task.deleted && typeof task.notes === 'string' && task.notes.startsWith(LUMA_METADATA_NOTES_PREFIX));
   const payload = parseJsonAfterPrefix(metadataTask?.notes, LUMA_METADATA_NOTES_PREFIX);
@@ -1305,9 +1319,6 @@ async function syncGoogleState(state) {
   state.tasks ??= [];
   state.projects ??= [];
   state.googleDeletedItems = Array.isArray(state.googleDeletedItems) ? state.googleDeletedItems : [];
-  const queuedRemoteDeleted = state.googleDeletedItems.length;
-  for (const entry of state.googleDeletedItems) await deleteGoogleTask(entry);
-  state.googleDeletedItems = [];
   const [calendarEvents, googleTasks] = await Promise.all([listGoogleCalendarEvents(), listGoogleTasks()]);
   const calendarByKey = new Map(calendarEvents.map((event) => [calendarEventKey(calendarIdForEvent(event), event.id), event]));
   const calendarById = new Map(calendarEvents.map((event) => [event.id, event]));
@@ -1324,6 +1335,7 @@ async function syncGoogleState(state) {
   let downloaded = 0;
   let deleted = 0;
   let conflicts = 0;
+  let remoteDeletedCount = 0;
   let externalCalendarDownloaded = 0;
   const findCalendarEvent = (task) => {
     if (!task.googleCalendarEventId) return null;
@@ -1331,6 +1343,176 @@ async function syncGoogleState(state) {
       || calendarById.get(task.googleCalendarEventId)
       || null;
   };
+
+  // A local delete is compared with the remote version before DELETE. If the
+  // remote item changed after the last successful snapshot, preserve both
+  // states and ask the user instead of silently deleting unseen edits.
+  const pendingGoogleDeletes = [];
+  const deleteOtherGoogleIdentity = async (entry, source) => {
+    if (source !== 'tasks' && entry.googleTaskId) await deleteGoogleTasksItem(entry.googleTaskId);
+    if (source !== 'calendar' && entry.googleCalendarEventId) {
+      await deleteGoogleCalendarEvent(entry.googleCalendarId || 'primary', entry.googleCalendarEventId);
+    }
+  };
+  for (const entry of state.googleDeletedItems) {
+    const source = entry.source === 'calendar' ? 'calendar' : 'tasks';
+    const previousConflict = entry.googleConflict;
+    const resolution = entry.googleResolution;
+
+    if (source === 'tasks' && entry.googleTaskId) {
+      const remote = googleTasksById.get(entry.googleTaskId) || null;
+      if (remote) consumedGoogleTaskIds.add(remote.id);
+      if (!remote || remote.deleted) {
+        await deleteOtherGoogleIdentity(entry, 'tasks');
+        remoteDeletedCount += 1;
+        continue;
+      }
+
+      const remoteUpdatedAt = Date.parse(remote.updated || 0);
+      const remoteSnapshot = googleTaskRemoteSnapshot(remote);
+      const baseSnapshot = entry.task?.lastGoogleTaskSnapshot || null;
+      const previousRemoteUpdatedAt = Number(entry.task?.googleRemoteUpdatedAt || 0);
+      const remoteChanged = remoteChangedSinceGoogleSnapshot({
+        base: baseSnapshot,
+        remote: remoteSnapshot,
+        previousRemoteUpdatedAt,
+        remoteUpdatedAt,
+        equalSnapshot: googleTaskSnapshotEqual,
+      });
+      const resolutionFresh = Boolean(
+        previousConflict
+        && resolution
+        && resolution.detectedAt === previousConflict.detectedAt
+        && (!previousConflict.remoteUpdatedAt || previousConflict.remoteUpdatedAt === remoteUpdatedAt)
+      );
+
+      if (remoteChanged && !(resolutionFresh && resolution.choice === 'local')) {
+        if (resolutionFresh && resolution.choice === 'remote' && entry.task) {
+          const restored = structuredClone(entry.task);
+          if (state.tasks.some((task) => task.id === restored.id)) {
+            entry.googleSyncError = '恢复 Google Task 时发现相同本地 ID';
+            pendingGoogleDeletes.push(entry);
+            continue;
+          }
+          applyGoogleTaskNative(restored, remoteSnapshot);
+          const details = googleTaskMetadata(remote);
+          if (details) {
+            applyGoogleTaskMetadata(restored, details);
+            ensureProject(state, details);
+          }
+          restored.googleTaskId = remote.id;
+          restored.googleRemoteUpdatedAt = remoteUpdatedAt;
+          restored.lastGoogleTaskSnapshot = googleTaskLocalSnapshot(restored);
+          restored.lastGoogleSyncAt = syncTime;
+          restored.updatedAt = remoteUpdatedAt;
+          await deleteOtherGoogleIdentity(entry, 'tasks');
+          delete restored.googleConflict;
+          delete restored.googleResolution;
+          retainedTasks.push(restored);
+          downloaded += 1;
+          continue;
+        }
+
+        entry.googleConflict = {
+          source: 'tasks',
+          type: 'local-deleted-remote-modified',
+          detectedAt: syncTime,
+          remoteUpdatedAt,
+          local: null,
+          remote: remoteSnapshot,
+          conflictFields: [],
+        };
+        delete entry.googleResolution;
+        conflicts += 1;
+        pendingGoogleDeletes.push(entry);
+        continue;
+      }
+
+      await deleteGoogleTasksItem(remote.id);
+      await deleteOtherGoogleIdentity(entry, 'tasks');
+      remoteDeletedCount += 1;
+      continue;
+    }
+
+    if (source === 'calendar' && entry.googleCalendarEventId) {
+      const remote = calendarByKey.get(calendarEventKey(entry.googleCalendarId, entry.googleCalendarEventId))
+        || calendarById.get(entry.googleCalendarEventId)
+        || null;
+      if (remote) consumedCalendarIds.add(calendarEventKey(calendarIdForEvent(remote), remote.id));
+      if (!remote || remote.status === 'cancelled') {
+        await deleteOtherGoogleIdentity(entry, 'calendar');
+        remoteDeletedCount += 1;
+        continue;
+      }
+
+      const remoteUpdatedAt = Date.parse(remote.updated || 0);
+      const remoteSnapshot = googleCalendarRemoteSnapshot(remote, entry.task || {});
+      const baseSnapshot = entry.task?.lastGoogleCalendarSnapshot || null;
+      const previousRemoteUpdatedAt = Number(entry.task?.googleRemoteUpdatedAt || 0);
+      const remoteChanged = remoteChangedSinceGoogleSnapshot({
+        base: baseSnapshot,
+        remote: remoteSnapshot,
+        previousRemoteUpdatedAt,
+        remoteUpdatedAt,
+        equalSnapshot: googleCalendarSnapshotEqual,
+      });
+      const resolutionFresh = Boolean(
+        previousConflict
+        && resolution
+        && resolution.detectedAt === previousConflict.detectedAt
+        && (!previousConflict.remoteUpdatedAt || previousConflict.remoteUpdatedAt === remoteUpdatedAt)
+      );
+
+      if (remoteChanged && !(resolutionFresh && resolution.choice === 'local')) {
+        if (resolutionFresh && resolution.choice === 'remote' && entry.task) {
+          const restored = structuredClone(entry.task);
+          if (state.tasks.some((task) => task.id === restored.id)) {
+            entry.googleSyncError = '恢复 Google Calendar 事项时发现相同本地 ID';
+            pendingGoogleDeletes.push(entry);
+            continue;
+          }
+          applyGoogleCalendarSnapshot(restored, remoteSnapshot);
+          const details = calendarTaskDetails(remote);
+          ensureProject(state, details);
+          restored.googleCalendarEventId = remote.id;
+          restored.googleCalendarId = calendarIdForEvent(remote);
+          restored.googleRemoteUpdatedAt = remoteUpdatedAt;
+          restored.lastGoogleCalendarSnapshot = googleCalendarLocalSnapshot(restored);
+          restored.lastGoogleSyncAt = syncTime;
+          restored.updatedAt = remoteUpdatedAt;
+          await deleteOtherGoogleIdentity(entry, 'calendar');
+          delete restored.googleConflict;
+          delete restored.googleResolution;
+          retainedTasks.push(restored);
+          downloaded += 1;
+          continue;
+        }
+
+        entry.googleConflict = {
+          source: 'calendar',
+          type: 'local-deleted-remote-modified',
+          detectedAt: syncTime,
+          remoteUpdatedAt,
+          local: null,
+          remote: remoteSnapshot,
+          conflictFields: [],
+        };
+        delete entry.googleResolution;
+        conflicts += 1;
+        pendingGoogleDeletes.push(entry);
+        continue;
+      }
+
+      await deleteGoogleCalendarEvent(calendarIdForEvent(remote), remote.id);
+      await deleteOtherGoogleIdentity(entry, 'calendar');
+      remoteDeletedCount += 1;
+      continue;
+    }
+
+    // No usable remote identity remains; the local delete is already complete.
+    remoteDeletedCount += 1;
+  }
+  state.googleDeletedItems = pendingGoogleDeletes;
 
   for (const task of state.tasks) {
     task.updatedAt ??= task.createdAt || Date.now();
@@ -1366,51 +1548,142 @@ async function syncGoogleState(state) {
     if (task.syncTarget === 'calendar' && task.dueDate) {
       if (task.googleTaskId) {
         consumedGoogleTaskIds.add(task.googleTaskId);
-        // Do not forget the old remote id until Google confirms deletion (or
-        // reports it already gone). Otherwise a failed migration can duplicate
-        // the same Luma item in Tasks and Calendar.
         await deleteGoogleTasksItem(task.googleTaskId);
         task.googleTaskId = null;
       }
+
+      const localWasChanged = localChangedSinceSync(task);
       const foundRemote = findCalendarEvent(task) || calendarByTaskId.get(task.id);
       if (foundRemote) consumedCalendarIds.add(calendarEventKey(calendarIdForEvent(foundRemote), foundRemote.id));
-      const remoteDeleted = foundRemote?.status === 'cancelled';
-      const remote = remoteDeleted ? null : foundRemote;
+      const remoteDeleted = Boolean(task.googleCalendarEventId && (!foundRemote || foundRemote.status === 'cancelled'));
+      const remote = foundRemote?.status === 'cancelled' ? null : foundRemote;
       const remoteUpdatedAt = Date.parse(foundRemote?.updated || 0);
-      const remoteDetails = remote ? calendarTaskDetails(remote) : {};
-      const needsMetadataUpgrade = remote && remoteDetails.version < 2;
+      const remoteDetails = remote ? calendarTaskDetails(remote) : null;
+      const needsMetadataUpgrade = Boolean(remote && Number(remoteDetails?.version || 1) < 2);
+      const localSnapshot = googleCalendarLocalSnapshot(task);
+      const baseSnapshot = task.lastGoogleCalendarSnapshot || null;
+      const previousConflict = task.googleConflict?.source === 'calendar' ? task.googleConflict : null;
+      const resolution = task.googleResolution;
+      const resolutionFresh = Boolean(
+        previousConflict
+        && resolution
+        && resolution.detectedAt === previousConflict.detectedAt
+        && (!previousConflict.remoteUpdatedAt || previousConflict.remoteUpdatedAt === remoteUpdatedAt)
+      );
 
-      if (remoteDeleted && !localChangedSinceSync(task)) {
-        deleted += 1;
-        continue;
-      }
-      if (remote && remoteShouldWin(task, remoteUpdatedAt)) {
-        applyCalendarEvent(task, remote);
-        ensureProject(state, remoteDetails);
-        task.googleCalendarEventId = remote.id;
-        task.googleCalendarId = calendarIdForEvent(remote);
-        task.googleRemoteUpdatedAt = remoteUpdatedAt;
-        task.updatedAt = remoteUpdatedAt;
-        downloaded += 1;
-        if (needsMetadataUpgrade) {
-          const upgraded = await googleRequest(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarIdForEvent(remote))}/events/${encodeURIComponent(remote.id)}`, {
+      if (remoteDeleted) {
+        if (resolutionFresh && resolution.choice === 'remote') {
+          deleted += 1;
+          continue;
+        }
+        if (!(resolutionFresh && resolution.choice === 'local')) {
+          if (localWasChanged || !baseSnapshot) {
+            task.googleConflict = {
+              source: 'calendar',
+              type: 'remote-deleted-local-modified',
+              detectedAt: syncTime,
+              remoteUpdatedAt,
+              local: localSnapshot,
+              remote: null,
+              conflictFields: [],
+            };
+            delete task.googleResolution;
+            conflicts += 1;
+            retainedTasks.push(task);
+            continue;
+          }
+          deleted += 1;
+          continue;
+        }
+
+        task.googleCalendarEventId = null;
+        task.googleCalendarId = null;
+        const saved = await googleRequest('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+          method: 'POST',
+          body: JSON.stringify(calendarBody(state, task)),
+        });
+        task.googleCalendarEventId = saved.id;
+        task.googleCalendarId = 'primary';
+        task.googleRemoteUpdatedAt = Date.parse(saved.updated || new Date().toISOString());
+        task.lastGoogleCalendarSnapshot = googleCalendarLocalSnapshot(task);
+        delete task.googleConflict;
+        delete task.googleResolution;
+        uploaded += 1;
+      } else if (!remote) {
+        const saved = await googleRequest('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+          method: 'POST',
+          body: JSON.stringify(calendarBody(state, task)),
+        });
+        task.googleCalendarEventId = saved.id;
+        task.googleCalendarId = 'primary';
+        task.googleRemoteUpdatedAt = Date.parse(saved.updated || new Date().toISOString());
+        task.lastGoogleCalendarSnapshot = googleCalendarLocalSnapshot(task);
+        delete task.googleConflict;
+        delete task.googleResolution;
+        uploaded += 1;
+      } else {
+        const remoteSnapshot = googleCalendarRemoteSnapshot(remote, task);
+        const remoteChangedHint = remoteUpdatedAt > Number(task.googleRemoteUpdatedAt || 0);
+        let decision;
+
+        if (resolutionFresh && resolution.choice === 'local') {
+          decision = { action: 'local', merged: localSnapshot, conflictFields: [] };
+        } else if (resolutionFresh && resolution.choice === 'remote') {
+          decision = { action: 'remote', merged: remoteSnapshot, conflictFields: [] };
+        } else {
+          decision = reconcileGoogleCalendar({
+            base: baseSnapshot,
+            local: localSnapshot,
+            remote: remoteSnapshot,
+            localChangedHint: localWasChanged,
+            remoteChangedHint,
+          });
+        }
+
+        if (decision.action === 'conflict') {
+          task.googleConflict = {
+            source: 'calendar',
+            type: decision.type,
+            detectedAt: syncTime,
+            remoteUpdatedAt,
+            local: localSnapshot,
+            remote: remoteSnapshot,
+            conflictFields: decision.conflictFields,
+          };
+          delete task.googleResolution;
+          conflicts += 1;
+          retainedTasks.push(task);
+          continue;
+        }
+
+        const changedByRemote = !googleCalendarSnapshotEqual(localSnapshot, decision.merged);
+        if (changedByRemote) {
+          applyGoogleCalendarSnapshot(task, decision.merged);
+          if (remoteDetails) ensureProject(state, remoteDetails);
+          downloaded += 1;
+          if (!localWasChanged) task.updatedAt = remoteUpdatedAt;
+        }
+
+        const shouldPush = decision.action === 'local'
+          || decision.action === 'merge'
+          || localWasChanged
+          || needsMetadataUpgrade;
+        if (shouldPush) {
+          const saved = await googleRequest(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarIdForEvent(remote))}/events/${encodeURIComponent(remote.id)}`, {
             method: 'PATCH',
             body: JSON.stringify(calendarBody(state, task)),
           });
-          task.googleRemoteUpdatedAt = Date.parse(upgraded.updated || new Date().toISOString());
+          task.googleRemoteUpdatedAt = Date.parse(saved.updated || new Date().toISOString());
           uploaded += 1;
+        } else {
+          task.googleRemoteUpdatedAt = remoteUpdatedAt;
         }
-      } else if (!remote || localChangedSinceSync(task) || needsMetadataUpgrade) {
-        if (remoteDeleted) task.googleCalendarEventId = null;
-        const body = calendarBody(state, task);
-        const url = remote
-          ? `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarIdForEvent(remote))}/events/${encodeURIComponent(remote.id)}`
-          : 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
-        const saved = await googleRequest(url, { method: remote ? 'PATCH' : 'POST', body: JSON.stringify(body) });
-        task.googleCalendarEventId = saved.id;
-        task.googleCalendarId = remote ? calendarIdForEvent(remote) : 'primary';
-        task.googleRemoteUpdatedAt = Date.parse(saved.updated || new Date().toISOString());
-        uploaded += 1;
+
+        task.googleCalendarEventId = remote.id;
+        task.googleCalendarId = calendarIdForEvent(remote);
+        task.lastGoogleCalendarSnapshot = googleCalendarLocalSnapshot(task);
+        delete task.googleConflict;
+        delete task.googleResolution;
       }
     } else if (task.syncTarget === 'tasks') {
       if (task.googleCalendarEventId) {
@@ -1588,6 +1861,7 @@ async function syncGoogleState(state) {
       lastGoogleSyncAt: syncTime,
     };
     applyCalendarEvent(task, event);
+    if (isLumaEvent) task.lastGoogleCalendarSnapshot = googleCalendarLocalSnapshot(task);
     if (!isLumaEvent) {
       task.itemType = 'event';
       task.projectId = project.id;
@@ -1635,7 +1909,7 @@ async function syncGoogleState(state) {
       downloaded,
       deleted,
       conflicts,
-      remoteDeleted: queuedRemoteDeleted,
+      remoteDeleted: remoteDeletedCount,
       externalCalendarDownloaded,
       projectsUploaded,
       projectsDownloaded: remoteProjectMetadata.downloaded,
