@@ -46,6 +46,7 @@ const seedState = {
     { id: 'internal', name: '内部系统', color: '#8b6ef5', order: 2 },
   ],
   tasks: [],
+  icloudDeletedItems: [],
 };
 
 let state = structuredClone(seedState);
@@ -84,6 +85,23 @@ let collapsedProjects = new Set();
 function normalizeState(input) {
   if (!input || !Array.isArray(input.tasks) || !Array.isArray(input.projects)) return structuredClone(seedState);
   input.settings ??= {};
+  input.icloudDeletedItems = Array.isArray(input.icloudDeletedItems)
+    ? input.icloudDeletedItems
+      .filter((item) => item && typeof item.href === 'string' && item.href && typeof item.calendarUrl === 'string' && item.calendarUrl)
+      .map((item) => ({
+        href: item.href,
+        uid: String(item.uid || ''),
+        etag: String(item.etag || ''),
+        calendarUrl: item.calendarUrl,
+        itemType: item.itemType === 'event' ? 'event' : 'todo',
+        deletedAt: Number(item.deletedAt || 0),
+        lastIcloudSnapshot: item.lastIcloudSnapshot || null,
+        task: item.task || null,
+        icloudConflict: item.icloudConflict || null,
+        icloudResolution: item.icloudResolution || null,
+        icloudSyncError: String(item.icloudSyncError || ''),
+      }))
+    : [];
   input.settings.googleConnected ??= false;
   input.settings.alwaysOnTop = Boolean(input.settings.alwaysOnTop ?? input.settings.desktopPinned);
   delete input.settings.desktopPinned;
@@ -1955,6 +1973,22 @@ async function deleteTask(id) {
       $('#googleNote').textContent = `Google 中的对应事项未能删除：${error.message}`;
     }
   }
+  const icloudDeleteHref = task?.icloudHref || task?.icloudPendingHref;
+  if (icloudDeleteHref && task?.icloudCalendarUrl) {
+    state.icloudDeletedItems ??= [];
+    state.icloudDeletedItems = state.icloudDeletedItems.filter((item) => item.href !== icloudDeleteHref);
+    state.icloudDeletedItems.push({
+      href: icloudDeleteHref,
+      uid: task.icloudUid || task.icloudPendingUid || '',
+      etag: task.lastIcloudEtag || task.icloudEtag || '',
+      calendarUrl: task.icloudCalendarUrl,
+      itemType: task.itemType === 'event' ? 'event' : 'todo',
+      deletedAt: Date.now(),
+      lastIcloudSnapshot: task.lastIcloudSnapshot ? structuredClone(task.lastIcloudSnapshot) : null,
+      task: structuredClone(task),
+      icloudConflict: task.icloudConflict ? { ...structuredClone(task.icloudConflict), local: null } : null,
+    });
+  }
   state.tasks = state.tasks.filter((task) => task.id !== id);
   await persist();
   render();
@@ -2342,7 +2376,89 @@ async function connectIcloud() {
   }
 }
 
+function icloudConflictEntries() {
+  const calendarUrl = $('#icloudCalendarSelect').value;
+  return [
+    ...state.tasks.filter((task) => task.icloudCalendarUrl === calendarUrl && task.icloudConflict),
+    ...(state.icloudDeletedItems || []).filter((item) => item.calendarUrl === calendarUrl && item.icloudConflict),
+  ];
+}
+
+function refreshIcloudConflictButton() {
+  const count = icloudConflictEntries().length;
+  const button = $('#resolveIcloudConflicts');
+  button.hidden = count === 0;
+  button.textContent = '处理同步冲突（' + count + '）';
+  const calendarUrl = $('#icloudCalendarSelect').value;
+  const failures = [
+    ...state.tasks.filter((task) => task.icloudCalendarUrl === calendarUrl && task.icloudSyncError),
+    ...(state.icloudDeletedItems || []).filter((item) => item.calendarUrl === calendarUrl && item.icloudSyncError),
+  ];
+  $('#icloudFailures').hidden = failures.length === 0;
+  $('#icloudFailureList').replaceChildren(...failures.map((item) => {
+    const row = document.createElement('li');
+    row.textContent = (item.title || item.task?.title || '已删除事项') + (item.href ? '（待同步删除）' : '') + '：' + item.icloudSyncError;
+    return row;
+  }));
+}
+
+function showIcloudConflict(requestedIndex = 0) {
+  if (icloudRequestInFlight) return;
+  const entries = icloudConflictEntries();
+  const index = Math.max(0, Math.min(Number.isInteger(requestedIndex) ? requestedIndex : 0, entries.length - 1));
+  const entry = entries[index];
+  if (!entry) { refreshIcloudConflictButton(); return; }
+  $('#icloudConflictPosition').textContent = (index + 1) + ' / ' + entries.length;
+  $('#icloudConflictPrevious').disabled = index === 0;
+  $('#icloudConflictNext').disabled = index === entries.length - 1;
+  $('#icloudConflictPrevious').onclick = () => showIcloudConflict(index - 1);
+  $('#icloudConflictNext').onclick = () => showIcloudConflict(index + 1);
+  const conflict = entry.icloudConflict;
+  const reasons = {
+    'both-modified': '双方修改了相同内容。',
+    'missing-baseline': '这条旧事项尚无同步基线，无法安全判断修改来自哪一边。',
+    'local-deleted-remote-modified': 'Luma 已删除，Apple 仍有修改后的内容。',
+    'remote-deleted-local-modified': 'Apple 已删除，Luma 内容有修改或尚无同步基线。',
+    'schedule-conflict': '双方日期和时间修改相互关联，需要选择完整版本。',
+    'invalid-schedule': '合并后的日期和时间无效，请选择有效版本或先编辑事项。',
+    'missing-etag': 'Apple 未返回可用于安全写入的版本信息，请稍后重试同步。',
+    'remote-changing': '重试期间 Apple 内容仍在变化。',
+    'write-unconfirmed': '写入后读到的 Apple 内容有变化。',
+  };
+  const format = (value) => value === null ? '已删除'
+    : [value.title, '开始：' + value.dueDate + (value.time ? ' ' + value.time : ' · 全天'),
+      value.endDate ? '结束：' + value.endDate + (value.endTime ? ' ' + value.endTime : '') : '',
+      entry.itemType === 'todo' ? (value.completed ? '已完成' : '未完成') : '',
+      value.eventColor ? '颜色：' + value.eventColor : ''].filter(Boolean).join('\n');
+  $('#icloudConflictReason').textContent = reasons[conflict.type] || '双方内容需要确认。';
+  $('#icloudConflictLocal').value = format(conflict.local ?? null);
+  $('#icloudConflictRemote').value = format(conflict.remote ?? null);
+  $('#icloudKeepLocal').textContent = conflict.local === null ? '保留 Luma 删除' : '保留 Luma';
+  $('#icloudKeepRemote').textContent = conflict.remote === null ? '保留 Apple 删除' : '保留 Apple';
+  // Older queue entries do not contain enough information to restore the task.
+  $('#icloudKeepRemote').disabled = Boolean(entry.href && !entry.task && conflict.remote);
+  if ($('#icloudKeepRemote').disabled) $('#icloudConflictReason').textContent += ' 旧删除记录没有本地副本，暂不能在这里恢复。';
+  let choosing = false;
+  const choose = async (choice) => {
+    if (choosing || icloudRequestInFlight) return;
+    choosing = true;
+    entry.icloudResolution = { choice, detectedAt: conflict.detectedAt };
+    try {
+      await persist();
+      $('#icloudConflictDialog').close();
+      await syncIcloud();
+    } catch (error) {
+      $('#icloudConflictReason').textContent = '保存选择失败：' + googleErrorMessage(error);
+    } finally { choosing = false; }
+  };
+  $('#icloudKeepLocal').onclick = () => choose('local');
+  $('#icloudKeepRemote').onclick = () => choose('remote');
+  if (!$('#icloudConflictDialog').open) $('#icloudConflictDialog').showModal();
+}
+
+let icloudRequestInFlight = false;
 async function syncIcloud() {
+  if (icloudRequestInFlight) return;
   const button = $('#connectIcloud');
   const calendarUrl = $('#icloudCalendarSelect').value;
   if (!calendarUrl) {
@@ -2350,22 +2466,28 @@ async function syncIcloud() {
     return;
   }
 
+  icloudRequestInFlight = true;
+  const dispatchedState = structuredClone(state);
   button.disabled = true;
+  $('#resolveIcloudConflicts').disabled = true;
   $('#icloudNote').textContent = '正在同步 Luma 日程与待办到 iCloud…';
   try {
-    const result = await window.luma?.icloudSync({ state, calendarUrl });
-    state = normalizeState(result.state);
+    const result = await window.luma?.icloudSync({ state: dispatchedState, calendarUrl });
+    state = normalizeState(LumaIcloudState.mergeResult(dispatchedState, state, result.state));
     await persist();
     render();
     const summary = result.summary || {};
     $('#icloudNote').textContent =
-      '同步完成：从 iCloud 下载 ' + (summary.downloaded || 0) + ' 项、删除 ' + (summary.deleted || 0)
-      + ' 项；上传新增 ' + (summary.created || 0) + '、更新 ' + (summary.updated || 0)
-      + '。当前日程 ' + (summary.syncedEvents || 0) + ' 项，待办镜像 ' + (summary.mirroredTodos || 0) + ' 项。';
+      '同步完成：从 iCloud 下载 ' + (summary.downloaded || 0) + ' 项、本地移除 ' + (summary.deleted || 0)
+      + ' 项；远端删除 ' + (summary.remoteDeleted || 0) + ' 项；上传新增 ' + (summary.created || 0) + '、更新 ' + (summary.updated || 0)
+      + '；失败 ' + (summary.failed || 0) + ' 项；冲突 ' + (summary.conflicts || 0) + ' 项。当前日程 ' + (summary.syncedEvents || 0) + ' 项，待办镜像 ' + (summary.mirroredTodos || 0) + ' 项。';
   } catch (error) {
     $('#icloudNote').textContent = '同步失败：' + googleErrorMessage(error);
   } finally {
+    icloudRequestInFlight = false;
     button.disabled = false;
+    $('#resolveIcloudConflicts').disabled = false;
+    refreshIcloudConflictButton();
   }
 }
 
@@ -2642,7 +2764,10 @@ function bindEvents() {
   $('#disconnectGoogle').addEventListener('click', disconnectGoogle);
   $('#connectIcloud').addEventListener('click', connectOrSyncIcloud);
   $('#disconnectIcloud').addEventListener('click', disconnectIcloud);
+  $('#resolveIcloudConflicts').addEventListener('click', showIcloudConflict);
+  $('#icloudCalendarSelect').addEventListener('change', refreshIcloudConflictButton);
   window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && $('#icloudConflictDialog').open) return;
     if (event.key === 'Escape' && settingsDialog.open) {
       closeSettingsDialog();
       return;
@@ -2672,6 +2797,7 @@ async function init() {
   renderColorChoices();
   render();
   await Promise.all([refreshGoogleStatus(), refreshIcloudStatus()]);
+  refreshIcloudConflictButton();
 }
 
 init();

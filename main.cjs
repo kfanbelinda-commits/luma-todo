@@ -1,5 +1,6 @@
 const { app, BrowserWindow, Tray, Menu, ipcMain, dialog, screen, nativeImage, safeStorage, shell } = require('electron');
 const { taskToIcloudIcs, parseIcloudEvent } = require('./main/icloud-ics.cjs');
+const { syncCalendar } = require('./main/icloud-sync.cjs');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -608,7 +609,7 @@ async function putIcloudEvent(resourceUrl, credentials, ics, etag) {
   const text = await response.text();
   if (!response.ok) {
     if (response.status === 412) {
-      throw new Error('iCloud 日程已在其他设备发生变化，请先不要覆盖；下一步会加入反向同步处理冲突');
+      throw Object.assign(new Error('iCloud 日程已在其他设备发生变化'), { status: 412 });
     }
     const requestId = response.headers.get('x-apple-request-uuid')
       || response.headers.get('x-apple-jingle-correlation-key')
@@ -617,7 +618,32 @@ async function putIcloudEvent(resourceUrl, credentials, ics, etag) {
     throw new Error('写入 iCloud 日历失败（HTTP ' + response.status + '）' + suffix + (text ? '' : ''));
   }
 
-  return response.headers.get('etag') || etag || '';
+  return response.headers.get('etag') || '';
+}
+
+async function deleteIcloudEvent(resourceUrl, credentials, etag) {
+  const headers = {
+    Authorization: icloudAuthHeader(credentials),
+    'User-Agent': 'Luma-Todo/1.0 CalDAV'
+  };
+  if (etag) headers['If-Match'] = etag;
+
+  const response = await fetch(resourceUrl, {
+    method: 'DELETE',
+    redirect: 'follow',
+    headers
+  });
+
+  if (response.ok || response.status === 404 || response.status === 410) return true;
+  const text = await response.text();
+  if (response.status === 412) {
+    throw Object.assign(new Error('iCloud 日程已在其他设备发生变化，暂未删除'), { status: 412 });
+  }
+  const requestId = response.headers.get('x-apple-request-uuid')
+    || response.headers.get('x-apple-jingle-correlation-key')
+    || '';
+  const suffix = requestId ? ' · Apple Request ID: ' + requestId : '';
+  throw new Error('删除 iCloud 日历事项失败（HTTP ' + response.status + '）' + suffix + (text ? '' : ''));
 }
 
 
@@ -648,12 +674,19 @@ async function listIcloudCalendarEvents(credentials, calendar) {
     /<(?:[A-Za-z0-9_-]+:)?response\b[\s\S]*?<\/(?:[A-Za-z0-9_-]+:)?response\s*>/gi
   ) || [];
 
+  if (!/<(?:[A-Za-z0-9_-]+:)?multistatus\b/i.test(xml)
+    || !/<\/(?:[A-Za-z0-9_-]+:)?multistatus\s*>\s*$/i.test(xml)
+    || (xml.match(/<(?:[A-Za-z0-9_-]+:)?response\b/gi) || []).length !== blocks.length) {
+    throw new Error('iCloud 日历列表不完整，已停止同步');
+  }
   return blocks.map((block) => {
     const href = resolveCaldavHref(xmlLocalTagText(block, 'href'), response.url || calendar.url);
     const etag = decodeXmlText(xmlLocalTagText(block, 'getetag'));
     const calendarData = decodeXmlText(xmlLocalTagInner(block, 'calendar-data'));
-    return parseIcloudEvent(calendarData, href, etag, calendar);
-  }).filter(Boolean);
+    const parsed = parseIcloudEvent(calendarData, href, etag, calendar);
+    if (!parsed || !xmlLocalTagText(block, 'href')) throw new Error('iCloud 日历事项无法完整读取，已停止同步以保护本地数据');
+    return parsed;
+  });
 }
 
 function ensureAppleCalendarProject(state) {
@@ -676,177 +709,43 @@ function ensureAppleCalendarProject(state) {
   return project;
 }
 
+async function getIcloudEvent(resourceUrl, credentials, calendar) {
+  const response = await fetch(resourceUrl, {
+    method: 'GET', redirect: 'error',
+    headers: { Authorization: icloudAuthHeader(credentials), Accept: 'text/calendar', 'User-Agent': 'Luma-Todo/1.0 CalDAV' }
+  });
+  if (response.status === 404 || response.status === 410) return null;
+  if (!response.ok) throw new Error('读取 iCloud 事项失败（HTTP ' + response.status + '）');
+  const remote = parseIcloudEvent(await response.text(), resourceUrl, response.headers.get('etag') || '', calendar);
+  if (!remote) throw new Error('iCloud 事项无法解析，暂未修改');
+  return remote;
+}
+
 async function syncIcloudEvents(state, calendarUrl) {
   const credentials = loadIcloudCredentials();
   if (!credentials) throw new Error('iCloud 尚未连接');
-
-  const calendars = Array.isArray(credentials.calendars) ? credentials.calendars : [];
-  const calendar = calendars.find((item) => item.url === calendarUrl);
+  const calendar = (credentials.calendars || []).find((item) => item.url === calendarUrl);
   if (!calendar) throw new Error('请先选择一个 iCloud 日历');
-
-  state.tasks ??= [];
-  state.projects ??= [];
-  const normalizedCalendarUrl = ensureCalendarUrl(calendar.url);
-  const remoteEvents = await listIcloudCalendarEvents(credentials, calendar);
-  const remoteByHref = new Map(remoteEvents.map((event) => [event.href, event]));
-  const remoteByUid = new Map(remoteEvents.map((event) => [event.uid, event]));
-  const remoteByLumaId = new Map(remoteEvents.filter((event) => event.lumaTaskId).map((event) => [event.lumaTaskId, event]));
-  const consumedRemote = new Set();
-  const syncTime = Date.now();
-
-  let created = 0;
-  let updated = 0;
-  let unchanged = 0;
-  let downloaded = 0;
-  let deleted = 0;
-
-  // First apply remote changes to Luma-origin items and Todo mirrors.
-  const retained = [];
-  for (const task of state.tasks) {
-    if (!task) continue;
-    const linkedRemote = (task.icloudHref && remoteByHref.get(task.icloudHref))
-      || (task.icloudUid && remoteByUid.get(task.icloudUid))
-      || remoteByLumaId.get(task.id)
-      || null;
-
-    const isLumaCalendarItem = Boolean(task.icloudHref || task.icloudUid || linkedRemote);
-    if (isLumaCalendarItem && task.icloudCalendarUrl && task.icloudCalendarUrl !== calendar.url) {
-      retained.push(task);
-      continue;
-    }
-
-    if (linkedRemote) {
-      consumedRemote.add(linkedRemote.href);
-      task.icloudHref = linkedRemote.href;
-      task.icloudUid = linkedRemote.uid;
-      task.icloudEtag = linkedRemote.etag;
-      task.icloudCalendarUrl = calendar.url;
-      task.icloudCalendarName = calendar.name;
-
-      const remoteChanged = Boolean(task.lastIcloudEtag && task.lastIcloudEtag !== linkedRemote.etag);
-      if (remoteChanged && linkedRemote.lumaItemType === 'event' && task.itemType === 'event') {
-        task.title = linkedRemote.title;
-        task.dueDate = linkedRemote.dueDate;
-        task.time = linkedRemote.time;
-        task.endDate = linkedRemote.endDate;
-        task.endTime = linkedRemote.endTime;
-        task.eventColor = linkedRemote.eventColor;
-        task.updatedAt = syncTime;
-        task.lastIcloudSyncAt = syncTime;
-        downloaded += 1;
-      }
-      task.lastIcloudEtag = linkedRemote.etag;
-      retained.push(task);
-      continue;
-    }
-
-    if (task.icloudHref && task.icloudCalendarUrl === calendar.url) {
-      if (task.itemType === 'event') {
-        // Event deleted on iPhone/iCloud -> remove from Luma.
-        deleted += 1;
-        continue;
-      }
-      // Todo is only a calendar mirror. If its mirror was deleted, keep the Todo
-      // and clear the link so the mirror can be recreated.
-      task.icloudHref = '';
-      task.icloudUid = '';
-      task.icloudEtag = '';
-      task.lastIcloudEtag = '';
-    }
-    retained.push(task);
-  }
-  state.tasks = retained;
-
-  // Import iCloud-native VEVENTs that are not Luma mirrors.
-  for (const remote of remoteEvents) {
-    if (consumedRemote.has(remote.href)) continue;
-    if (remote.lumaItemType === 'todo') continue;
-
-    if (remote.lumaTaskId) {
-      const existing = state.tasks.find((task) => task.id === remote.lumaTaskId);
-      if (existing) continue;
-    }
-
-    const project = ensureAppleCalendarProject(state);
-    state.tasks.push({
-      id: 'icloud-' + icsSafeUidPart(remote.uid),
-      title: remote.title || '未命名日程',
-      projectId: project.id,
-      completed: false,
-      createdAt: syncTime,
-      updatedAt: syncTime,
-      order: syncTime,
-      reminder: null,
-      itemType: 'event',
-      syncTarget: 'calendar',
-      dueDate: remote.dueDate,
-      time: remote.time,
-      endDate: remote.endDate || remote.dueDate,
-      endTime: remote.endTime,
-      eventColor: remote.eventColor || DEFAULT_EVENT_COLOR,
-      icloudExternal: true,
-      icloudHref: remote.href,
-      icloudUid: remote.uid,
-      icloudEtag: remote.etag,
-      lastIcloudEtag: remote.etag,
-      icloudCalendarUrl: calendar.url,
-      icloudCalendarName: calendar.name,
-      lastIcloudSyncAt: syncTime,
-    });
-    downloaded += 1;
-  }
-
-  // Upload local Event + dated Todo mirror changes.
-  for (const task of state.tasks) {
-    if (!task || !task.dueDate) continue;
-    if (task.googleCalendarExternal || task.syncTarget === 'external-calendar') continue;
-    if (task.itemType !== 'event' && task.itemType !== 'todo') continue;
-    if (task.icloudCalendarUrl && task.icloudCalendarUrl !== calendar.url) {
-      unchanged += 1;
-      continue;
-    }
-
-    const lastSyncAt = Number(task.lastIcloudSyncAt || 0);
-    const shouldUpload = !task.icloudHref || Number(task.updatedAt || 0) > lastSyncAt;
-    if (!shouldUpload) {
-      unchanged += 1;
-      continue;
-    }
-
-    const isNew = !task.icloudHref;
-    const uid = task.icloudUid || ('luma-' + icsSafeUidPart(task.id) + '@luma-todo');
-    const resourceUrl = task.icloudHref || (normalizedCalendarUrl + encodeURIComponent(uid) + '.ics');
-    const ics = taskToIcloudIcs(task, uid);
-    const etag = await putIcloudEvent(resourceUrl, credentials, ics, task.icloudEtag || '');
-
-    task.icloudUid = uid;
-    task.icloudHref = resourceUrl;
-    task.icloudEtag = etag;
-    task.lastIcloudEtag = etag;
-    task.icloudCalendarUrl = calendar.url;
-    task.icloudCalendarName = calendar.name;
-    task.lastIcloudSyncAt = Date.now();
-
-    if (isNew) created += 1;
-    else updated += 1;
-  }
-
+  if (!state || !Array.isArray(state.tasks) || !Array.isArray(state.projects)) throw new Error('Luma 同步数据无效');
+  const resource = (href) => {
+    const target = new URL(href);
+    const selected = new URL(ensureCalendarUrl(calendar.url));
+    if (target.protocol !== 'https:' || target.origin !== selected.origin || !target.pathname.startsWith(selected.pathname)
+      || target.username || target.password || target.search || target.hash) throw new Error('iCloud 事项地址不属于所选日历');
+    return target.href;
+  };
+  const result = await syncCalendar(state, calendar, {
+    list: () => listIcloudCalendarEvents(credentials, calendar),
+    get: (href) => getIcloudEvent(resource(href), credentials, calendar),
+    put: (href, task, uid, etag) => putIcloudEvent(resource(href), credentials, taskToIcloudIcs(task, uid), etag),
+    remove: (href, etag) => deleteIcloudEvent(resource(href), credentials, etag),
+    uid: (id) => 'luma-' + icsSafeUidPart(id) + '@luma-todo',
+    safeId: icsSafeUidPart,
+    ensureProject: ensureAppleCalendarProject,
+  });
   credentials.selectedCalendarUrl = calendar.url;
   saveIcloudCredentials(credentials);
-
-  return {
-    state,
-    summary: {
-      created,
-      updated,
-      unchanged,
-      downloaded,
-      deleted,
-      calendarName: calendar.name,
-      mirroredTodos: state.tasks.filter((task) => task && task.itemType === 'todo' && task.dueDate && !task.googleCalendarExternal).length,
-      syncedEvents: state.tasks.filter((task) => task && task.itemType === 'event' && task.dueDate && !task.googleCalendarExternal).length
-    }
-  };
+  return result;
 }
 
 function base64Url(buffer) {
@@ -1743,11 +1642,12 @@ function createWindow() {
         }
         try {
           const runSyncProtocolSmokeTests = require(path.join(__dirname, 'qa', 'sync-protocol-smoke.cjs'));
-          const tested = runSyncProtocolSmokeTests({
+          const tested = await runSyncProtocolSmokeTests({
             taskToIcloudIcs,
             parseIcloudEvent,
             calendarBody,
             applyCalendarEvent,
+            deleteIcloudEvent,
           });
           console.log('[Luma Todo] Sync protocol smoke: ' + tested.join(', '));
         } catch (error) {
@@ -2311,9 +2211,16 @@ trustedHandle('icloud:disconnect', () => {
   return { connected: false, email: '', calendars: [], selectedCalendarUrl: '' };
 });
 
-trustedHandle('icloud:sync', (_event, payload) => {
+let icloudSyncInFlight = false;
+trustedHandle('icloud:sync', async (_event, payload) => {
+  if (icloudSyncInFlight) throw new Error('Apple 同步正在进行，请等待完成');
   if (DEMO_MODE) return { state: payload?.state, summary: { created: 0, updated: 0, unchanged: 0, calendarName: '' } };
-  return syncIcloudEvents(payload?.state || {}, String(payload?.calendarUrl || ''));
+  icloudSyncInFlight = true;
+  try {
+    return await syncIcloudEvents(payload?.state || {}, String(payload?.calendarUrl || ''));
+  } finally {
+    icloudSyncInFlight = false;
+  }
 });
 
 trustedHandle('settings:auto-start', (_event, enabled) => {
