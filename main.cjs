@@ -1674,6 +1674,39 @@ async function syncGoogleState(state) {
 
   for (const task of state.tasks) {
     task.updatedAt ??= task.createdAt || Date.now();
+    delete task.googleSyncError;
+
+    try {
+      if ((task.googleCalendarExternal || task.syncTarget === 'external-calendar')
+        && calendarUnavailable(task.googleCalendarId || 'primary')) {
+        task.googleSyncError = '对应 Google Calendar 暂时无法读取；本地事项保持不变';
+        retainedTasks.push(task);
+        continue;
+      }
+      if (task.syncTarget === 'calendar' && task.dueDate) {
+        if (calendarUnavailable(task.googleCalendarId || 'primary')) {
+          task.googleSyncError = '对应 Google Calendar 暂时无法读取；未判断远端删除或更新';
+          retainedTasks.push(task);
+          continue;
+        }
+        if (task.googleTaskId && !googleTasksAvailable) {
+          task.googleSyncError = 'Google Tasks 暂时无法读取；未执行 Tasks → Calendar 转换';
+          retainedTasks.push(task);
+          continue;
+        }
+      }
+      if (task.syncTarget === 'tasks') {
+        if (!googleTasksAvailable) {
+          task.googleSyncError = 'Google Tasks 暂时无法读取；本地任务保持不变';
+          retainedTasks.push(task);
+          continue;
+        }
+        if (task.googleCalendarEventId && calendarUnavailable(task.googleCalendarId || 'primary')) {
+          task.googleSyncError = '对应 Google Calendar 暂时无法读取；未执行 Calendar → Tasks 转换';
+          retainedTasks.push(task);
+          continue;
+        }
+      }
 
     if (task.googleCalendarExternal || task.syncTarget === 'external-calendar') {
       const remote = findCalendarEvent(task);
@@ -1990,6 +2023,12 @@ async function syncGoogleState(state) {
     }
     task.lastGoogleSyncAt = syncTime;
     retainedTasks.push(task);
+    } catch (error) {
+      task.googleSyncError = String(error.message || error || 'Google 单条同步失败');
+      failed += 1;
+      failureMessages.push((task.title || task.id || '事项') + '：' + task.googleSyncError);
+      if (!retainedTasks.includes(task)) retainedTasks.push(task);
+    }
   }
 
   for (const event of calendarEvents) {
