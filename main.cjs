@@ -813,7 +813,7 @@ async function syncIcloudEvents(state, calendarUrl) {
       task.icloudCalendarName = calendar.name;
 
       const remoteChanged = Boolean(task.lastIcloudEtag && task.lastIcloudEtag !== linkedRemote.etag);
-      if (linkedRemote.lumaItemType === 'todo' && task.itemType === 'todo') {
+      if (task.itemType === 'todo') {
         const todoChange = classifyIcloudTodoChange(task, linkedRemote);
         if (todoChange === 'conflict') {
           task.icloudConflict = {
