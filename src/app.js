@@ -84,6 +84,7 @@ const pendingTaskCompletions = new Map();
 let collapsedProjects = new Set();
 let privateExtensionStatus = { activated: false, plugins: [], luckyDay: null };
 let privateExtensionsRevealed = false;
+let luckyDaySelectedHourBranch = null;
 
 function normalizeState(input) {
   if (!input || !Array.isArray(input.tasks) || !Array.isArray(input.projects)) return structuredClone(seedState);
@@ -300,82 +301,158 @@ function luckyDayItemListHtml(dateKey) {
   return `<div class="luckyday-luma-list">${rows}</div>${more}`;
 }
 
-async function openLuckyDayDialog() {
+function luckyDayJudgementClass(value) {
+  const text = String(value || '');
+  if (/凶|破|危|空|绝|死/.test(text)) return 'is-risk';
+  if (/吉|贵|安|喜|生|旺/.test(text)) return 'is-good';
+  return 'is-neutral';
+}
+
+function luckyDayPaddedDate(summary) {
+  const year = Number(summary?.solar?.year || fromDateKey(summary.dateKey).getFullYear());
+  const month = Number(summary?.solar?.month || fromDateKey(summary.dateKey).getMonth() + 1);
+  const day = Number(summary?.solar?.day || fromDateKey(summary.dateKey).getDate());
+  return `${year}年${pad(month)}月${pad(day)}日 ${summary.weekday || ''}`;
+}
+
+function luckyDayHourCells(summary) {
+  return (summary.hours || []).map((hour) => {
+    const selected = Number(hour.index) === Number(summary.hour.branchIndex);
+    return `<button type="button" class="luckyday-v2-hour${selected ? ' selected' : ''}" data-lucky-hour="${Number(hour.index)}" aria-pressed="${String(selected)}" title="${escapeAttribute(hour.range || '')}">
+      <span>${escapeAttribute(hour.stem || '')}</span>
+      <b>${escapeAttribute(hour.branch || '')}</b>
+    </button>`;
+  }).join('');
+}
+
+function luckyDayTiandiItems(items) {
+  return (items || []).map((item) => {
+    const value = `${item.label || ''}${item.name || ''}`;
+    return `<span class="luckyday-v2-td-chip ${luckyDayJudgementClass(item.name)}">${escapeAttribute(value)}</span>`;
+  }).join('');
+}
+
+function luckyDayWutuLines(items) {
+  const values = (items || []).filter(Boolean);
+  if (!values.length) return '<span class="luckyday-v2-empty">—</span>';
+  return values.map((item) => `<div>${escapeAttribute(item)}</div>`).join('');
+}
+
+async function loadLuckyDayDialog() {
   if (!calendarDetailDate || !privateExtensionStatus.luckyDay) return;
-  const dialog = $('#luckyDayDialog');
   const body = $('#luckyDayBody');
-  $('#luckyDayDialogTitle').textContent = '正在读取吉课…';
-  $('#luckyDayLunar').textContent = '';
-  body.innerHTML = '<p class="luckyday-sub-line">正在计算所选日期与参考时辰…</p>';
-  if (!dialog.open) dialog.showModal();
+  const dateKey = calendarDetailDate;
+  const hourBranch = Number.isInteger(luckyDaySelectedHourBranch)
+    ? luckyDaySelectedHourBranch
+    : luckyDayReferenceHour(dateKey);
+
+  $('#luckyDayDialogTitle').textContent = '正在读取…';
+  body.innerHTML = '<div class="luckyday-v2-loading">正在计算吉课…</div>';
 
   try {
-    const summary = await window.luma.luckyDaySummary({
-      dateKey: calendarDetailDate,
-      hourBranch: luckyDayReferenceHour(calendarDetailDate),
-    });
-    $('#luckyDayDialogTitle').textContent = `${summary.dateLabel} ${summary.weekday}`;
-    $('#luckyDayLunar').textContent = `农历 ${summary.lunar.label}`;
+    const summary = await window.luma.luckyDaySummary({ dateKey, hourBranch });
+    if (!Array.isArray(summary.hours) || summary.hours.length !== 12) {
+      throw new Error('LuckyDay 插件版本过旧，请安装 0.2.0 版本');
+    }
+    luckyDaySelectedHourBranch = Number(summary.hour.branchIndex);
+    $('#luckyDayDialogTitle').textContent = luckyDayPaddedDate(summary);
 
-    const pillarLabels = [['年', summary.pillars.year], ['月', summary.pillars.month], ['日', summary.pillars.day], ['时', summary.pillars.hour]];
-    const pillars = pillarLabels.map(([label, value]) =>
-      `<div class="luckyday-pillar"><b>${label}</b>${escapeAttribute(value)}</div>`
+    const pillars = [
+      ['年', summary.pillars.year],
+      ['月', summary.pillars.month],
+      ['日', summary.pillars.day],
+      ['时', summary.pillars.hour],
+    ].map(([label, value]) =>
+      `<div class="luckyday-v2-pillar"><span>${label}</span><b>${escapeAttribute(value)}</b></div>`
     ).join('');
-    const goodTags = (summary.day.goodTags || []).slice(0, 4).map((tag) =>
-      `<span class="luckyday-tag">${escapeAttribute(String(tag).replace(/（[^）]+）/g, ''))}</span>`
-    ).join('');
+
     const xlr = [summary.xiaoliuRen.month, summary.xiaoliuRen.day, summary.xiaoliuRen.hour]
-      .map((value) => `<span class="luckyday-chip">${escapeAttribute(value)}</span>`).join('');
-    const front = summary.tiandiZhang.front.items.map((item) => `${item.label}${item.name}`).join(' · ');
-    const back = summary.tiandiZhang.back.items.map((item) => `${item.label}${item.name}`).join(' · ');
-    const wutuLeft = (summary.wutu.left || []).slice(0, 2).map(escapeAttribute).join('；');
-    const wutuRight = (summary.wutu.right || []).slice(0, 2).map(escapeAttribute).join('；');
+      .map((value) => `<span class="luckyday-v2-xlr-chip">${escapeAttribute(value)}</span>`).join('');
 
     body.innerHTML = `
-      <div class="luckyday-pillar-row">${pillars}</div>
-      <div class="luckyday-tags">
-        <span class="luckyday-tag">${escapeAttribute(summary.day.jianchu)}日</span>
-        <span class="luckyday-tag is-risk">冲${escapeAttribute(summary.day.clash)}</span>
-        ${goodTags}
-      </div>
-      <section class="luckyday-section">
-        <div class="luckyday-section-title">${escapeAttribute(summary.hour.branch)}时 · ${escapeAttribute(summary.hour.range)}</div>
-        <div class="luckyday-main-line">${summary.hour.wubuyu ? '五不遇 · ' : ''}冲${escapeAttribute(summary.hour.clash)}</div>
-        ${summary.hour.wubuyu ? `<div class="luckyday-sub-line">${escapeAttribute(summary.hour.wubuyuText)}</div>` : ''}
-      </section>
-      <section class="luckyday-section">
-        <div class="luckyday-section-title">小六壬</div>
-        <div class="luckyday-chip-row">${xlr}</div>
-        <div class="luckyday-sub-line">${escapeAttribute(summary.xiaoliuRen.text)}</div>
-      </section>
-      <section class="luckyday-section">
-        <div class="luckyday-section-title">天地掌</div>
-        <div class="luckyday-split">
-          <div class="luckyday-mini-card"><strong>前段 · ${escapeAttribute(summary.tiandiZhang.front.judge)}</strong><div class="luckyday-main-line">${escapeAttribute(front)}</div></div>
-          <div class="luckyday-mini-card"><strong>后段 · ${escapeAttribute(summary.tiandiZhang.back.judge)}</strong><div class="luckyday-main-line">${escapeAttribute(back)}</div></div>
+      <section class="luckyday-v2-hero">
+        <div class="luckyday-v2-lunar-side">农历</div>
+        <div class="luckyday-v2-lunar">${escapeAttribute(summary.lunar.label)}</div>
+        <div class="luckyday-v2-day-flags">
+          <span>${escapeAttribute(summary.day.jianchu)}日</span>
+          <b>冲${escapeAttribute(summary.day.clash)}</b>
         </div>
       </section>
-      <section class="luckyday-section">
-        <div class="luckyday-section-title">旺气</div>
-        <div class="luckyday-main-line">${escapeAttribute(summary.wangqi.branch)}方 · ${escapeAttribute(summary.wangqi.direction)} ${escapeAttribute(summary.wangqi.degree)}°</div>
-        <div class="luckyday-sub-line">${escapeAttribute(summary.wangqi.tip)}</div>
+
+      <section class="luckyday-v2-pillars">${pillars}</section>
+
+      <section class="luckyday-v2-hours" aria-label="十二时辰">
+        ${luckyDayHourCells(summary)}
       </section>
-      <section class="luckyday-section">
-        <div class="luckyday-section-title">乌兔</div>
-        <div class="luckyday-split">
-          <div class="luckyday-mini-card"><strong>${escapeAttribute(summary.wutu.leftTitle)}</strong><div class="luckyday-sub-line">${wutuLeft || '无太阳太阴到山到向'}</div></div>
-          <div class="luckyday-mini-card"><strong>${escapeAttribute(summary.wutu.rightTitle)}</strong><div class="luckyday-sub-line">${wutuRight || '无太阳太阴到山到向'}</div></div>
+
+      <section class="luckyday-v2-current-hour">
+        <div>
+          <strong>${escapeAttribute(summary.hour.branch)}时 · ${escapeAttribute(summary.pillars.hour)}</strong>
+          <span>${escapeAttribute(summary.hour.range)} · 冲${escapeAttribute(summary.hour.clash)}</span>
+        </div>
+        ${summary.hour.wubuyu ? '<span class="luckyday-v2-alert">五不遇</span>' : ''}
+      </section>
+
+      <section class="luckyday-v2-result-card">
+        <div class="luckyday-v2-section-title"><i>玉</i><strong>小六壬</strong></div>
+        <div class="luckyday-v2-xlr-row">${xlr}</div>
+      </section>
+
+      <section class="luckyday-v2-result-card">
+        <div class="luckyday-v2-section-title"><i>掌</i><strong>择日天地掌</strong></div>
+        <div class="luckyday-v2-td-row">
+          <div class="luckyday-v2-td-label">前段 <span class="${luckyDayJudgementClass(summary.tiandiZhang.front.judge)}">${escapeAttribute(summary.tiandiZhang.front.judge)}</span></div>
+          <div class="luckyday-v2-td-items">${luckyDayTiandiItems(summary.tiandiZhang.front.items)}</div>
+        </div>
+        <div class="luckyday-v2-td-row">
+          <div class="luckyday-v2-td-label">后段 <span class="${luckyDayJudgementClass(summary.tiandiZhang.back.judge)}">${escapeAttribute(summary.tiandiZhang.back.judge)}</span></div>
+          <div class="luckyday-v2-td-items">${luckyDayTiandiItems(summary.tiandiZhang.back.items)}</div>
         </div>
       </section>
-      <section class="luckyday-section">
-        <div class="luckyday-section-title">当天的 Luma</div>
-        ${luckyDayItemListHtml(calendarDetailDate)}
+
+      <section class="luckyday-v2-result-card">
+        <div class="luckyday-v2-section-title"><i>兔</i><strong>乌兔择日</strong></div>
+        <div class="luckyday-v2-wutu-grid">
+          <div>
+            <h4>${escapeAttribute(summary.wutu.leftTitle)}</h4>
+            <div class="luckyday-v2-wutu-lines">${luckyDayWutuLines(summary.wutu.left)}</div>
+          </div>
+          <div>
+            <h4>${escapeAttribute(summary.wutu.rightTitle)}</h4>
+            <div class="luckyday-v2-wutu-lines">${luckyDayWutuLines(summary.wutu.right)}</div>
+          </div>
+        </div>
       </section>
     `;
+
+    body.querySelectorAll('[data-lucky-hour]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        luckyDaySelectedHourBranch = Number(button.dataset.luckyHour);
+        await loadLuckyDayDialog();
+      });
+    });
   } catch (error) {
     $('#luckyDayDialogTitle').textContent = 'LuckyDay';
-    body.innerHTML = `<p class="luckyday-sub-line">${escapeAttribute(error?.message || '无法读取 LuckyDay')}</p>`;
+    body.innerHTML = `<div class="luckyday-v2-error">${escapeAttribute(googleErrorMessage(error))}</div>`;
   }
+}
+
+async function shiftLuckyDayDate(offset) {
+  if (!calendarDetailDate) return;
+  const next = fromDateKey(calendarDetailDate);
+  next.setDate(next.getDate() + Number(offset || 0));
+  const nextKey = toDateKey(next);
+  luckyDaySelectedHourBranch = luckyDayReferenceHour(nextKey);
+  openCalendarDetail(nextKey);
+  await loadLuckyDayDialog();
+}
+
+async function openLuckyDayDialog() {
+  if (!calendarDetailDate || !privateExtensionStatus.luckyDay) return;
+  luckyDaySelectedHourBranch = luckyDayReferenceHour(calendarDetailDate);
+  const dialog = $('#luckyDayDialog');
+  if (!dialog.open) dialog.showModal();
+  await loadLuckyDayDialog();
 }
 
 function googleDeleteQueueKey(item) {
@@ -3142,11 +3219,12 @@ function bindEvents() {
     setTimeout(() => { $('#exportButton').textContent = '导出待办备份'; }, 1800);
   });
   $('#luckyDayButton').addEventListener('click', openLuckyDayDialog);
-  $('#closeLuckyDay').addEventListener('click', () => $('#luckyDayDialog').close());
-  $('#openFullLuckyDay').addEventListener('click', async () => {
-    try { await window.luma?.openLuckyDay(); }
-    catch (error) { $('#luckyDayBody').innerHTML = `<p class="luckyday-sub-line">${escapeAttribute(error?.message || '无法打开 LuckyDay')}</p>`; }
+  $('#closeLuckyDay').addEventListener('click', () => {
+    luckyDaySelectedHourBranch = null;
+    $('#luckyDayDialog').close();
   });
+  $('#luckyDayPrevDate').addEventListener('click', () => shiftLuckyDayDate(-1));
+  $('#luckyDayNextDate').addEventListener('click', () => shiftLuckyDayDate(1));
   $('#activatePrivateExtension').addEventListener('click', activatePrivateExtension);
   $('#installPrivateExtension').addEventListener('click', installPrivateExtension);
   $('#connectGoogle').addEventListener('click', connectOrSyncGoogle);
