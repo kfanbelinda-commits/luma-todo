@@ -8,6 +8,8 @@
   const HOUR_PX = 44;
   const SNAP = 15;
   const MIN_SPAN = 15;
+  const WEEK_TODO_VISIBLE = 2;
+  const WEEK_ALLDAY_VISIBLE = 2;
   const WEEKDAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
   function weekLunarParts(date) {
     try {
@@ -163,26 +165,55 @@
     }
     return board;
   }
-  function tasksOnDate(key) {
-    const tasks = (typeof state !== 'undefined' && Array.isArray(state.tasks)) ? state.tasks : [];
-    return tasks.filter((task) => {
-      if (!task || task.completed) return false;
-      if (typeof isCalendarEvent === 'function' && isCalendarEvent(task)) {
-        return typeof eventCoversDate === 'function' ? eventCoversDate(task, key) : task.dueDate === key;
-      }
-      return task.dueDate === key;
-    });
+  function weekTodoSort(a, b) {
+    const aDone = Boolean(a?.completed);
+    const bDone = Boolean(b?.completed);
+    if (aDone !== bDone) return aDone ? 1 : -1;
+    if (!aDone && typeof taskSort === 'function') return taskSort(a, b);
+    if (aDone && bDone) return Number(b?.updatedAt || 0) - Number(a?.updatedAt || 0);
+    return Number(a?.order || a?.createdAt || 0) - Number(b?.order || b?.createdAt || 0);
   }
-  function splitDayTasks(key) {
-    const items = tasksOnDate(key);
-    const allDay = [];
-    const timed = [];
-    items.forEach((task) => {
-      if (task.time && minutes(task.time) != null) timed.push(task);
-      else allDay.push(task);
+  function weekItemsOnDate(key) {
+    const tasks = (typeof state !== 'undefined' && Array.isArray(state.tasks)) ? state.tasks : [];
+    const todos = [];
+    const allDayEvents = [];
+    const timedEvents = [];
+
+    tasks.forEach((task) => {
+      if (!task) return;
+      const calendarEvent = typeof isCalendarEvent === 'function' && isCalendarEvent(task);
+      if (!calendarEvent) {
+        if ((task.dueDate || task.completedDate) === key) todos.push(task);
+        return;
+      }
+      if (task.completed) return;
+      const covers = typeof eventCoversDate === 'function' ? eventCoversDate(task, key) : task.dueDate === key;
+      if (!covers) return;
+      if (task.time && minutes(task.time) != null) timedEvents.push(task);
+      else allDayEvents.push(task);
     });
-    timed.sort((a, b) => String(a.time).localeCompare(String(b.time)));
-    return { allDay, timed };
+
+    todos.sort(weekTodoSort);
+    allDayEvents.sort((a, b) => String(a.dueDate || '').localeCompare(String(b.dueDate || '')) || String(a.title || '').localeCompare(String(b.title || '')));
+    timedEvents.sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')) || String(a.title || '').localeCompare(String(b.title || '')));
+    return { todos, allDayEvents, timedEvents };
+  }
+  function weekTodoMarkup(task, key) {
+    const pending = typeof isTaskPendingCompletion === 'function' && isTaskPendingCompletion(task.id);
+    const checked = Boolean(task.completed || pending);
+    const time = task.time && minutes(task.time) != null ? `<em>${escapeText(task.time)}</em>` : '';
+    const title = pending
+      ? `${task.title} · 已完成 · 再点方框可撤销`
+      : (task.completed ? `${task.title} · 已完成 · 点击方框恢复` : `${task.title} · 待办`);
+    return `<div class="week-todo-item${checked ? ' is-checked' : ''}${pending ? ' is-pending' : ''}" data-date="${key}" data-id="${escapeText(task.id)}" style="--todo-color:${projectColor(task)}" title="${escapeText(title)}">`
+      + `<button type="button" class="week-todo-check${checked ? ' is-checked' : ''}" data-id="${escapeText(task.id)}" data-date="${key}" aria-label="${checked ? '恢复' : '完成'} ${escapeText(task.title)}"></button>`
+      + `<button type="button" class="week-todo-title" data-id="${escapeText(task.id)}" data-date="${key}">${time}<span>${escapeText(task.title)}</span></button>`
+      + `</div>`;
+  }
+  function weekOverflowMarkup(key, hidden, kind) {
+    if (hidden <= 0) return '';
+    const label = hidden === 1 ? '+1' : `+${hidden}`;
+    return `<button type="button" class="week-overflow" data-date="${key}" data-kind="${kind}" aria-label="还有 ${hidden} 项">${label}</button>`;
   }
   function hourLabels() {
     return Array.from({ length: DAY_END - DAY_START }, (_, index) => DAY_START + index);
@@ -378,18 +409,26 @@
       const aria = caption?.detail ? ` aria-label="${date.getDate()} 周${weekday}，${escapeText(caption.detail)}"` : '';
       return `<button type="button" class="week-col-head${key === todayKey() ? ' is-today' : ''}${weekend ? ' is-weekend' : ''}" data-date="${key}"${aria}><span class="week-col-primary"><strong>${date.getDate()}</strong> 周${weekday}</span>${sub}</button>`;
     }).join('');
+    const todoCols = keys.map((key) => {
+      const items = weekItemsOnDate(key).todos;
+      const visible = items.slice(0, WEEK_TODO_VISIBLE).map((task) => weekTodoMarkup(task, key)).join('');
+      const overflow = weekOverflowMarkup(key, Math.max(0, items.length - WEEK_TODO_VISIBLE), 'todo');
+      return `<div class="week-todo-col" data-date="${key}">${visible}${overflow}</div>`;
+    }).join('');
     const allDayCols = keys.map((key) => {
-      const chips = splitDayTasks(key).allDay.map((task) => `<button type="button" class="week-chip" data-date="${key}" data-id="${escapeText(task.id)}" style="--event-color:${projectColor(task)}">${escapeText(task.title)}</button>`).join('');
-      return `<div class="week-allday-col" data-date="${key}">${chips}</div>`;
+      const items = weekItemsOnDate(key).allDayEvents;
+      const chips = items.slice(0, WEEK_ALLDAY_VISIBLE).map((task) => `<button type="button" class="week-chip" data-date="${key}" data-id="${escapeText(task.id)}" style="--event-color:${projectColor(task)}">${escapeText(task.title)}</button>`).join('');
+      const overflow = weekOverflowMarkup(key, Math.max(0, items.length - WEEK_ALLDAY_VISIBLE), 'allday');
+      return `<div class="week-allday-col" data-date="${key}">${chips}${overflow}</div>`;
     }).join('');
     const dayCols = keys.map((key) => {
-      const blocks = splitDayTasks(key).timed.map((task) => blockMarkup(task, key, rangeStart, rangeMinutes)).join('');
+      const blocks = weekItemsOnDate(key).timedEvents.map((task) => blockMarkup(task, key, rangeStart, rangeMinutes)).join('');
       return `<div class="week-day-col" data-date="${key}"><div class="week-hour-lines">${labels.map(() => '<i></i>').join('')}</div>${blocks}</div>`;
     }).join('');
     const todayIndex = keys.indexOf(todayKey()) + 1;
     const nowLine = nowLineMarkup(keys, rangeStart, rangeMinutes);
     const gutter = labels.map((hour) => `<span>${pad(hour)}:00</span>`).join('');
-    board.innerHTML = `<aside class="week-mini" aria-label="周视图侧栏"></aside><section class="week-main"><div class="week-main-head"><span class="week-gutter-spacer"></span><div class="week-col-heads${todayIndex ? ' has-today' : ''}" style="--today-index:${todayIndex}">${header}</div></div><div class="week-hairline" aria-hidden="true"></div><div class="week-allday"><span class="week-gutter-label">全天</span><div class="week-allday-cols${todayIndex ? ' has-today' : ''}" style="--today-index:${todayIndex}">${allDayCols}</div></div><div class="week-hairline" aria-hidden="true"></div><div class="week-scroll"><div class="week-gutter" style="--hour-h:${HOUR_PX}px;--hours:${labels.length}">${gutter}</div><div class="week-days${todayIndex ? ' has-today' : ''}" data-start-hour="${DAY_START}" data-hours="${labels.length}" style="--hour-h:${HOUR_PX}px;--hours:${labels.length};--today-index:${todayIndex}">${dayCols}${nowLine}</div></div></section>`;
+    board.innerHTML = `<aside class="week-mini" aria-label="周视图侧栏"></aside><section class="week-main"><div class="week-main-head"><span class="week-gutter-spacer"></span><div class="week-col-heads${todayIndex ? ' has-today' : ''}" style="--today-index:${todayIndex}">${header}</div></div><div class="week-hairline" aria-hidden="true"></div><div class="week-todos"><span class="week-gutter-label">待办</span><div class="week-todo-cols${todayIndex ? ' has-today' : ''}" style="--today-index:${todayIndex}">${todoCols}</div></div><div class="week-hairline" aria-hidden="true"></div><div class="week-allday"><span class="week-gutter-label">全天</span><div class="week-allday-cols${todayIndex ? ' has-today' : ''}" style="--today-index:${todayIndex}">${allDayCols}</div></div><div class="week-hairline" aria-hidden="true"></div><div class="week-scroll"><div class="week-gutter" style="--hour-h:${HOUR_PX}px;--hours:${labels.length}">${gutter}</div><div class="week-days${todayIndex ? ' has-today' : ''}" data-start-hour="${DAY_START}" data-hours="${labels.length}" style="--hour-h:${HOUR_PX}px;--hours:${labels.length};--today-index:${todayIndex}">${dayCols}${nowLine}</div></div></section>`;
     renderMini(board.querySelector('.week-mini'), keys);
     restoreScroll(board);
     syncWeekScrollbarGutter();
@@ -621,9 +660,42 @@
         return;
       }
       if (event.target.closest('.week-handle')) { event.preventDefault(); event.stopPropagation(); return; }
+
+      const todoCheck = event.target.closest('.week-todo-check');
+      if (todoCheck?.dataset.id) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (typeof toggleTask === 'function') {
+          Promise.resolve(toggleTask(todoCheck.dataset.id)).catch((error) => console.error('week todo completion failed', error));
+        }
+        return;
+      }
+
+      const todoTitle = event.target.closest('.week-todo-title');
+      if (todoTitle?.dataset.id) {
+        event.preventDefault();
+        event.stopPropagation();
+        const task = findTask(todoTitle.dataset.id);
+        const pending = task && typeof isTaskPendingCompletion === 'function' && isTaskPendingCompletion(task.id);
+        if (task && !task.completed && !pending && typeof openCalendarTaskDialog === 'function') {
+          openCalendarTaskDialog(todoTitle.dataset.date, 'todo', task.id);
+        } else if (todoTitle.dataset.date && typeof openCalendarDetail === 'function') {
+          openCalendarDetail(todoTitle.dataset.date);
+        }
+        return;
+      }
+
+      const overflow = event.target.closest('.week-overflow');
+      if (overflow?.dataset.date) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (typeof openCalendarDetail === 'function') openCalendarDetail(overflow.dataset.date);
+        return;
+      }
+
       const mini = event.target.closest('.week-mini-day');
       if (mini?.dataset.date) { jumpTo(mini.dataset.date); return; }
-      const item = event.target.closest('.week-block, .week-chip, .week-col-head, .week-day-col, .week-allday-col');
+      const item = event.target.closest('.week-block, .week-chip, .week-col-head, .week-day-col, .week-allday-col, .week-todo-col');
       if (item?.dataset.date && typeof openCalendarDetail === 'function') openCalendarDetail(item.dataset.date);
     });
     const panel = document.querySelector('#calendarPanel');
