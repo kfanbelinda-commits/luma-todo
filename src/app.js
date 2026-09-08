@@ -2964,6 +2964,7 @@ async function connectIcloud() {
   try {
     const status = await window.luma?.icloudConnect({ email, password });
     renderIcloudStatus(status);
+    await refreshLuckyDayIcloudStatus();
   } catch (error) {
     $('#icloudPassword').value = '';
     $('#icloudNote').textContent = '连接失败：' + googleErrorMessage(error);
@@ -3078,6 +3079,14 @@ async function syncIcloud() {
       '同步完成：从 iCloud 下载 ' + (summary.downloaded || 0) + ' 项、本地移除 ' + (summary.deleted || 0)
       + ' 项；远端删除 ' + (summary.remoteDeleted || 0) + ' 项；上传新增 ' + (summary.created || 0) + '、更新 ' + (summary.updated || 0)
       + '；失败 ' + (summary.failed || 0) + ' 项；冲突 ' + (summary.conflicts || 0) + ' 项' + unreadableNote + '。当前日程 ' + (summary.syncedEvents || 0) + ' 项，待办镜像 ' + (summary.mirroredTodos || 0) + ' 项。';
+    if (result.luckyDay) {
+      const luckyStatus = $('#luckyDayIcloudStatus');
+      if (luckyStatus) {
+        luckyStatus.textContent = result.luckyDay.error
+          ? 'LuckyDay 同步失败：' + result.luckyDay.error
+          : `LuckyDay 已一并更新：新增 ${result.luckyDay.created}，更新 ${result.luckyDay.updated}，删除 ${result.luckyDay.deleted}，保持 ${result.luckyDay.unchanged}。`;
+      }
+    }
   } catch (error) {
     $('#icloudNote').textContent = '同步失败：' + googleErrorMessage(error);
   } finally {
@@ -3106,6 +3115,7 @@ async function disconnectIcloud() {
     $('#icloudEmail').value = '';
     $('#icloudPassword').value = '';
     $('#icloudNote').textContent = '已断开 iCloud；Luma 本地日程不会被删除。';
+    await refreshLuckyDayIcloudStatus();
   } catch (error) {
     $('#icloudNote').textContent = '断开失败：' + googleErrorMessage(error);
   } finally {
