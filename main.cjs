@@ -12,6 +12,7 @@ const {
   remoteChangedSinceGoogleSnapshot,
 } = require('./main/google-reconcile.cjs');
 const { parseGoogleTaskNotes, buildGoogleTaskNotes } = require('./main/google-task-notes.cjs');
+const { collectGoogleCalendarReads, classifyLumaDuplicates } = require('./main/google-sync-safety.cjs');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
