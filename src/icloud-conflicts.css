@@ -1,0 +1,20 @@
+#icloudConflictDialog {
+  width: min(390px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  box-sizing: border-box;
+}
+#icloudConflictDialog form { gap: 12px; }
+#icloudConflictDialog textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-radius: 10px;
+  padding: 8px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+}
+#icloudConflictDialog .project-form-actions { flex-wrap: wrap; }

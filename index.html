@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="src/palettes.css" />
     <link rel="stylesheet" href="src/cn-holidays.css" />
     <link rel="stylesheet" href="src/local-settings.css" />
+    <link rel="stylesheet" href="src/icloud-conflicts.css" />
   </head>
   <body>
     <div class="resize-handle resize-edge resize-n" data-edge="n"></div>
@@ -194,6 +195,21 @@
       <button id="taskDeleteAction" class="task-menu-action danger" type="button">删除任务</button>
     </div>
 
+    <dialog id="icloudConflictDialog" class="modal" aria-labelledby="icloudConflictTitle">
+      <form method="dialog">
+        <div class="modal-title"><h3 id="icloudConflictTitle">Apple 同步冲突</h3><button type="submit" class="icon-button" aria-label="关闭">×</button></div>
+        <p id="icloudConflictReason" class="settings-note"></p>
+        <label>Luma<textarea id="icloudConflictLocal" rows="5" readonly></textarea></label>
+        <label>Apple<textarea id="icloudConflictRemote" rows="5" readonly></textarea></label>
+        <p class="settings-note">选择后会重新同步此日历。若内容又有变化，会保留冲突供你重新确认。</p>
+        <div class="project-form-actions">
+          <button id="icloudKeepLocal" type="button" class="soft-button">保留 Luma</button>
+          <button id="icloudKeepRemote" type="button" class="soft-button">保留 Apple</button>
+          <button type="submit" class="soft-button">稍后处理</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="projectDialog" class="modal">
       <form method="dialog" id="projectForm">
         <div class="modal-title"><h3 id="projectDialogTitle">添加分类</h3><button id="cancelProjectButton" type="button" class="icon-button" aria-label="关闭">×</button></div>
@@ -303,6 +319,7 @@
               </select>
             </div>
             <p id="icloudNote" class="settings-note apple-sync-note">连接 iCloud Calendar。</p>
+            <button id="resolveIcloudConflicts" type="button" class="soft-button" hidden>处理同步冲突</button>
           </section>
         </div>
         </details>

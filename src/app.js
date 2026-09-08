@@ -95,6 +95,11 @@ function normalizeState(input) {
         calendarUrl: item.calendarUrl,
         itemType: item.itemType === 'event' ? 'event' : 'todo',
         deletedAt: Number(item.deletedAt || 0),
+        lastIcloudSnapshot: item.lastIcloudSnapshot || null,
+        task: item.task || null,
+        icloudConflict: item.icloudConflict || null,
+        icloudResolution: item.icloudResolution || null,
+        icloudSyncError: String(item.icloudSyncError || ''),
       }))
     : [];
   input.settings.googleConnected ??= false;
@@ -1974,10 +1979,13 @@ async function deleteTask(id) {
     state.icloudDeletedItems.push({
       href: task.icloudHref,
       uid: task.icloudUid || '',
-      etag: task.icloudEtag || '',
+      etag: task.lastIcloudEtag || task.icloudEtag || '',
       calendarUrl: task.icloudCalendarUrl,
       itemType: task.itemType === 'event' ? 'event' : 'todo',
       deletedAt: Date.now(),
+      lastIcloudSnapshot: task.lastIcloudSnapshot ? structuredClone(task.lastIcloudSnapshot) : null,
+      task: structuredClone(task),
+      icloudConflict: task.icloudConflict ? { ...structuredClone(task.icloudConflict), local: null } : null,
     });
   }
   state.tasks = state.tasks.filter((task) => task.id !== id);
@@ -2367,6 +2375,60 @@ async function connectIcloud() {
   }
 }
 
+function icloudConflictEntries() {
+  const calendarUrl = $('#icloudCalendarSelect').value;
+  return [
+    ...state.tasks.filter((task) => task.icloudCalendarUrl === calendarUrl && task.icloudConflict),
+    ...(state.icloudDeletedItems || []).filter((item) => item.calendarUrl === calendarUrl && item.icloudConflict),
+  ];
+}
+
+function refreshIcloudConflictButton() {
+  const count = icloudConflictEntries().length;
+  const button = $('#resolveIcloudConflicts');
+  button.hidden = count === 0;
+  button.textContent = '处理同步冲突（' + count + '）';
+}
+
+function showIcloudConflict() {
+  const entry = icloudConflictEntries()[0];
+  if (!entry) { refreshIcloudConflictButton(); return; }
+  const conflict = entry.icloudConflict;
+  const reasons = {
+    'both-modified': '双方修改了相同内容。',
+    'missing-baseline': '这条旧事项尚无同步基线，无法安全判断修改来自哪一边。',
+    'local-deleted-remote-modified': 'Luma 已删除，Apple 仍有修改后的内容。',
+    'remote-deleted-local-modified': 'Apple 已删除，Luma 内容有修改或尚无同步基线。',
+    'schedule-conflict': '双方日期和时间修改相互关联，需要选择完整版本。',
+    'invalid-schedule': '合并后的日期和时间无效，请选择有效版本或先编辑事项。',
+    'missing-etag': 'Apple 未返回可用于安全写入的版本信息，请稍后重试同步。',
+    'remote-changing': '重试期间 Apple 内容仍在变化。',
+    'write-unconfirmed': '写入后读到的 Apple 内容有变化。',
+  };
+  const format = (value) => value === null ? '已删除'
+    : [value.title, '开始：' + value.dueDate + (value.time ? ' ' + value.time : ' · 全天'),
+      value.endDate ? '结束：' + value.endDate + (value.endTime ? ' ' + value.endTime : '') : '',
+      entry.itemType === 'todo' ? (value.completed ? '已完成' : '未完成') : '',
+      value.eventColor ? '颜色：' + value.eventColor : ''].filter(Boolean).join('\n');
+  $('#icloudConflictReason').textContent = reasons[conflict.type] || '双方内容需要确认。';
+  $('#icloudConflictLocal').value = format(conflict.local ?? null);
+  $('#icloudConflictRemote').value = format(conflict.remote ?? null);
+  $('#icloudKeepLocal').textContent = conflict.local === null ? '保留 Luma 删除' : '保留 Luma';
+  $('#icloudKeepRemote').textContent = conflict.remote === null ? '保留 Apple 删除' : '保留 Apple';
+  // Older queue entries do not contain enough information to restore the task.
+  $('#icloudKeepRemote').disabled = Boolean(entry.href && !entry.task && conflict.remote);
+  if ($('#icloudKeepRemote').disabled) $('#icloudConflictReason').textContent += ' 旧删除记录没有本地副本，暂不能在这里恢复。';
+  const choose = async (choice) => {
+    entry.icloudResolution = { choice, detectedAt: conflict.detectedAt };
+    await persist();
+    $('#icloudConflictDialog').close();
+    await syncIcloud();
+  };
+  $('#icloudKeepLocal').onclick = () => choose('local');
+  $('#icloudKeepRemote').onclick = () => choose('remote');
+  $('#icloudConflictDialog').showModal();
+}
+
 async function syncIcloud() {
   const button = $('#connectIcloud');
   const calendarUrl = $('#icloudCalendarSelect').value;
@@ -2376,6 +2438,7 @@ async function syncIcloud() {
   }
 
   button.disabled = true;
+  $('#resolveIcloudConflicts').disabled = true;
   $('#icloudNote').textContent = '正在同步 Luma 日程与待办到 iCloud…';
   try {
     const result = await window.luma?.icloudSync({ state, calendarUrl });
@@ -2386,11 +2449,13 @@ async function syncIcloud() {
     $('#icloudNote').textContent =
       '同步完成：从 iCloud 下载 ' + (summary.downloaded || 0) + ' 项、本地移除 ' + (summary.deleted || 0)
       + ' 项；远端删除 ' + (summary.remoteDeleted || 0) + ' 项；上传新增 ' + (summary.created || 0) + '、更新 ' + (summary.updated || 0)
-      + '；冲突 ' + (summary.conflicts || 0) + ' 项。当前日程 ' + (summary.syncedEvents || 0) + ' 项，待办镜像 ' + (summary.mirroredTodos || 0) + ' 项。';
+      + '；失败 ' + (summary.failed || 0) + ' 项；冲突 ' + (summary.conflicts || 0) + ' 项。当前日程 ' + (summary.syncedEvents || 0) + ' 项，待办镜像 ' + (summary.mirroredTodos || 0) + ' 项。';
   } catch (error) {
     $('#icloudNote').textContent = '同步失败：' + googleErrorMessage(error);
   } finally {
     button.disabled = false;
+    $('#resolveIcloudConflicts').disabled = false;
+    refreshIcloudConflictButton();
   }
 }
 
@@ -2667,7 +2732,10 @@ function bindEvents() {
   $('#disconnectGoogle').addEventListener('click', disconnectGoogle);
   $('#connectIcloud').addEventListener('click', connectOrSyncIcloud);
   $('#disconnectIcloud').addEventListener('click', disconnectIcloud);
+  $('#resolveIcloudConflicts').addEventListener('click', showIcloudConflict);
+  $('#icloudCalendarSelect').addEventListener('change', refreshIcloudConflictButton);
   window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && $('#icloudConflictDialog').open) return;
     if (event.key === 'Escape' && settingsDialog.open) {
       closeSettingsDialog();
       return;
@@ -2697,6 +2765,7 @@ async function init() {
   renderColorChoices();
   render();
   await Promise.all([refreshGoogleStatus(), refreshIcloudStatus()]);
+  refreshIcloudConflictButton();
 }
 
 init();
