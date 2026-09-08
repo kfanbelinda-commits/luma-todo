@@ -7,6 +7,7 @@ const {
   reconcileGoogleTaskNative,
   googleTaskSnapshotEqual,
 } = require('./main/google-reconcile.cjs');
+const { parseGoogleTaskNotes, buildGoogleTaskNotes } = require('./main/google-task-notes.cjs');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -933,9 +934,6 @@ function previousDateKey(dateKey) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-const LUMA_TASK_NOTES_PREFIX = '[Luma Todo]\\n';
-const LUMA_TASK_METADATA_START = '[Luma Todo Metadata v4]';
-const LUMA_TASK_METADATA_END = '[/Luma Todo Metadata]';
 const LUMA_METADATA_NOTES_PREFIX = '[Luma Todo Sync Metadata v1]\\n';
 const LUMA_METADATA_TITLE = 'Luma Todo 同步数据（请勿删除）';
 const FALLBACK_PROJECT_COLORS = ['#7289f5', '#8b6ef5', '#4fb58f', '#f0a85a', '#ef7180', '#4da7c9'];
@@ -971,29 +969,8 @@ function parseJsonAfterPrefix(notes, prefix) {
   }
 }
 
-function googleTaskNoteParts(notes) {
-  const value = typeof notes === 'string' ? notes : '';
-  const legacy = parseJsonAfterPrefix(value, LUMA_TASK_NOTES_PREFIX);
-  if (legacy) return { metadata: legacy, userNotes: '' };
-
-  const start = value.lastIndexOf(LUMA_TASK_METADATA_START);
-  const end = start >= 0 ? value.indexOf(LUMA_TASK_METADATA_END, start + LUMA_TASK_METADATA_START.length) : -1;
-  if (start < 0 || end < 0) return { metadata: null, userNotes: value };
-  const raw = value.slice(start + LUMA_TASK_METADATA_START.length, end).trim();
-  let metadata = null;
-  try { metadata = JSON.parse(raw); } catch {}
-  const before = value.slice(0, start).replace(/\s+$/, '');
-  const after = value.slice(end + LUMA_TASK_METADATA_END.length).replace(/^\s+/, '');
-  const userNotes = [before, after].filter(Boolean).join('\n\n');
-  return { metadata, userNotes };
-}
-
 function googleTaskMetadata(remoteTask) {
-  const parts = googleTaskNoteParts(remoteTask?.notes);
-  if (parts.metadata) return parts.metadata;
-  if (typeof remoteTask?.notes !== 'string' || !remoteTask.notes.startsWith(LUMA_TASK_NOTES_PREFIX)) return null;
-  const legacyProject = remoteTask.notes.match(/(?:^|\n)分类：([^\n]+)/)?.[1]?.trim();
-  return { version: 1, projectId: legacyProject || 'inbox' };
+  return parseGoogleTaskNotes(remoteTask?.notes).metadata;
 }
 
 function normalizeCloudProject(project, index = 0) {
@@ -1044,12 +1021,10 @@ function taskNotes(state, task, existingNotes = '') {
     ...projectMetadataForTask(state, task),
     order: Number(task.order ?? task.createdAt ?? 0),
     reminder: task.reminder ?? null,
-    time: /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(task.time || '') ? task.time : '',
+    time: /^(?:[01]\\d|2[0-3]):[0-5]\\d$/.test(task.time || '') ? task.time : '',
     updatedAt: Number(task.updatedAt || task.createdAt || Date.now()),
   };
-  const { userNotes } = googleTaskNoteParts(existingNotes);
-  const prefix = userNotes ? userNotes.replace(/\s+$/, '') + '\n\n' : '';
-  return prefix + LUMA_TASK_METADATA_START + '\n' + JSON.stringify(metadata) + '\n' + LUMA_TASK_METADATA_END;
+  return buildGoogleTaskNotes(existingNotes, metadata);
 }
 
 function googleTaskBody(state, task, existingNotes = '') {
@@ -1449,7 +1424,7 @@ async function syncGoogleState(state) {
       const foundRemote = (task.googleTaskId ? googleTasksById.get(task.googleTaskId) : null) || googleTaskByTaskId.get(task.id);
       if (foundRemote) consumedGoogleTaskIds.add(foundRemote.id);
       const remoteDeleted = Boolean(task.googleTaskId && (!foundRemote || foundRemote.deleted));
-      const remote = remoteDeleted ? null : foundRemote;
+      const remote = foundRemote?.deleted ? null : foundRemote;
       const remoteUpdatedAt = Date.parse(foundRemote?.updated || 0);
       const remoteDetails = remote ? googleTaskMetadata(remote) : null;
       const needsMetadataUpgrade = Boolean(remote && (!remoteDetails || Number(remoteDetails.version || 1) < 4));
