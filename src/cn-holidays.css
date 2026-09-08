@@ -55,3 +55,45 @@ html[data-theme="light"] .day-holiday-work {
   color: #5a6a81;
   background: rgba(90, 106, 129, .10);
 }
+
+
+.day-heading-marks {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+.day-heading-marks .day-holiday {
+  margin-left: 0;
+}
+.day-luckyday {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+.day-luckyday-cheng {
+  color: #e4b96d;
+  background: rgba(197, 151, 72, .14);
+}
+.day-luckyday-chu {
+  color: #cda36a;
+  background: rgba(181, 137, 77, .11);
+}
+.calendar-day.muted .day-luckyday { opacity: .72; }
+html[data-theme="light"] .day-luckyday-cheng {
+  color: #966116;
+  background: rgba(197, 151, 72, .12);
+}
+html[data-theme="light"] .day-luckyday-chu {
+  color: #84653d;
+  background: rgba(164, 126, 73, .10);
+}
