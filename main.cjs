@@ -1338,7 +1338,127 @@ async function syncGoogleState(state) {
   state.tasks ??= [];
   state.projects ??= [];
   state.googleDeletedItems = Array.isArray(state.googleDeletedItems) ? state.googleDeletedItems : [];
-  const [calendarEvents, googleTasks] = await Promise.all([listGoogleCalendarEvents(), listGoogleTasks()]);
+  const [calendarResult, tasksResult] = await Promise.allSettled([
+    listGoogleCalendarEvents(),
+    listGoogleTasks(),
+  ]);
+  const calendarRead = calendarResult.status === 'fulfilled'
+    ? calendarResult.value
+    : {
+        events: [],
+        failedCalendarIds: new Set(),
+        failures: [{ calendarId: '*', calendarName: 'Google Calendar', error: String(calendarResult.reason?.message || calendarResult.reason || '读取失败') }],
+        allCalendarsUnavailable: true,
+        primaryCalendarId: '',
+      };
+  const googleTasksAvailable = tasksResult.status === 'fulfilled';
+  let calendarEvents = Array.isArray(calendarRead.events) ? calendarRead.events : [];
+  let googleTasks = googleTasksAvailable ? (tasksResult.value || []) : [];
+
+  const syncTime = Date.now();
+  const retainedTasks = [];
+  let uploaded = 0;
+  let downloaded = 0;
+  let deleted = 0;
+  let conflicts = 0;
+  let failed = (calendarRead.failures || []).length + (googleTasksAvailable ? 0 : 1);
+  let remoteDeletedCount = 0;
+  let externalCalendarDownloaded = 0;
+  let duplicatesRemoved = 0;
+  let duplicatesDeferred = 0;
+  const failureMessages = (calendarRead.failures || []).map((item) =>
+    item.calendarName + '：' + item.error
+  );
+  if (!googleTasksAvailable) {
+    failureMessages.push('Google Tasks：' + String(tasksResult.reason?.message || tasksResult.reason || '读取失败'));
+  }
+
+  const failedCalendarIds = calendarRead.failedCalendarIds instanceof Set
+    ? calendarRead.failedCalendarIds
+    : new Set(calendarRead.failedCalendarIds || []);
+  const calendarUnavailable = (calendarId = 'primary') => {
+    if (calendarRead.allCalendarsUnavailable) return true;
+    const requested = String(calendarId || 'primary');
+    const resolved = requested === 'primary' && calendarRead.primaryCalendarId
+      ? String(calendarRead.primaryCalendarId)
+      : requested;
+    return failedCalendarIds.has(resolved);
+  };
+
+  const localByTaskId = new Map();
+  const linkedCalendarKeyByTaskId = new Map();
+  const linkedGoogleTaskByTaskId = new Map();
+  for (const task of state.tasks) {
+    if (!task?.id) continue;
+    localByTaskId.set(String(task.id), task);
+    if (task.googleCalendarEventId) linkedCalendarKeyByTaskId.set(String(task.id), String(task.googleCalendarEventId));
+    if (task.googleTaskId) linkedGoogleTaskByTaskId.set(String(task.id), String(task.googleTaskId));
+  }
+  for (const entry of state.googleDeletedItems) {
+    const id = String(entry?.task?.id || '');
+    if (!id) continue;
+    if (!localByTaskId.has(id) && entry.task) localByTaskId.set(id, entry.task);
+    if (entry.googleCalendarEventId) linkedCalendarKeyByTaskId.set(id, String(entry.googleCalendarEventId));
+    if (entry.googleTaskId) linkedGoogleTaskByTaskId.set(id, String(entry.googleTaskId));
+  }
+
+  const calendarDuplicates = classifyLumaDuplicates(calendarEvents, {
+    taskId: (event) => event.extendedProperties?.private?.lumaTodo === 'true'
+      ? calendarTaskDetails(event).taskId
+      : '',
+    remoteKey: (event) => String(event.id || ''),
+    linkedKeyByTaskId: linkedCalendarKeyByTaskId,
+    fingerprint: (event) => {
+      const id = String(calendarTaskDetails(event).taskId || '');
+      return JSON.stringify(googleCalendarRemoteSnapshot(event, localByTaskId.get(id) || {}));
+    },
+    updatedAt: (event) => Date.parse(event.updated || 0) || 0,
+  });
+  calendarEvents = calendarDuplicates.kept;
+  duplicatesDeferred += calendarDuplicates.divergentDuplicates.length;
+  for (const record of calendarDuplicates.safeDuplicates) {
+    const event = record.duplicate;
+    try {
+      await deleteGoogleCalendarEvent(calendarIdForEvent(event), event.id);
+      duplicatesRemoved += 1;
+    } catch (error) {
+      failed += 1;
+      failureMessages.push('重复 Google Calendar 事项 ' + String(event.id || '') + '：' + String(error.message || error));
+    }
+  }
+
+  const googleTaskDuplicates = classifyLumaDuplicates(googleTasks, {
+    taskId: (remoteTask) => googleTaskMetadata(remoteTask)?.taskId || '',
+    remoteKey: (remoteTask) => String(remoteTask.id || ''),
+    linkedKeyByTaskId: linkedGoogleTaskByTaskId,
+    fingerprint: (remoteTask) => {
+      const parts = parseGoogleTaskNotes(remoteTask?.notes);
+      const metadata = { ...(parts.metadata || {}) };
+      delete metadata.version;
+      delete metadata.updatedAt;
+      return JSON.stringify({
+        native: googleTaskRemoteSnapshot(remoteTask),
+        metadata,
+        userNotes: parts.userNotes || '',
+      });
+    },
+    updatedAt: (remoteTask) => Date.parse(remoteTask.updated || 0) || 0,
+  });
+  googleTasks = googleTaskDuplicates.kept;
+  duplicatesDeferred += googleTaskDuplicates.divergentDuplicates.length;
+  if (googleTasksAvailable) {
+    for (const record of googleTaskDuplicates.safeDuplicates) {
+      const remoteTask = record.duplicate;
+      try {
+        await deleteGoogleTasksItem(remoteTask.id);
+        duplicatesRemoved += 1;
+      } catch (error) {
+        failed += 1;
+        failureMessages.push('重复 Google Task ' + String(remoteTask.id || '') + '：' + String(error.message || error));
+      }
+    }
+  }
+
   const calendarByKey = new Map(calendarEvents.map((event) => [calendarEventKey(calendarIdForEvent(event), event.id), event]));
   const calendarById = new Map(calendarEvents.map((event) => [event.id, event]));
   const googleTasksById = new Map(googleTasks.map((task) => [task.id, task]));
@@ -1347,15 +1467,9 @@ async function syncGoogleState(state) {
   const googleTaskByTaskId = new Map(lumaGoogleTasks.map((task) => [googleTaskMetadata(task)?.taskId, task]).filter(([id]) => id));
   const consumedCalendarIds = new Set();
   const consumedGoogleTaskIds = new Set();
-  const remoteProjectMetadata = applyRemoteProjectMetadata(state, googleTasks);
-  const syncTime = Date.now();
-  const retainedTasks = [];
-  let uploaded = 0;
-  let downloaded = 0;
-  let deleted = 0;
-  let conflicts = 0;
-  let remoteDeletedCount = 0;
-  let externalCalendarDownloaded = 0;
+  const remoteProjectMetadata = googleTasksAvailable
+    ? applyRemoteProjectMetadata(state, googleTasks)
+    : { metadataTask: null, remoteUpdatedAt: 0, downloaded: 0, unavailable: true };
   const findCalendarEvent = (task) => {
     if (!task.googleCalendarEventId) return null;
     return calendarByKey.get(calendarEventKey(task.googleCalendarId, task.googleCalendarEventId))
