@@ -224,7 +224,7 @@ function createPrivateExtensionManager({
   function call(id, method, args) {
     const manifest = readManifest(id);
     if (!manifest) throw new Error("私人扩展尚未安装");
-    const allowed = id === "luckyday" && method === "getSummary";
+    const allowed = id === "luckyday" && (method === "getSummary" || method === "getDayMarks");
     if (!allowed) throw new Error("私人扩展方法不受支持");
     const entryPath = path.join(pluginDirectory(id), ...manifest.entry.split("/"));
     delete require.cache[require.resolve(entryPath)];
