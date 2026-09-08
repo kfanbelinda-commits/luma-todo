@@ -237,6 +237,43 @@ test('network failure preserves baseline and pending deletion while other items 
   assert.equal(del.state.tasks.length, 0);
 });
 
+test('unreadable Apple resource protects linked local item while other items continue', async () => {
+  const blocked = task();
+  const other = task({ id: 'two', icloudHref: calendar.url + 'two.ics', icloudUid: 'two@luma' });
+  const otherRemote = remote(other);
+  other.title = 'Local two';
+  const unreadable = { href: blocked.icloudHref, uid: blocked.icloudUid, lumaTaskId: blocked.id, unreadable: true, readError: 'unsupported Apple event' };
+  const h = harness([blocked, other], [unreadable, otherRemote]);
+  const { summary } = await h.run();
+  assert.equal(h.state.tasks.length, 2);
+  assert.equal(h.state.tasks[0].title, blocked.title);
+  assert.equal(h.state.tasks[0].icloudSyncError, 'unsupported Apple event');
+  assert.equal(summary.unreadable, 1);
+  assert.equal(summary.updated, 1);
+  assert.equal(h.calls.filter((call) => call[0] === 'put').length, 1);
+});
+
+test('unreadable Apple resource never confirms a pending local deletion', async () => {
+  const value = task();
+  const unreadable = { href: value.icloudHref, uid: value.icloudUid, lumaTaskId: value.id, unreadable: true, readError: 'unsupported Apple event' };
+  const h = harness([], [unreadable], {}, [deleted(value)]);
+  const { summary } = await h.run();
+  assert.equal(h.state.icloudDeletedItems.length, 1);
+  assert.equal(h.state.icloudDeletedItems[0].icloudSyncError, 'unsupported Apple event');
+  assert.equal(summary.remoteDeleted, 0);
+  assert.equal(summary.unreadable, 1);
+  assert.equal(h.calls.length, 0);
+});
+
+test('unreadable unlinked Apple resource is skipped instead of imported', async () => {
+  const unreadable = { href: calendar.url + 'odd.ics', uid: 'odd@apple', unreadable: true, readError: 'unsupported Apple event' };
+  const h = harness([], [unreadable]);
+  const { summary } = await h.run();
+  assert.equal(h.state.tasks.length, 0);
+  assert.equal(summary.downloaded, 0);
+  assert.equal(summary.unreadable, 1);
+});
+
 test('list failure makes no changes or deletion calls', async () => {
   const value = task();
   const h = harness([value], [], { list: async () => { throw new Error('incomplete'); } }, [deleted(value)]);

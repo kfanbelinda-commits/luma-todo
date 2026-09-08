@@ -116,12 +116,15 @@ async function syncCalendar(state, calendar, io) {
   state.tasks ??= [];
   state.projects ??= [];
   state.icloudDeletedItems = Array.isArray(state.icloudDeletedItems) ? state.icloudDeletedItems : [];
-  const summary = { created: 0, updated: 0, unchanged: 0, downloaded: 0, deleted: 0, remoteDeleted: 0, conflicts: 0, failed: 0, calendarName: calendar.name };
-  // A failed/incomplete listing must never be interpreted as remote deletion.
+  const summary = { created: 0, updated: 0, unchanged: 0, downloaded: 0, deleted: 0, remoteDeleted: 0, conflicts: 0, failed: 0, unreadable: 0, calendarName: calendar.name };
+  // A structurally incomplete REPORT still aborts. Individual resources that
+  // Apple lists but Luma cannot parse are represented explicitly so they can
+  // never be mistaken for remote deletion.
   const remotes = await io.list();
-  const byHref = new Map(remotes.map((item) => [item.href, item]));
-  const byUid = new Map(remotes.map((item) => [item.uid, item]));
-  const byId = new Map(remotes.filter((item) => item.lumaTaskId).map((item) => [item.lumaTaskId, item]));
+  summary.unreadable = remotes.filter((item) => item?.unreadable).length;
+  const byHref = new Map(remotes.filter((item) => item?.href).map((item) => [item.href, item]));
+  const byUid = new Map(remotes.filter((item) => item?.uid).map((item) => [item.uid, item]));
+  const byId = new Map(remotes.filter((item) => item?.lumaTaskId).map((item) => [item.lumaTaskId, item]));
   const consumed = new Set();
   const fail = (target, error) => {
     target.icloudSyncError = String(error.message || 'iCloud 单条同步失败');
@@ -138,6 +141,11 @@ async function syncCalendar(state, calendar, io) {
     delete entry.icloudSyncError;
     let remote = byHref.get(entry.href) || byUid.get(entry.uid) || null;
     consume(remote);
+    if (remote?.unreadable) {
+      entry.icloudSyncError = remote.readError || 'Apple 日历事项暂时无法读取；未执行删除';
+      pending.push(entry);
+      continue;
+    }
     let removed = false;
     let restoredFromApple = false;
     try {
@@ -190,6 +198,13 @@ async function syncCalendar(state, calendar, io) {
     delete task.icloudSyncError;
     let remote = byHref.get(task.icloudHref) || byUid.get(task.icloudUid) || byId.get(task.id) || null;
     consume(remote);
+    if (remote?.unreadable) {
+      task.icloudCalendarUrl = calendar.url;
+      task.icloudCalendarName = calendar.name;
+      task.icloudSyncError = remote.readError || 'Apple 日历事项暂时无法读取；本地内容保持不变';
+      retained.push(task);
+      continue;
+    }
     const linked = Boolean(task.icloudHref || task.icloudUid);
     if (!linked && !remote && !task.dueDate) { retained.push(task); continue; }
     task.icloudCalendarUrl = calendar.url;
@@ -271,7 +286,7 @@ async function syncCalendar(state, calendar, io) {
   state.tasks = retained;
 
   for (const remote of remotes) {
-    if (consumed.has(remote.href) || remote.lumaItemType === 'todo') continue;
+    if (remote?.unreadable || consumed.has(remote.href) || remote.lumaItemType === 'todo') continue;
     if (remote.lumaTaskId && state.tasks.some((task) => task.id === remote.lumaTaskId)) continue;
     const id = 'icloud-' + io.safeId(remote.uid);
     if (state.tasks.some((task) => task.id === id)) continue;

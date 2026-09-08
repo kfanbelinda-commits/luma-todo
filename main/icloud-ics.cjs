@@ -148,12 +148,24 @@ function parseIcsDateProperty(prop) {
   return { allDay: false, dateKey: localDateKeyFromDate(date), time: localTimeFromDate(date) };
 }
 
-function parseIcloudEvent(ics, href, etag, calendar) {
+function parseIcloudEventIdentity(ics) {
   const lines = unfoldIcsLines(ics);
   if (!lines.some((line) => line.trim().toUpperCase() === 'BEGIN:VEVENT')) return null;
+  return {
+    uid: unescapeIcsText(icsProperty(lines, 'UID')?.value || ''),
+    title: unescapeIcsText(icsProperty(lines, 'SUMMARY')?.value || ''),
+    lumaTaskId: unescapeIcsText(icsProperty(lines, 'X-LUMA-TASK-ID')?.value || ''),
+    lumaItemType: String(icsProperty(lines, 'X-LUMA-ITEM-TYPE')?.value || '').toLowerCase(),
+  };
+}
 
-  const uid = unescapeIcsText(icsProperty(lines, 'UID')?.value || '');
-  const summary = unescapeIcsText(icsProperty(lines, 'SUMMARY')?.value || '未命名日程');
+function parseIcloudEvent(ics, href, etag, calendar) {
+  const lines = unfoldIcsLines(ics);
+  const identity = parseIcloudEventIdentity(ics);
+  if (!identity) return null;
+
+  const uid = identity.uid;
+  const summary = identity.title || '未命名日程';
   const start = parseIcsDateProperty(icsProperty(lines, 'DTSTART'));
   const end = parseIcsDateProperty(icsProperty(lines, 'DTEND'));
   if (!uid || !start) return null;
@@ -203,4 +215,5 @@ function parseIcloudEvent(ics, href, etag, calendar) {
 module.exports = {
   taskToIcloudIcs,
   parseIcloudEvent,
+  parseIcloudEventIdentity,
 };

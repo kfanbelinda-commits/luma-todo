@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { taskToIcloudIcs, parseIcloudEvent } = require('../main/icloud-ics.cjs');
+const { taskToIcloudIcs, parseIcloudEvent, parseIcloudEventIdentity } = require('../main/icloud-ics.cjs');
 
 const calendar = { name: 'QA Calendar', url: 'https://qa.invalid/calendar/' };
 const fixedUpdatedAt = Date.parse('2026-09-05T00:00:00Z');
@@ -121,4 +121,30 @@ test('native Apple all-day Event parses without Luma linkage metadata', () => {
   assert.equal(parsed.lumaItemType, '');
   assert.equal(parsed.dueDate, '2026-09-10');
   assert.equal(parsed.endDate, '2026-09-11');
+});
+
+
+test('identity survives unsupported or cancelled VEVENT without DTSTART', () => {
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'BEGIN:VEVENT',
+    'UID:cancelled-instance',
+    'SUMMARY:Cancelled occurrence',
+    'RECURRENCE-ID:20260910T100000Z',
+    'STATUS:CANCELLED',
+    'X-LUMA-TASK-ID:qa-linked',
+    'X-LUMA-ITEM-TYPE:event',
+    'END:VEVENT',
+    'END:VCALENDAR',
+    '',
+  ].join('\r\n');
+
+  assert.equal(parseIcloudEvent(ics, '/qa/cancelled.ics', '"1"', calendar), null);
+  assert.deepEqual(parseIcloudEventIdentity(ics), {
+    uid: 'cancelled-instance',
+    title: 'Cancelled occurrence',
+    lumaTaskId: 'qa-linked',
+    lumaItemType: 'event',
+  });
 });
