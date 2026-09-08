@@ -6,6 +6,8 @@ const {
   reconcileGoogleTaskNative,
   normalizeGoogleCalendarSnapshot,
   reconcileGoogleCalendar,
+  googleCalendarSnapshotEqual,
+  remoteChangedSinceGoogleSnapshot,
 } = require('../main/google-reconcile.cjs');
 
 const base = { title: '报销', dueDate: '2026-09-10', completed: false };
@@ -150,4 +152,40 @@ test('Google Calendar invalid merged schedule is frozen', () => {
   });
   assert.equal(result.action, 'conflict');
   assert.equal(result.type, 'invalid-schedule');
+});
+
+
+test('queued delete detects a remote edit against its last snapshot', () => {
+  const changed = { ...calendarBase, title: 'Google changed after delete' };
+  assert.equal(remoteChangedSinceGoogleSnapshot({
+    base: calendarBase,
+    remote: changed,
+    previousRemoteUpdatedAt: 10,
+    remoteUpdatedAt: 20,
+    equalSnapshot: googleCalendarSnapshotEqual,
+  }), true);
+  assert.equal(remoteChangedSinceGoogleSnapshot({
+    base: calendarBase,
+    remote: calendarBase,
+    previousRemoteUpdatedAt: 10,
+    remoteUpdatedAt: 20,
+    equalSnapshot: googleCalendarSnapshotEqual,
+  }), false);
+});
+
+test('old queued delete without snapshot uses the last observed Google timestamp conservatively', () => {
+  assert.equal(remoteChangedSinceGoogleSnapshot({
+    base: null,
+    remote: calendarBase,
+    previousRemoteUpdatedAt: 10,
+    remoteUpdatedAt: 10,
+    equalSnapshot: googleCalendarSnapshotEqual,
+  }), false);
+  assert.equal(remoteChangedSinceGoogleSnapshot({
+    base: null,
+    remote: calendarBase,
+    previousRemoteUpdatedAt: 0,
+    remoteUpdatedAt: 10,
+    equalSnapshot: googleCalendarSnapshotEqual,
+  }), true);
 });
