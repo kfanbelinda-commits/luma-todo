@@ -132,6 +132,12 @@
   googleConflictDialog.close();
   settingsDialog.close();
 
+  const luckyDayDialog = document.querySelector('#luckyDayDialog');
+  assertQa(luckyDayDialog, 'LuckyDay popup is missing');
+  assertQa(document.querySelector('#luckyDayPrevDate'), 'LuckyDay previous-date control is missing');
+  assertQa(document.querySelector('#luckyDayNextDate'), 'LuckyDay next-date control is missing');
+  assertQa(document.querySelector('#luckyDayBody')?.classList.contains('luckyday-v2-body'), 'LuckyDay original-style body is missing');
+
   // Cleanup is demo-only and keeps repeated CI runs deterministic.
   state.tasks = state.tasks.filter((item) => item.id !== task.id);
   await persist();
@@ -148,7 +154,8 @@
       'expand collapse',
       'opacity survives calendar expand',
       'iCloud conflict keeps settings open',
-      'Google conflict keeps settings open'
+      'Google conflict keeps settings open',
+      'LuckyDay original-style popup shell'
     ]
   };
 })()
