@@ -1219,14 +1219,32 @@ async function listEventsForCalendar(calendar, { lumaOnly = false } = {}) {
 }
 
 async function listGoogleCalendarEvents() {
-  const calendars = await listGoogleCalendars();
-  const pages = await Promise.all(calendars.flatMap((calendar) => [
-    listEventsForCalendar(calendar),
-    listEventsForCalendar(calendar, { lumaOnly: true }),
-  ]));
+  let calendars;
+  try {
+    calendars = await listGoogleCalendars();
+  } catch (error) {
+    return {
+      events: [],
+      failedCalendarIds: new Set(),
+      failures: [{ calendarId: '*', calendarName: 'Google Calendar', error: String(error.message || error) }],
+      allCalendarsUnavailable: true,
+      primaryCalendarId: '',
+    };
+  }
+
+  const collected = await collectGoogleCalendarReads(
+    calendars,
+    (calendar, lumaOnly) => listEventsForCalendar(calendar, { lumaOnly })
+  );
   const unique = new Map();
-  pages.flat().forEach((event) => unique.set(calendarEventKey(calendarIdForEvent(event), event.id), event));
-  return [...unique.values()];
+  collected.events.forEach((event) => unique.set(calendarEventKey(calendarIdForEvent(event), event.id), event));
+  return {
+    events: [...unique.values()],
+    failedCalendarIds: collected.failedCalendarIds,
+    failures: collected.failures,
+    allCalendarsUnavailable: false,
+    primaryCalendarId: String(calendars.find((calendar) => calendar.primary)?.id || ''),
+  };
 }
 
 async function listGoogleTasks() {
