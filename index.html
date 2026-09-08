@@ -200,19 +200,14 @@
     </div>
 
     <dialog id="luckyDayDialog" class="modal luckyday-modal" aria-labelledby="luckyDayDialogTitle">
-      <div class="luckyday-shell">
-        <div class="luckyday-header">
-          <div>
-            <p class="eyebrow">LuckyDay · 今日吉课</p>
-            <h3 id="luckyDayDialogTitle">今日吉课</h3>
-            <p id="luckyDayLunar" class="luckyday-lunar"></p>
-          </div>
-          <button id="closeLuckyDay" type="button" class="icon-button" aria-label="关闭">×</button>
+      <div class="luckyday-v2-shell">
+        <button id="closeLuckyDay" type="button" class="luckyday-v2-close" aria-label="关闭">×</button>
+        <div class="luckyday-v2-datebar">
+          <button id="luckyDayPrevDate" type="button" class="luckyday-v2-nav" aria-label="前一天">‹</button>
+          <div id="luckyDayDialogTitle" class="luckyday-v2-date-title">今日吉课</div>
+          <button id="luckyDayNextDate" type="button" class="luckyday-v2-nav" aria-label="后一天">›</button>
         </div>
-        <div id="luckyDayBody" class="luckyday-body"></div>
-        <div class="luckyday-footer">
-          <button id="openFullLuckyDay" type="button" class="soft-button">查看完整吉课 →</button>
-        </div>
+        <div id="luckyDayBody" class="luckyday-v2-body"></div>
       </div>
     </dialog>
 
