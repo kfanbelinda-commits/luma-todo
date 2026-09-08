@@ -46,6 +46,7 @@ const seedState = {
     { id: 'internal', name: '内部系统', color: '#8b6ef5', order: 2 },
   ],
   tasks: [],
+  googleDeletedItems: [],
   icloudDeletedItems: [],
 };
 
@@ -85,6 +86,19 @@ let collapsedProjects = new Set();
 function normalizeState(input) {
   if (!input || !Array.isArray(input.tasks) || !Array.isArray(input.projects)) return structuredClone(seedState);
   input.settings ??= {};
+  input.googleDeletedItems = Array.isArray(input.googleDeletedItems)
+    ? input.googleDeletedItems
+      .filter((item) => item && (item.googleTaskId || item.googleCalendarEventId))
+      .map((item) => ({
+        source: item.source === 'calendar' ? 'calendar' : 'tasks',
+        googleTaskId: String(item.googleTaskId || ''),
+        googleCalendarEventId: String(item.googleCalendarEventId || ''),
+        googleCalendarId: String(item.googleCalendarId || ''),
+        deletedAt: Number(item.deletedAt || 0),
+        task: item.task || null,
+        googleSyncError: String(item.googleSyncError || ''),
+      }))
+    : [];
   input.icloudDeletedItems = Array.isArray(input.icloudDeletedItems)
     ? input.icloudDeletedItems
       .filter((item) => item && typeof item.href === 'string' && item.href && typeof item.calendarUrl === 'string' && item.calendarUrl)
@@ -144,6 +158,16 @@ function normalizeState(input) {
 
 async function persist() {
   await window.luma?.save(state);
+}
+
+function googleDeleteQueueKey(item) {
+  return [
+    item?.source || '',
+    item?.googleCalendarId || '',
+    item?.googleCalendarEventId || '',
+    item?.googleTaskId || '',
+    item?.task?.id || '',
+  ].join('\n');
 }
 
 function projectById(id) {
@@ -1966,13 +1990,24 @@ async function deleteTask(id) {
   cancelPendingTaskCompletion(id);
   const task = state.tasks.find((item) => item.id === id);
   if (task?.googleCalendarExternal || task?.syncTarget === 'external-calendar') return;
-  if (task && state.settings.googleConnected && (task.googleCalendarEventId || task.googleTaskId)) {
-    try {
-      await window.luma?.googleDeleteTask(task);
-    } catch (error) {
-      $('#googleNote').textContent = `Google 中的对应事项未能删除：${error.message}`;
-    }
+
+  let googleDeleteEntry = null;
+  if (task && (task.googleCalendarEventId || task.googleTaskId)) {
+    googleDeleteEntry = {
+      source: task.googleCalendarEventId ? 'calendar' : 'tasks',
+      googleTaskId: String(task.googleTaskId || ''),
+      googleCalendarEventId: String(task.googleCalendarEventId || ''),
+      googleCalendarId: String(task.googleCalendarId || ''),
+      deletedAt: Date.now(),
+      task: structuredClone(task),
+      googleSyncError: '',
+    };
+    state.googleDeletedItems ??= [];
+    const key = googleDeleteQueueKey(googleDeleteEntry);
+    state.googleDeletedItems = state.googleDeletedItems.filter((item) => googleDeleteQueueKey(item) !== key);
+    state.googleDeletedItems.push(googleDeleteEntry);
   }
+
   const icloudDeleteHref = task?.icloudHref || task?.icloudPendingHref;
   if (icloudDeleteHref && task?.icloudCalendarUrl) {
     state.icloudDeletedItems ??= [];
@@ -1992,6 +2027,22 @@ async function deleteTask(id) {
   state.tasks = state.tasks.filter((task) => task.id !== id);
   await persist();
   render();
+
+  // Queue first, then attempt the remote delete. A network/API failure leaves
+  // the queue intact so the next Google sync can retry safely.
+  if (googleDeleteEntry && state.settings.googleConnected) {
+    const key = googleDeleteQueueKey(googleDeleteEntry);
+    try {
+      await window.luma?.googleDeleteTask(googleDeleteEntry);
+      state.googleDeletedItems = (state.googleDeletedItems || []).filter((item) => googleDeleteQueueKey(item) !== key);
+      await persist();
+    } catch (error) {
+      const pending = (state.googleDeletedItems || []).find((item) => googleDeleteQueueKey(item) === key);
+      if (pending) pending.googleSyncError = googleErrorMessage(error);
+      await persist();
+      $('#googleNote').textContent = `Google 中的对应事项未能删除，已保留待删除记录：${googleErrorMessage(error)}`;
+    }
+  }
 }
 
 async function editTaskSchedule(id) {
@@ -2204,13 +2255,17 @@ async function refreshGoogleStatus() {
   }
 }
 
+let googleRequestInFlight = false;
 async function syncGoogle() {
+  if (googleRequestInFlight) return;
   const button = $('#connectGoogle');
+  const dispatchedState = structuredClone(state);
+  googleRequestInFlight = true;
   button.disabled = true;
   $('#googleNote').textContent = '正在同步，请稍候…';
   try {
-    const result = await window.luma?.googleSync(state);
-    state = normalizeState(result.state);
+    const result = await window.luma?.googleSync(dispatchedState);
+    state = normalizeState(LumaGoogleState.mergeResult(dispatchedState, state, result.state));
     state.settings.googleConnected = true;
     await persist();
     render();
@@ -2218,6 +2273,7 @@ async function syncGoogle() {
       uploaded = 0,
       downloaded = 0,
       deleted = 0,
+      remoteDeleted = 0,
       externalCalendarDownloaded = 0,
       projectsUploaded = 0,
       projectsDownloaded = 0,
@@ -2226,15 +2282,18 @@ async function syncGoogle() {
       ? `，分类上传 ${projectsUploaded} 组、下载 ${projectsDownloaded} 组`
       : '';
     const calendarNote = externalCalendarDownloaded ? `，其中 Google 日历事件 ${externalCalendarDownloaded} 项` : '';
-    $('#googleNote').textContent = `同步完成：任务上传 ${uploaded} 项、下载 ${downloaded} 项、移除 ${deleted} 项${calendarNote}${projectNote}。`;
+    const remoteDeleteNote = remoteDeleted ? `，远端删除 ${remoteDeleted} 项` : '';
+    $('#googleNote').textContent = `同步完成：任务上传 ${uploaded} 项、下载 ${downloaded} 项、移除 ${deleted} 项${remoteDeleteNote}${calendarNote}${projectNote}。`;
   } catch (error) {
     $('#googleNote').textContent = `同步失败：${googleErrorMessage(error)}。请确认 Calendar API 和 Tasks API 均已启用。`;
   } finally {
+    googleRequestInFlight = false;
     button.disabled = false;
   }
 }
 
 async function connectOrSyncGoogle() {
+  if (googleRequestInFlight) return;
   const button = $('#connectGoogle');
   button.disabled = true;
   try {

@@ -821,9 +821,38 @@ async function googleRequest(url, options = {}) {
     headers: { authorization: `Bearer ${accessToken}`, 'content-type': 'application/json', ...(options.headers || {}) },
   });
   if (response.status === 204) return null;
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error?.message || `Google API 请求失败 (${response.status})`);
+  let payload = {};
+  try { payload = await response.json(); } catch {}
+  if (!response.ok) {
+    const error = new Error(payload.error?.message || `Google API 请求失败 (${response.status})`);
+    error.status = response.status;
+    throw error;
+  }
   return payload;
+}
+
+function googleMissingRemote(error) {
+  return error && (Number(error.status) === 404 || Number(error.status) === 410);
+}
+
+async function deleteGoogleCalendarEvent(calendarId, eventId) {
+  if (!eventId) return false;
+  try {
+    await googleRequest(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId || 'primary')}/events/${encodeURIComponent(eventId)}`, { method: 'DELETE' });
+  } catch (error) {
+    if (!googleMissingRemote(error)) throw error;
+  }
+  return true;
+}
+
+async function deleteGoogleTasksItem(taskId) {
+  if (!taskId) return false;
+  try {
+    await googleRequest(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${encodeURIComponent(taskId)}`, { method: 'DELETE' });
+  } catch (error) {
+    if (!googleMissingRemote(error)) throw error;
+  }
+  return true;
 }
 
 async function connectGoogle() {
@@ -1257,6 +1286,10 @@ function newLocalTaskId(state, preferred, source, remoteId) {
 async function syncGoogleState(state) {
   state.tasks ??= [];
   state.projects ??= [];
+  state.googleDeletedItems = Array.isArray(state.googleDeletedItems) ? state.googleDeletedItems : [];
+  const queuedRemoteDeleted = state.googleDeletedItems.length;
+  for (const entry of state.googleDeletedItems) await deleteGoogleTask(entry);
+  state.googleDeletedItems = [];
   const [calendarEvents, googleTasks] = await Promise.all([listGoogleCalendarEvents(), listGoogleTasks()]);
   const calendarByKey = new Map(calendarEvents.map((event) => [calendarEventKey(calendarIdForEvent(event), event.id), event]));
   const calendarById = new Map(calendarEvents.map((event) => [event.id, event]));
@@ -1314,7 +1347,10 @@ async function syncGoogleState(state) {
     if (task.syncTarget === 'calendar' && task.dueDate) {
       if (task.googleTaskId) {
         consumedGoogleTaskIds.add(task.googleTaskId);
-        try { await googleRequest(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${encodeURIComponent(task.googleTaskId)}`, { method: 'DELETE' }); } catch {}
+        // Do not forget the old remote id until Google confirms deletion (or
+        // reports it already gone). Otherwise a failed migration can duplicate
+        // the same Luma item in Tasks and Calendar.
+        await deleteGoogleTasksItem(task.googleTaskId);
         task.googleTaskId = null;
       }
       const foundRemote = findCalendarEvent(task) || calendarByTaskId.get(task.id);
@@ -1360,7 +1396,7 @@ async function syncGoogleState(state) {
     } else if (task.syncTarget === 'tasks') {
       if (task.googleCalendarEventId) {
         consumedCalendarIds.add(calendarEventKey(task.googleCalendarId, task.googleCalendarEventId));
-        try { await googleRequest(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(task.googleCalendarId || 'primary')}/events/${encodeURIComponent(task.googleCalendarEventId)}`, { method: 'DELETE' }); } catch {}
+        await deleteGoogleCalendarEvent(task.googleCalendarId || 'primary', task.googleCalendarEventId);
         task.googleCalendarEventId = null;
         task.googleCalendarId = null;
       }
@@ -1490,6 +1526,7 @@ async function syncGoogleState(state) {
       uploaded,
       downloaded,
       deleted,
+      remoteDeleted: queuedRemoteDeleted,
       externalCalendarDownloaded,
       projectsUploaded,
       projectsDownloaded: remoteProjectMetadata.downloaded,
@@ -1500,12 +1537,8 @@ async function syncGoogleState(state) {
 async function deleteGoogleTask(task) {
   if (!loadGoogleToken() || !task) return false;
   if (task.googleCalendarExternal || task.syncTarget === 'external-calendar') return false;
-  if (task.googleCalendarEventId) {
-    await googleRequest(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(task.googleCalendarId || 'primary')}/events/${encodeURIComponent(task.googleCalendarEventId)}`, { method: 'DELETE' });
-  }
-  if (task.googleTaskId) {
-    await googleRequest(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${encodeURIComponent(task.googleTaskId)}`, { method: 'DELETE' });
-  }
+  if (task.googleCalendarEventId) await deleteGoogleCalendarEvent(task.googleCalendarId || 'primary', task.googleCalendarEventId);
+  if (task.googleTaskId) await deleteGoogleTasksItem(task.googleTaskId);
   return true;
 }
 
@@ -2214,9 +2247,16 @@ trustedHandle('google:disconnect', async () => {
   return { connected: false, credentialsAvailable: fs.existsSync(googleCredentialsPath()) };
 });
 
-trustedHandle('google:sync', (_event, payload) => {
-  if (DEMO_MODE) return { state: payload, summary: { uploaded: 0, downloaded: 0, deleted: 0, externalCalendarDownloaded: 0, projectsUploaded: 0, projectsDownloaded: 0 } };
-  return syncGoogleState(payload);
+let googleSyncInFlight = false;
+trustedHandle('google:sync', async (_event, payload) => {
+  if (googleSyncInFlight) throw new Error('Google 同步正在进行，请等待完成');
+  if (DEMO_MODE) return { state: payload, summary: { uploaded: 0, downloaded: 0, deleted: 0, remoteDeleted: 0, externalCalendarDownloaded: 0, projectsUploaded: 0, projectsDownloaded: 0 } };
+  googleSyncInFlight = true;
+  try {
+    return await syncGoogleState(payload);
+  } finally {
+    googleSyncInFlight = false;
+  }
 });
 trustedHandle('google:delete-task', (_event, task) => DEMO_MODE ? false : deleteGoogleTask(task));
 
