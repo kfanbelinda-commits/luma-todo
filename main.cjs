@@ -1,5 +1,5 @@
 const { app, BrowserWindow, Tray, Menu, ipcMain, dialog, screen, nativeImage, safeStorage, shell } = require('electron');
-const { taskToIcloudIcs, parseIcloudEvent } = require('./main/icloud-ics.cjs');
+const { taskToIcloudIcs, parseIcloudEvent, parseIcloudEventIdentity } = require('./main/icloud-ics.cjs');
 const { syncCalendar } = require('./main/icloud-sync.cjs');
 const path = require('path');
 const fs = require('fs');
@@ -590,6 +590,32 @@ function ensureCalendarUrl(url) {
   return String(url || '').endsWith('/') ? String(url) : String(url || '') + '/';
 }
 
+function icloudCalendarResourceUrl(href, calendarUrl) {
+  const target = new URL(href);
+  const selected = new URL(ensureCalendarUrl(calendarUrl));
+  if (target.protocol !== 'https:' || target.origin !== selected.origin || !target.pathname.startsWith(selected.pathname)
+    || target.username || target.password || target.search || target.hash) {
+    throw new Error('iCloud 事项地址不属于所选日历');
+  }
+  return target.href;
+}
+
+function unreadableIcloudEvent(ics, href, etag, calendar, reason) {
+  const identity = parseIcloudEventIdentity(ics) || {};
+  return {
+    uid: identity.uid || '',
+    title: identity.title || '',
+    lumaTaskId: identity.lumaTaskId || '',
+    lumaItemType: identity.lumaItemType || '',
+    href,
+    etag: etag || '',
+    unreadable: true,
+    readError: String(reason || 'Apple 日历事项暂时无法解析'),
+    calendarUrl: calendar.url,
+    calendarName: calendar.name,
+  };
+}
+
 async function putIcloudEvent(resourceUrl, credentials, ics, etag) {
   const headers = {
     Authorization: icloudAuthHeader(credentials),
@@ -671,22 +697,36 @@ async function listIcloudCalendarEvents(credentials, calendar) {
   if (!response.ok) throw new Error('读取 iCloud 日历失败（HTTP ' + response.status + '）');
 
   const blocks = xml.match(
-    /<(?:[A-Za-z0-9_-]+:)?response\b[\s\S]*?<\/(?:[A-Za-z0-9_-]+:)?response\s*>/gi
+    /<(?:[A-Za-z0-9_-]+:)?response\\b[\\s\\S]*?<\\/(?:[A-Za-z0-9_-]+:)?response\\s*>/gi
   ) || [];
 
-  if (!/<(?:[A-Za-z0-9_-]+:)?multistatus\b/i.test(xml)
-    || !/<\/(?:[A-Za-z0-9_-]+:)?multistatus\s*>\s*$/i.test(xml)
-    || (xml.match(/<(?:[A-Za-z0-9_-]+:)?response\b/gi) || []).length !== blocks.length) {
+  if (!/<(?:[A-Za-z0-9_-]+:)?multistatus\\b/i.test(xml)
+    || !/<\\/(?:[A-Za-z0-9_-]+:)?multistatus\\s*>\\s*$/i.test(xml)
+    || (xml.match(/<(?:[A-Za-z0-9_-]+:)?response\\b/gi) || []).length !== blocks.length) {
     throw new Error('iCloud 日历列表不完整，已停止同步');
   }
-  return blocks.map((block) => {
-    const href = resolveCaldavHref(xmlLocalTagText(block, 'href'), response.url || calendar.url);
+
+  const items = [];
+  for (const block of blocks) {
+    const rawHref = xmlLocalTagText(block, 'href');
+    if (!rawHref) throw new Error('iCloud 日历列表缺少事项地址，已停止同步');
+    const href = icloudCalendarResourceUrl(resolveCaldavHref(rawHref, response.url || calendar.url), calendar.url);
     const etag = decodeXmlText(xmlLocalTagText(block, 'getetag'));
     const calendarData = decodeXmlText(xmlLocalTagInner(block, 'calendar-data'));
     const parsed = parseIcloudEvent(calendarData, href, etag, calendar);
-    if (!parsed || !xmlLocalTagText(block, 'href')) throw new Error('iCloud 日历事项无法完整读取，已停止同步以保护本地数据');
-    return parsed;
-  });
+    if (parsed) {
+      items.push(parsed);
+      continue;
+    }
+
+    try {
+      const fallback = await getIcloudEvent(href, credentials, calendar, { allowUnreadable: true });
+      if (fallback) items.push(fallback);
+    } catch (error) {
+      items.push(unreadableIcloudEvent(calendarData, href, etag, calendar, error.message));
+    }
+  }
+  return items;
 }
 
 function ensureAppleCalendarProject(state) {
@@ -709,15 +749,20 @@ function ensureAppleCalendarProject(state) {
   return project;
 }
 
-async function getIcloudEvent(resourceUrl, credentials, calendar) {
+async function getIcloudEvent(resourceUrl, credentials, calendar, options = {}) {
   const response = await fetch(resourceUrl, {
     method: 'GET', redirect: 'error',
     headers: { Authorization: icloudAuthHeader(credentials), Accept: 'text/calendar', 'User-Agent': 'Luma-Todo/1.0 CalDAV' }
   });
   if (response.status === 404 || response.status === 410) return null;
   if (!response.ok) throw new Error('读取 iCloud 事项失败（HTTP ' + response.status + '）');
-  const remote = parseIcloudEvent(await response.text(), resourceUrl, response.headers.get('etag') || '', calendar);
-  if (!remote) throw new Error('iCloud 事项无法解析，暂未修改');
+  const ics = await response.text();
+  const etag = response.headers.get('etag') || '';
+  const remote = parseIcloudEvent(ics, resourceUrl, etag, calendar);
+  if (!remote) {
+    if (options.allowUnreadable) return unreadableIcloudEvent(ics, resourceUrl, etag, calendar, 'Apple 日历事项格式暂不支持');
+    throw new Error('iCloud 事项无法解析，暂未修改');
+  }
   return remote;
 }
 
@@ -727,13 +772,7 @@ async function syncIcloudEvents(state, calendarUrl) {
   const calendar = (credentials.calendars || []).find((item) => item.url === calendarUrl);
   if (!calendar) throw new Error('请先选择一个 iCloud 日历');
   if (!state || !Array.isArray(state.tasks) || !Array.isArray(state.projects)) throw new Error('Luma 同步数据无效');
-  const resource = (href) => {
-    const target = new URL(href);
-    const selected = new URL(ensureCalendarUrl(calendar.url));
-    if (target.protocol !== 'https:' || target.origin !== selected.origin || !target.pathname.startsWith(selected.pathname)
-      || target.username || target.password || target.search || target.hash) throw new Error('iCloud 事项地址不属于所选日历');
-    return target.href;
-  };
+  const resource = (href) => icloudCalendarResourceUrl(href, calendar.url);
   const result = await syncCalendar(state, calendar, {
     list: () => listIcloudCalendarEvents(credentials, calendar),
     get: (href) => getIcloudEvent(resource(href), credentials, calendar),
