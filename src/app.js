@@ -2664,6 +2664,18 @@ function googleErrorMessage(error) {
   return String(error?.message || error || '未知错误').replace(/^Error invoking remote method '[^']+':\s*/i, '');
 }
 
+function googleExternalCalendarItems() {
+  return state.tasks.filter((task) => task?.googleCalendarExternal || task?.syncTarget === 'external-calendar');
+}
+
+function refreshGoogleCalendarResidueButton() {
+  const button = $('#cleanupGoogleCalendarResidue');
+  if (!button) return;
+  const count = googleExternalCalendarItems().length;
+  button.hidden = Boolean(state.settings.googleConnected) || count === 0;
+  button.textContent = count > 0 ? `清理 Google 日历遗留（${count}）` : '清理 Google 日历遗留';
+}
+
 function renderGoogleStatus(status) {
   const connected = Boolean(status?.connected);
   state.settings.googleConnected = connected;
@@ -2679,6 +2691,7 @@ function renderGoogleStatus(status) {
       $('#googleNote').textContent = '同步多个 Google 日历需要新增权限，请点击“重新授权”。';
     }
   }
+  refreshGoogleCalendarResidueButton();
 }
 
 function googleConflictEntries() {
@@ -2887,6 +2900,28 @@ async function disconnectGoogle(removeExternalCalendarItems = false) {
     button.disabled = false;
     keepButton.disabled = false;
     removeButton.disabled = false;
+  }
+}
+
+
+async function cleanupGoogleCalendarResidue() {
+  const button = $('#cleanupGoogleCalendarResidue');
+  button.disabled = true;
+  try {
+    if (typeof LumaGoogleState === 'undefined' || !LumaGoogleState.removeExternalCalendarItems) {
+      throw new Error('当前版本不支持本地遗留清理');
+    }
+    const cleanup = LumaGoogleState.removeExternalCalendarItems(state);
+    state = normalizeState(cleanup.state);
+    state.settings.googleConnected = false;
+    await persist();
+    render();
+    refreshGoogleCalendarResidueButton();
+    $('#googleNote').textContent = `已从 Luma 清理 ${Number(cleanup.removed || 0)} 项 Google Calendar 遗留；Google 云端未改动。`;
+  } catch (error) {
+    $('#googleNote').textContent = `清理失败：${googleErrorMessage(error)}`;
+  } finally {
+    button.disabled = false;
   }
 }
 
@@ -3410,6 +3445,7 @@ function bindEvents() {
   $('#disconnectGoogle').addEventListener('click', showGoogleDisconnectDialog);
   $('#googleDisconnectKeep').addEventListener('click', () => disconnectGoogle(false));
   $('#googleDisconnectRemove').addEventListener('click', () => disconnectGoogle(true));
+  $('#cleanupGoogleCalendarResidue').addEventListener('click', cleanupGoogleCalendarResidue);
   $('#resolveGoogleConflicts').addEventListener('click', showGoogleConflict);
   $('#connectIcloud').addEventListener('click', connectOrSyncIcloud);
   $('#disconnectIcloud').addEventListener('click', disconnectIcloud);
