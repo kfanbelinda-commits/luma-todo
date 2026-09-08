@@ -192,6 +192,21 @@ function googleCalendarSnapshotEqual(a, b) {
   return equal(normalizeGoogleCalendarSnapshot(a), normalizeGoogleCalendarSnapshot(b));
 }
 
+
+function remoteChangedSinceGoogleSnapshot({
+  base,
+  remote,
+  previousRemoteUpdatedAt = 0,
+  remoteUpdatedAt = 0,
+  equalSnapshot,
+}) {
+  if (!remote) return false;
+  if (base) return !equalSnapshot(base, remote);
+  const previous = Number(previousRemoteUpdatedAt || 0);
+  if (!previous) return true;
+  return Number(remoteUpdatedAt || 0) > previous;
+}
+
 module.exports = {
   NATIVE_FIELDS,
   googleTaskLocalSnapshot,
@@ -202,4 +217,5 @@ module.exports = {
   normalizeGoogleCalendarSnapshot,
   reconcileGoogleCalendar,
   googleCalendarSnapshotEqual,
+  remoteChangedSinceGoogleSnapshot,
 };
