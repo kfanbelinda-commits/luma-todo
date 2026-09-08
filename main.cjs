@@ -12,6 +12,7 @@ const {
   remoteChangedSinceGoogleSnapshot,
 } = require('./main/google-reconcile.cjs');
 const { parseGoogleTaskNotes, buildGoogleTaskNotes } = require('./main/google-task-notes.cjs');
+const { collectGoogleCalendarReads, classifyLumaDuplicates } = require('./main/google-sync-safety.cjs');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -1218,14 +1219,32 @@ async function listEventsForCalendar(calendar, { lumaOnly = false } = {}) {
 }
 
 async function listGoogleCalendarEvents() {
-  const calendars = await listGoogleCalendars();
-  const pages = await Promise.all(calendars.flatMap((calendar) => [
-    listEventsForCalendar(calendar),
-    listEventsForCalendar(calendar, { lumaOnly: true }),
-  ]));
+  let calendars;
+  try {
+    calendars = await listGoogleCalendars();
+  } catch (error) {
+    return {
+      events: [],
+      failedCalendarIds: new Set(),
+      failures: [{ calendarId: '*', calendarName: 'Google Calendar', error: String(error.message || error) }],
+      allCalendarsUnavailable: true,
+      primaryCalendarId: '',
+    };
+  }
+
+  const collected = await collectGoogleCalendarReads(
+    calendars,
+    (calendar, lumaOnly) => listEventsForCalendar(calendar, { lumaOnly })
+  );
   const unique = new Map();
-  pages.flat().forEach((event) => unique.set(calendarEventKey(calendarIdForEvent(event), event.id), event));
-  return [...unique.values()];
+  collected.events.forEach((event) => unique.set(calendarEventKey(calendarIdForEvent(event), event.id), event));
+  return {
+    events: [...unique.values()],
+    failedCalendarIds: collected.failedCalendarIds,
+    failures: collected.failures,
+    allCalendarsUnavailable: false,
+    primaryCalendarId: String(calendars.find((calendar) => calendar.primary)?.id || ''),
+  };
 }
 
 async function listGoogleTasks() {
@@ -1319,7 +1338,127 @@ async function syncGoogleState(state) {
   state.tasks ??= [];
   state.projects ??= [];
   state.googleDeletedItems = Array.isArray(state.googleDeletedItems) ? state.googleDeletedItems : [];
-  const [calendarEvents, googleTasks] = await Promise.all([listGoogleCalendarEvents(), listGoogleTasks()]);
+  const [calendarResult, tasksResult] = await Promise.allSettled([
+    listGoogleCalendarEvents(),
+    listGoogleTasks(),
+  ]);
+  const calendarRead = calendarResult.status === 'fulfilled'
+    ? calendarResult.value
+    : {
+        events: [],
+        failedCalendarIds: new Set(),
+        failures: [{ calendarId: '*', calendarName: 'Google Calendar', error: String(calendarResult.reason?.message || calendarResult.reason || '读取失败') }],
+        allCalendarsUnavailable: true,
+        primaryCalendarId: '',
+      };
+  const googleTasksAvailable = tasksResult.status === 'fulfilled';
+  let calendarEvents = Array.isArray(calendarRead.events) ? calendarRead.events : [];
+  let googleTasks = googleTasksAvailable ? (tasksResult.value || []) : [];
+
+  const syncTime = Date.now();
+  const retainedTasks = [];
+  let uploaded = 0;
+  let downloaded = 0;
+  let deleted = 0;
+  let conflicts = 0;
+  let failed = (calendarRead.failures || []).length + (googleTasksAvailable ? 0 : 1);
+  let remoteDeletedCount = 0;
+  let externalCalendarDownloaded = 0;
+  let duplicatesRemoved = 0;
+  let duplicatesDeferred = 0;
+  const failureMessages = (calendarRead.failures || []).map((item) =>
+    item.calendarName + '：' + item.error
+  );
+  if (!googleTasksAvailable) {
+    failureMessages.push('Google Tasks：' + String(tasksResult.reason?.message || tasksResult.reason || '读取失败'));
+  }
+
+  const failedCalendarIds = calendarRead.failedCalendarIds instanceof Set
+    ? calendarRead.failedCalendarIds
+    : new Set(calendarRead.failedCalendarIds || []);
+  const calendarUnavailable = (calendarId = 'primary') => {
+    if (calendarRead.allCalendarsUnavailable) return true;
+    const requested = String(calendarId || 'primary');
+    const resolved = requested === 'primary' && calendarRead.primaryCalendarId
+      ? String(calendarRead.primaryCalendarId)
+      : requested;
+    return failedCalendarIds.has(resolved);
+  };
+
+  const localByTaskId = new Map();
+  const linkedCalendarKeyByTaskId = new Map();
+  const linkedGoogleTaskByTaskId = new Map();
+  for (const task of state.tasks) {
+    if (!task?.id) continue;
+    localByTaskId.set(String(task.id), task);
+    if (task.googleCalendarEventId) linkedCalendarKeyByTaskId.set(String(task.id), String(task.googleCalendarEventId));
+    if (task.googleTaskId) linkedGoogleTaskByTaskId.set(String(task.id), String(task.googleTaskId));
+  }
+  for (const entry of state.googleDeletedItems) {
+    const id = String(entry?.task?.id || '');
+    if (!id) continue;
+    if (!localByTaskId.has(id) && entry.task) localByTaskId.set(id, entry.task);
+    if (entry.googleCalendarEventId) linkedCalendarKeyByTaskId.set(id, String(entry.googleCalendarEventId));
+    if (entry.googleTaskId) linkedGoogleTaskByTaskId.set(id, String(entry.googleTaskId));
+  }
+
+  const calendarDuplicates = classifyLumaDuplicates(calendarEvents, {
+    taskId: (event) => event.extendedProperties?.private?.lumaTodo === 'true'
+      ? calendarTaskDetails(event).taskId
+      : '',
+    remoteKey: (event) => String(event.id || ''),
+    linkedKeyByTaskId: linkedCalendarKeyByTaskId,
+    fingerprint: (event) => {
+      const id = String(calendarTaskDetails(event).taskId || '');
+      return JSON.stringify(googleCalendarRemoteSnapshot(event, localByTaskId.get(id) || {}));
+    },
+    updatedAt: (event) => Date.parse(event.updated || 0) || 0,
+  });
+  calendarEvents = calendarDuplicates.kept;
+  duplicatesDeferred += calendarDuplicates.divergentDuplicates.length;
+  for (const record of calendarDuplicates.safeDuplicates) {
+    const event = record.duplicate;
+    try {
+      await deleteGoogleCalendarEvent(calendarIdForEvent(event), event.id);
+      duplicatesRemoved += 1;
+    } catch (error) {
+      failed += 1;
+      failureMessages.push('重复 Google Calendar 事项 ' + String(event.id || '') + '：' + String(error.message || error));
+    }
+  }
+
+  const googleTaskDuplicates = classifyLumaDuplicates(googleTasks, {
+    taskId: (remoteTask) => googleTaskMetadata(remoteTask)?.taskId || '',
+    remoteKey: (remoteTask) => String(remoteTask.id || ''),
+    linkedKeyByTaskId: linkedGoogleTaskByTaskId,
+    fingerprint: (remoteTask) => {
+      const parts = parseGoogleTaskNotes(remoteTask?.notes);
+      const metadata = { ...(parts.metadata || {}) };
+      delete metadata.version;
+      delete metadata.updatedAt;
+      return JSON.stringify({
+        native: googleTaskRemoteSnapshot(remoteTask),
+        metadata,
+        userNotes: parts.userNotes || '',
+      });
+    },
+    updatedAt: (remoteTask) => Date.parse(remoteTask.updated || 0) || 0,
+  });
+  googleTasks = googleTaskDuplicates.kept;
+  duplicatesDeferred += googleTaskDuplicates.divergentDuplicates.length;
+  if (googleTasksAvailable) {
+    for (const record of googleTaskDuplicates.safeDuplicates) {
+      const remoteTask = record.duplicate;
+      try {
+        await deleteGoogleTasksItem(remoteTask.id);
+        duplicatesRemoved += 1;
+      } catch (error) {
+        failed += 1;
+        failureMessages.push('重复 Google Task ' + String(remoteTask.id || '') + '：' + String(error.message || error));
+      }
+    }
+  }
+
   const calendarByKey = new Map(calendarEvents.map((event) => [calendarEventKey(calendarIdForEvent(event), event.id), event]));
   const calendarById = new Map(calendarEvents.map((event) => [event.id, event]));
   const googleTasksById = new Map(googleTasks.map((task) => [task.id, task]));
@@ -1328,15 +1467,9 @@ async function syncGoogleState(state) {
   const googleTaskByTaskId = new Map(lumaGoogleTasks.map((task) => [googleTaskMetadata(task)?.taskId, task]).filter(([id]) => id));
   const consumedCalendarIds = new Set();
   const consumedGoogleTaskIds = new Set();
-  const remoteProjectMetadata = applyRemoteProjectMetadata(state, googleTasks);
-  const syncTime = Date.now();
-  const retainedTasks = [];
-  let uploaded = 0;
-  let downloaded = 0;
-  let deleted = 0;
-  let conflicts = 0;
-  let remoteDeletedCount = 0;
-  let externalCalendarDownloaded = 0;
+  const remoteProjectMetadata = googleTasksAvailable
+    ? applyRemoteProjectMetadata(state, googleTasks)
+    : { metadataTask: null, remoteUpdatedAt: 0, downloaded: 0, unavailable: true };
   const findCalendarEvent = (task) => {
     if (!task.googleCalendarEventId) return null;
     return calendarByKey.get(calendarEventKey(task.googleCalendarId, task.googleCalendarEventId))
@@ -1349,8 +1482,14 @@ async function syncGoogleState(state) {
   // states and ask the user instead of silently deleting unseen edits.
   const pendingGoogleDeletes = [];
   const deleteOtherGoogleIdentity = async (entry, source) => {
-    if (source !== 'tasks' && entry.googleTaskId) await deleteGoogleTasksItem(entry.googleTaskId);
+    if (source !== 'tasks' && entry.googleTaskId) {
+      if (!googleTasksAvailable) throw new Error('Google Tasks 暂时无法读取，保留待删除记录');
+      await deleteGoogleTasksItem(entry.googleTaskId);
+    }
     if (source !== 'calendar' && entry.googleCalendarEventId) {
+      if (calendarUnavailable(entry.googleCalendarId || 'primary')) {
+        throw new Error('对应 Google Calendar 暂时无法读取，保留待删除记录');
+      }
       await deleteGoogleCalendarEvent(entry.googleCalendarId || 'primary', entry.googleCalendarEventId);
     }
   };
@@ -1358,7 +1497,20 @@ async function syncGoogleState(state) {
     const source = entry.source === 'calendar' ? 'calendar' : 'tasks';
     const previousConflict = entry.googleConflict;
     const resolution = entry.googleResolution;
+    delete entry.googleSyncError;
 
+    if (source === 'tasks' && !googleTasksAvailable) {
+      entry.googleSyncError = 'Google Tasks 暂时无法读取；未判断远端删除';
+      pendingGoogleDeletes.push(entry);
+      continue;
+    }
+    if (source === 'calendar' && calendarUnavailable(entry.googleCalendarId || 'primary')) {
+      entry.googleSyncError = '对应 Google Calendar 暂时无法读取；未判断远端删除';
+      pendingGoogleDeletes.push(entry);
+      continue;
+    }
+
+    try {
     if (source === 'tasks' && entry.googleTaskId) {
       const remote = googleTasksById.get(entry.googleTaskId) || null;
       if (remote) consumedGoogleTaskIds.add(remote.id);
@@ -1511,11 +1663,50 @@ async function syncGoogleState(state) {
 
     // No usable remote identity remains; the local delete is already complete.
     remoteDeletedCount += 1;
+    } catch (error) {
+      entry.googleSyncError = String(error.message || error || 'Google 删除失败');
+      failed += 1;
+      failureMessages.push('待删除事项：' + entry.googleSyncError);
+      if (!pendingGoogleDeletes.includes(entry)) pendingGoogleDeletes.push(entry);
+    }
   }
   state.googleDeletedItems = pendingGoogleDeletes;
 
   for (const task of state.tasks) {
     task.updatedAt ??= task.createdAt || Date.now();
+    delete task.googleSyncError;
+
+    try {
+      if ((task.googleCalendarExternal || task.syncTarget === 'external-calendar')
+        && calendarUnavailable(task.googleCalendarId || 'primary')) {
+        task.googleSyncError = '对应 Google Calendar 暂时无法读取；本地事项保持不变';
+        retainedTasks.push(task);
+        continue;
+      }
+      if (task.syncTarget === 'calendar' && task.dueDate) {
+        if (calendarUnavailable(task.googleCalendarId || 'primary')) {
+          task.googleSyncError = '对应 Google Calendar 暂时无法读取；未判断远端删除或更新';
+          retainedTasks.push(task);
+          continue;
+        }
+        if (task.googleTaskId && !googleTasksAvailable) {
+          task.googleSyncError = 'Google Tasks 暂时无法读取；未执行 Tasks → Calendar 转换';
+          retainedTasks.push(task);
+          continue;
+        }
+      }
+      if (task.syncTarget === 'tasks') {
+        if (!googleTasksAvailable) {
+          task.googleSyncError = 'Google Tasks 暂时无法读取；本地任务保持不变';
+          retainedTasks.push(task);
+          continue;
+        }
+        if (task.googleCalendarEventId && calendarUnavailable(task.googleCalendarId || 'primary')) {
+          task.googleSyncError = '对应 Google Calendar 暂时无法读取；未执行 Calendar → Tasks 转换';
+          retainedTasks.push(task);
+          continue;
+        }
+      }
 
     if (task.googleCalendarExternal || task.syncTarget === 'external-calendar') {
       const remote = findCalendarEvent(task);
@@ -1832,6 +2023,12 @@ async function syncGoogleState(state) {
     }
     task.lastGoogleSyncAt = syncTime;
     retainedTasks.push(task);
+    } catch (error) {
+      task.googleSyncError = String(error.message || error || 'Google 单条同步失败');
+      failed += 1;
+      failureMessages.push((task.title || task.id || '事项') + '：' + task.googleSyncError);
+      if (!retainedTasks.includes(task)) retainedTasks.push(task);
+    }
   }
 
   for (const event of calendarEvents) {
@@ -1901,7 +2098,15 @@ async function syncGoogleState(state) {
   }
 
   state.tasks = retainedTasks;
-  const projectsUploaded = await uploadProjectMetadata(state, remoteProjectMetadata);
+  let projectsUploaded = 0;
+  if (googleTasksAvailable) {
+    try {
+      projectsUploaded = await uploadProjectMetadata(state, remoteProjectMetadata);
+    } catch (error) {
+      failed += 1;
+      failureMessages.push('Google 分类同步：' + String(error.message || error));
+    }
+  }
   return {
     state,
     summary: {
@@ -1909,10 +2114,16 @@ async function syncGoogleState(state) {
       downloaded,
       deleted,
       conflicts,
+      failed,
       remoteDeleted: remoteDeletedCount,
       externalCalendarDownloaded,
       projectsUploaded,
       projectsDownloaded: remoteProjectMetadata.downloaded,
+      calendarReadFailed: (calendarRead.failures || []).length,
+      tasksReadFailed: googleTasksAvailable ? 0 : 1,
+      duplicatesRemoved,
+      duplicatesDeferred,
+      failures: failureMessages.slice(0, 20),
     },
   };
 }

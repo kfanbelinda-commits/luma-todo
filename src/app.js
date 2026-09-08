@@ -2361,6 +2361,11 @@ async function syncGoogle() {
       deleted = 0,
       conflicts = 0,
       remoteDeleted = 0,
+      failed = 0,
+      calendarReadFailed = 0,
+      tasksReadFailed = 0,
+      duplicatesRemoved = 0,
+      duplicatesDeferred = 0,
       externalCalendarDownloaded = 0,
       projectsUploaded = 0,
       projectsDownloaded = 0,
@@ -2371,7 +2376,14 @@ async function syncGoogle() {
     const calendarNote = externalCalendarDownloaded ? `，其中 Google 日历事件 ${externalCalendarDownloaded} 项` : '';
     const remoteDeleteNote = remoteDeleted ? `，远端删除 ${remoteDeleted} 项` : '';
     const conflictNote = conflicts ? `，冲突 ${conflicts} 项` : '';
-    $('#googleNote').textContent = `同步完成：任务上传 ${uploaded} 项、下载 ${downloaded} 项、移除 ${deleted} 项${remoteDeleteNote}${conflictNote}${calendarNote}${projectNote}。`;
+    const failedNote = failed ? `，失败 ${failed} 项` : '';
+    const readNote = calendarReadFailed || tasksReadFailed
+      ? `，读取异常：Calendar ${calendarReadFailed}、Tasks ${tasksReadFailed}`
+      : '';
+    const duplicateNote = duplicatesRemoved || duplicatesDeferred
+      ? `，重复项清理 ${duplicatesRemoved} 项${duplicatesDeferred ? '、保留待确认 ' + duplicatesDeferred + ' 项' : ''}`
+      : '';
+    $('#googleNote').textContent = `同步完成：任务上传 ${uploaded} 项、下载 ${downloaded} 项、移除 ${deleted} 项${remoteDeleteNote}${conflictNote}${failedNote}${readNote}${duplicateNote}${calendarNote}${projectNote}。`;
   } catch (error) {
     $('#googleNote').textContent = `同步失败：${googleErrorMessage(error)}。请确认 Calendar API 和 Tasks API 均已启用。`;
   } finally {
