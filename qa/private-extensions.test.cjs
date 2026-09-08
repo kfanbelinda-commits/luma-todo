@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const crypto = require("node:crypto");
-const { createPrivateExtensionManager } = require("../main/private-extensions.cjs");
+const { createPrivateExtensionManager, isIsoDateKey } = require("../main/private-extensions.cjs");
 
 function encrypt(key, plaintext) {
   const iv = crypto.randomBytes(12);
@@ -112,4 +112,11 @@ test("unsafe plugin paths are rejected after decryption", () => {
     });
     assert.throws(() => manager.installPackage(pack), /不安全|入口/);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+
+test("LuckyDay IPC date validator accepts ISO date keys", () => {
+  assert.equal(isIsoDateKey("2026-09-08"), true);
+  assert.equal(isIsoDateKey("2026-9-8"), false);
+  assert.equal(isIsoDateKey("\\d{4}-09-08"), false);
 });

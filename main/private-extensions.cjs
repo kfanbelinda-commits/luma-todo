@@ -247,4 +247,8 @@ function createPrivateExtensionManager({
   };
 }
 
-module.exports = { createPrivateExtensionManager, normalizeCode, codeHash };
+function isIsoDateKey(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || ""));
+}
+
+module.exports = { createPrivateExtensionManager, normalizeCode, codeHash, isIsoDateKey };

@@ -13,7 +13,7 @@ const {
 } = require('./main/google-reconcile.cjs');
 const { parseGoogleTaskNotes, buildGoogleTaskNotes } = require('./main/google-task-notes.cjs');
 const { collectGoogleCalendarReads, classifyLumaDuplicates } = require('./main/google-sync-safety.cjs');
-const { createPrivateExtensionManager } = require('./main/private-extensions.cjs');
+const { createPrivateExtensionManager, isIsoDateKey } = require('./main/private-extensions.cjs');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -2626,7 +2626,7 @@ trustedHandle('private-extensions:install', async () => {
 trustedHandle('private-extensions:luckyday-summary', (_event, payload) => {
   const dateKey = String(payload?.dateKey || '');
   const hourBranch = Number(payload?.hourBranch);
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dateKey)) throw new Error('LuckyDay 日期格式不正确');
+  if (!isIsoDateKey(dateKey)) throw new Error('LuckyDay 日期格式不正确');
   return privateExtensions.call('luckyday', 'getSummary', { dateKey, hourBranch });
 });
 
