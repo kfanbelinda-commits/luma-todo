@@ -8,10 +8,18 @@
 
   function mergeItem(before, current, returned) {
     const merged = { ...returned };
+    let hasConcurrentLocalEdit = false;
     for (const key of new Set([...Object.keys(before || {}), ...Object.keys(current || {})])) {
       if (syncField(key) || equal(before?.[key], current?.[key])) continue;
+      hasConcurrentLocalEdit = true;
       if (Object.hasOwn(current, key)) merged[key] = structuredClone(current[key]);
       else delete merged[key];
+    }
+    // A task edited after dispatch is not fully represented by this network
+    // result. Keep the previous sync baseline so the next sync still sees that
+    // local work as pending, while accepting new Google ids/remote timestamps.
+    if (hasConcurrentLocalEdit) {
+      merged.lastGoogleSyncAt = Number(current?.lastGoogleSyncAt || before?.lastGoogleSyncAt || 0);
     }
     return merged;
   }
