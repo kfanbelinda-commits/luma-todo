@@ -250,6 +250,7 @@ h3 { font-size: 17px; }
   font-size: 12px;
   line-height: 1.4;
   text-overflow: ellipsis;
+  cursor: text;
 }
 .task-item.completed .task-title { text-decoration: line-through; color: #969eae; }
 .task-meta { display: flex; gap: 7px; align-items: center; margin-top: 3px; color: var(--muted); font-size: 9px; }
