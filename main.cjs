@@ -1318,9 +1318,6 @@ async function syncGoogleState(state) {
   state.tasks ??= [];
   state.projects ??= [];
   state.googleDeletedItems = Array.isArray(state.googleDeletedItems) ? state.googleDeletedItems : [];
-  const queuedRemoteDeleted = state.googleDeletedItems.length;
-  for (const entry of state.googleDeletedItems) await deleteGoogleTask(entry);
-  state.googleDeletedItems = [];
   const [calendarEvents, googleTasks] = await Promise.all([listGoogleCalendarEvents(), listGoogleTasks()]);
   const calendarByKey = new Map(calendarEvents.map((event) => [calendarEventKey(calendarIdForEvent(event), event.id), event]));
   const calendarById = new Map(calendarEvents.map((event) => [event.id, event]));
@@ -1337,6 +1334,7 @@ async function syncGoogleState(state) {
   let downloaded = 0;
   let deleted = 0;
   let conflicts = 0;
+  let remoteDeletedCount = 0;
   let externalCalendarDownloaded = 0;
   const findCalendarEvent = (task) => {
     if (!task.googleCalendarEventId) return null;
@@ -1344,6 +1342,156 @@ async function syncGoogleState(state) {
       || calendarById.get(task.googleCalendarEventId)
       || null;
   };
+
+  // A local delete is compared with the remote version before DELETE. If the
+  // remote item changed after the last successful snapshot, preserve both
+  // states and ask the user instead of silently deleting unseen edits.
+  const pendingGoogleDeletes = [];
+  for (const entry of state.googleDeletedItems) {
+    const source = entry.source === 'calendar' ? 'calendar' : 'tasks';
+    const previousConflict = entry.googleConflict;
+    const resolution = entry.googleResolution;
+
+    if (source === 'tasks' && entry.googleTaskId) {
+      const remote = googleTasksById.get(entry.googleTaskId) || null;
+      if (remote) consumedGoogleTaskIds.add(remote.id);
+      if (!remote || remote.deleted) {
+        remoteDeletedCount += 1;
+        continue;
+      }
+
+      const remoteUpdatedAt = Date.parse(remote.updated || 0);
+      const remoteSnapshot = googleTaskRemoteSnapshot(remote);
+      const baseSnapshot = entry.task?.lastGoogleTaskSnapshot || null;
+      const previousRemoteUpdatedAt = Number(entry.task?.googleRemoteUpdatedAt || 0);
+      const remoteChanged = baseSnapshot
+        ? !googleTaskSnapshotEqual(baseSnapshot, remoteSnapshot)
+        : (!previousRemoteUpdatedAt || remoteUpdatedAt > previousRemoteUpdatedAt);
+      const resolutionFresh = Boolean(
+        previousConflict
+        && resolution
+        && resolution.detectedAt === previousConflict.detectedAt
+        && (!previousConflict.remoteUpdatedAt || previousConflict.remoteUpdatedAt === remoteUpdatedAt)
+      );
+
+      if (remoteChanged && !(resolutionFresh && resolution.choice === 'local')) {
+        if (resolutionFresh && resolution.choice === 'remote' && entry.task) {
+          const restored = structuredClone(entry.task);
+          if (state.tasks.some((task) => task.id === restored.id)) {
+            entry.googleSyncError = '恢复 Google Task 时发现相同本地 ID';
+            pendingGoogleDeletes.push(entry);
+            continue;
+          }
+          applyGoogleTaskNative(restored, remoteSnapshot);
+          const details = googleTaskMetadata(remote);
+          if (details) {
+            applyGoogleTaskMetadata(restored, details);
+            ensureProject(state, details);
+          }
+          restored.googleTaskId = remote.id;
+          restored.googleRemoteUpdatedAt = remoteUpdatedAt;
+          restored.lastGoogleTaskSnapshot = googleTaskLocalSnapshot(restored);
+          restored.lastGoogleSyncAt = syncTime;
+          restored.updatedAt = remoteUpdatedAt;
+          delete restored.googleConflict;
+          delete restored.googleResolution;
+          retainedTasks.push(restored);
+          downloaded += 1;
+          continue;
+        }
+
+        entry.googleConflict = {
+          source: 'tasks',
+          type: 'local-deleted-remote-modified',
+          detectedAt: syncTime,
+          remoteUpdatedAt,
+          local: null,
+          remote: remoteSnapshot,
+          conflictFields: [],
+        };
+        delete entry.googleResolution;
+        conflicts += 1;
+        pendingGoogleDeletes.push(entry);
+        continue;
+      }
+
+      await deleteGoogleTasksItem(remote.id);
+      remoteDeletedCount += 1;
+      continue;
+    }
+
+    if (source === 'calendar' && entry.googleCalendarEventId) {
+      const remote = calendarByKey.get(calendarEventKey(entry.googleCalendarId, entry.googleCalendarEventId))
+        || calendarById.get(entry.googleCalendarEventId)
+        || null;
+      if (remote) consumedCalendarIds.add(calendarEventKey(calendarIdForEvent(remote), remote.id));
+      if (!remote || remote.status === 'cancelled') {
+        remoteDeletedCount += 1;
+        continue;
+      }
+
+      const remoteUpdatedAt = Date.parse(remote.updated || 0);
+      const remoteSnapshot = googleCalendarRemoteSnapshot(remote, entry.task || {});
+      const baseSnapshot = entry.task?.lastGoogleCalendarSnapshot || null;
+      const previousRemoteUpdatedAt = Number(entry.task?.googleRemoteUpdatedAt || 0);
+      const remoteChanged = baseSnapshot
+        ? !googleCalendarSnapshotEqual(baseSnapshot, remoteSnapshot)
+        : (!previousRemoteUpdatedAt || remoteUpdatedAt > previousRemoteUpdatedAt);
+      const resolutionFresh = Boolean(
+        previousConflict
+        && resolution
+        && resolution.detectedAt === previousConflict.detectedAt
+        && (!previousConflict.remoteUpdatedAt || previousConflict.remoteUpdatedAt === remoteUpdatedAt)
+      );
+
+      if (remoteChanged && !(resolutionFresh && resolution.choice === 'local')) {
+        if (resolutionFresh && resolution.choice === 'remote' && entry.task) {
+          const restored = structuredClone(entry.task);
+          if (state.tasks.some((task) => task.id === restored.id)) {
+            entry.googleSyncError = '恢复 Google Calendar 事项时发现相同本地 ID';
+            pendingGoogleDeletes.push(entry);
+            continue;
+          }
+          applyGoogleCalendarSnapshot(restored, remoteSnapshot);
+          const details = calendarTaskDetails(remote);
+          ensureProject(state, details);
+          restored.googleCalendarEventId = remote.id;
+          restored.googleCalendarId = calendarIdForEvent(remote);
+          restored.googleRemoteUpdatedAt = remoteUpdatedAt;
+          restored.lastGoogleCalendarSnapshot = googleCalendarLocalSnapshot(restored);
+          restored.lastGoogleSyncAt = syncTime;
+          restored.updatedAt = remoteUpdatedAt;
+          delete restored.googleConflict;
+          delete restored.googleResolution;
+          retainedTasks.push(restored);
+          downloaded += 1;
+          continue;
+        }
+
+        entry.googleConflict = {
+          source: 'calendar',
+          type: 'local-deleted-remote-modified',
+          detectedAt: syncTime,
+          remoteUpdatedAt,
+          local: null,
+          remote: remoteSnapshot,
+          conflictFields: [],
+        };
+        delete entry.googleResolution;
+        conflicts += 1;
+        pendingGoogleDeletes.push(entry);
+        continue;
+      }
+
+      await deleteGoogleCalendarEvent(calendarIdForEvent(remote), remote.id);
+      remoteDeletedCount += 1;
+      continue;
+    }
+
+    // No usable remote identity remains; the local delete is already complete.
+    remoteDeletedCount += 1;
+  }
+  state.googleDeletedItems = pendingGoogleDeletes;
 
   for (const task of state.tasks) {
     task.updatedAt ??= task.createdAt || Date.now();
@@ -1692,6 +1840,7 @@ async function syncGoogleState(state) {
       lastGoogleSyncAt: syncTime,
     };
     applyCalendarEvent(task, event);
+    if (isLumaEvent) task.lastGoogleCalendarSnapshot = googleCalendarLocalSnapshot(task);
     if (!isLumaEvent) {
       task.itemType = 'event';
       task.projectId = project.id;
@@ -1739,7 +1888,7 @@ async function syncGoogleState(state) {
       downloaded,
       deleted,
       conflicts,
-      remoteDeleted: queuedRemoteDeleted,
+      remoteDeleted: remoteDeletedCount,
       externalCalendarDownloaded,
       projectsUploaded,
       projectsDownloaded: remoteProjectMetadata.downloaded,
