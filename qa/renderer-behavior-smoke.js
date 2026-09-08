@@ -123,6 +123,13 @@
   conflictButton.dispatchEvent(new Event('pointerdown', { bubbles: true }));
   assertQa(settingsDialog.open, 'Interacting with Apple conflict dialog closed Settings');
   conflictDialog.close();
+
+  const googleConflictDialog = document.querySelector('#googleConflictDialog');
+  assertQa(googleConflictDialog, 'Google conflict dialog is missing');
+  googleConflictDialog.showModal();
+  document.querySelector('#googleKeepLocal').dispatchEvent(new Event('pointerdown', { bubbles: true }));
+  assertQa(settingsDialog.open, 'Interacting with Google conflict dialog closed Settings');
+  googleConflictDialog.close();
   settingsDialog.close();
 
   // Cleanup is demo-only and keeps repeated CI runs deterministic.
@@ -140,7 +147,8 @@
       'restore completed todo',
       'expand collapse',
       'opacity survives calendar expand',
-      'iCloud conflict keeps settings open'
+      'iCloud conflict keeps settings open',
+      'Google conflict keeps settings open'
     ]
   };
 })()

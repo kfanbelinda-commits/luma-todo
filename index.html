@@ -195,6 +195,26 @@
       <button id="taskDeleteAction" class="task-menu-action danger" type="button">删除任务</button>
     </div>
 
+    <dialog id="googleConflictDialog" class="modal" aria-labelledby="googleConflictTitle">
+      <form method="dialog">
+        <div class="modal-title"><h3 id="googleConflictTitle">Google 同步冲突</h3><button type="submit" class="icon-button" aria-label="关闭">×</button></div>
+        <div class="project-form-actions">
+          <button id="googleConflictPrevious" type="button" class="soft-button">上一条</button>
+          <span id="googleConflictPosition" class="settings-note" aria-live="polite"></span>
+          <button id="googleConflictNext" type="button" class="soft-button">下一条</button>
+        </div>
+        <p id="googleConflictReason" class="settings-note"></p>
+        <label>Luma<textarea id="googleConflictLocal" rows="4" readonly></textarea></label>
+        <label id="googleConflictRemoteLabel">Google Tasks<textarea id="googleConflictRemote" rows="4" readonly></textarea></label>
+        <p class="settings-note">选择后会重新同步。若 Google 内容又有变化，会重新保留冲突供确认。</p>
+        <div class="project-form-actions">
+          <button id="googleKeepLocal" type="button" class="soft-button">保留 Luma</button>
+          <button id="googleKeepRemote" type="button" class="soft-button">保留 Google</button>
+          <button type="submit" class="soft-button">稍后处理</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="icloudConflictDialog" class="modal" aria-labelledby="icloudConflictTitle">
       <form method="dialog">
         <div class="modal-title"><h3 id="icloudConflictTitle">Apple 同步冲突</h3><button type="submit" class="icon-button" aria-label="关闭">×</button></div>
@@ -299,6 +319,7 @@
               </div>
             </div>
             <p id="googleNote" class="settings-note sync-note">同步 Luma 待办与 Google Calendar。</p>
+            <button id="resolveGoogleConflicts" type="button" class="soft-button" hidden>处理同步冲突</button>
           </section>
 
           <section class="sync-card apple-sync-card">

@@ -2243,6 +2243,73 @@ function renderGoogleStatus(status) {
   }
 }
 
+function googleConflictEntries() {
+  return state.tasks.filter((task) => task.googleConflict);
+}
+
+function refreshGoogleConflictButton() {
+  const button = $('#resolveGoogleConflicts');
+  if (!button) return;
+  const count = googleConflictEntries().length;
+  button.hidden = count === 0;
+  button.textContent = '处理同步冲突（' + count + '）';
+}
+
+function showGoogleConflict(requestedIndex = 0) {
+  if (googleRequestInFlight) return;
+  const entries = googleConflictEntries();
+  const index = Math.max(0, Math.min(Number.isInteger(requestedIndex) ? requestedIndex : 0, entries.length - 1));
+  const entry = entries[index];
+  if (!entry) { refreshGoogleConflictButton(); return; }
+
+  const conflict = entry.googleConflict;
+  const fieldNames = { title: '标题', dueDate: '日期', completed: '完成状态' };
+  const fieldText = (conflict.conflictFields || []).map((field) => fieldNames[field] || field).join('、');
+  const reasons = {
+    'both-modified': fieldText ? 'Luma 和 Google 都修改了' + fieldText + '。' : 'Luma 和 Google 修改了同一内容。',
+    'missing-baseline': '这条旧任务尚无安全同步基线，需要确认保留哪一版。',
+    'remote-deleted-local-modified': 'Google 已删除这条任务，但 Luma 仍有新的修改。',
+  };
+  const format = (value) => value === null
+    ? '已删除'
+    : [
+      value.title || '未命名任务',
+      '日期：' + (value.dueDate || '无'),
+      value.completed ? '已完成' : '未完成',
+    ].join('\n');
+
+  $('#googleConflictPosition').textContent = (index + 1) + ' / ' + entries.length;
+  $('#googleConflictPrevious').disabled = index === 0;
+  $('#googleConflictNext').disabled = index === entries.length - 1;
+  $('#googleConflictPrevious').onclick = () => showGoogleConflict(index - 1);
+  $('#googleConflictNext').onclick = () => showGoogleConflict(index + 1);
+  $('#googleConflictReason').textContent = reasons[conflict.type] || '双方内容需要确认。';
+  $('#googleConflictLocal').value = format(conflict.local ?? null);
+  $('#googleConflictRemote').value = format(conflict.remote ?? null);
+  $('#googleConflictRemoteLabel').firstChild.textContent = conflict.source === 'calendar' ? 'Google Calendar' : 'Google Tasks';
+  $('#googleKeepLocal').textContent = conflict.local === null ? '保留 Luma 删除' : '保留 Luma';
+  $('#googleKeepRemote').textContent = conflict.remote === null ? '保留 Google 删除' : '保留 Google';
+
+  let choosing = false;
+  const choose = async (choice) => {
+    if (choosing || googleRequestInFlight) return;
+    choosing = true;
+    entry.googleResolution = { choice, detectedAt: conflict.detectedAt };
+    try {
+      await persist();
+      $('#googleConflictDialog').close();
+      await syncGoogle();
+    } catch (error) {
+      $('#googleConflictReason').textContent = '保存选择失败：' + googleErrorMessage(error);
+    } finally {
+      choosing = false;
+    }
+  };
+  $('#googleKeepLocal').onclick = () => choose('local');
+  $('#googleKeepRemote').onclick = () => choose('remote');
+  if (!$('#googleConflictDialog').open) $('#googleConflictDialog').showModal();
+}
+
 async function refreshGoogleStatus() {
   try {
     const status = await window.luma?.googleStatus();
@@ -2273,6 +2340,7 @@ async function syncGoogle() {
       uploaded = 0,
       downloaded = 0,
       deleted = 0,
+      conflicts = 0,
       remoteDeleted = 0,
       externalCalendarDownloaded = 0,
       projectsUploaded = 0,
@@ -2283,12 +2351,14 @@ async function syncGoogle() {
       : '';
     const calendarNote = externalCalendarDownloaded ? `，其中 Google 日历事件 ${externalCalendarDownloaded} 项` : '';
     const remoteDeleteNote = remoteDeleted ? `，远端删除 ${remoteDeleted} 项` : '';
-    $('#googleNote').textContent = `同步完成：任务上传 ${uploaded} 项、下载 ${downloaded} 项、移除 ${deleted} 项${remoteDeleteNote}${calendarNote}${projectNote}。`;
+    const conflictNote = conflicts ? `，冲突 ${conflicts} 项` : '';
+    $('#googleNote').textContent = `同步完成：任务上传 ${uploaded} 项、下载 ${downloaded} 项、移除 ${deleted} 项${remoteDeleteNote}${conflictNote}${calendarNote}${projectNote}。`;
   } catch (error) {
     $('#googleNote').textContent = `同步失败：${googleErrorMessage(error)}。请确认 Calendar API 和 Tasks API 均已启用。`;
   } finally {
     googleRequestInFlight = false;
     button.disabled = false;
+    refreshGoogleConflictButton();
   }
 }
 
@@ -2793,9 +2863,9 @@ function bindEvents() {
   document.addEventListener('pointerdown', (event) => {
     if (!settingsDialog.open || settingsDialog.classList.contains('closing')) return;
     if (settingsDialog.contains(event.target) || event.target.closest('#settingsButton')) return;
-    // Apple conflict resolution is launched from Settings. Interacting with
-    // that temporary dialog must not dismiss the Settings panel underneath.
-    if (event.target.closest('#icloudConflictDialog')) return;
+    // Sync conflict dialogs are launched from Settings. Interacting with them
+    // must not dismiss the Settings panel underneath.
+    if (event.target.closest('#icloudConflictDialog') || event.target.closest('#googleConflictDialog')) return;
     closeSettingsDialog();
   });
   settingsDialog.addEventListener('close', () => {
@@ -2825,12 +2895,13 @@ function bindEvents() {
   });
   $('#connectGoogle').addEventListener('click', connectOrSyncGoogle);
   $('#disconnectGoogle').addEventListener('click', disconnectGoogle);
+  $('#resolveGoogleConflicts').addEventListener('click', showGoogleConflict);
   $('#connectIcloud').addEventListener('click', connectOrSyncIcloud);
   $('#disconnectIcloud').addEventListener('click', disconnectIcloud);
   $('#resolveIcloudConflicts').addEventListener('click', showIcloudConflict);
   $('#icloudCalendarSelect').addEventListener('change', refreshIcloudConflictButton);
   window.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && $('#icloudConflictDialog').open) return;
+    if (event.key === 'Escape' && ($('#icloudConflictDialog').open || $('#googleConflictDialog').open)) return;
     if (event.key === 'Escape' && settingsDialog.open) {
       closeSettingsDialog();
       return;
@@ -2860,6 +2931,7 @@ async function init() {
   renderColorChoices();
   render();
   await Promise.all([refreshGoogleStatus(), refreshIcloudStatus()]);
+  refreshGoogleConflictButton();
   refreshIcloudConflictButton();
 }
 

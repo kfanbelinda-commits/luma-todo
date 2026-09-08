@@ -1,10 +1,13 @@
-#icloudConflictDialog {
+#icloudConflictDialog,
+#googleConflictDialog {
   width: min(390px, calc(100vw - 24px));
   max-height: calc(100vh - 24px);
   box-sizing: border-box;
 }
-#icloudConflictDialog form { gap: 12px; }
-#icloudConflictDialog textarea {
+#icloudConflictDialog form,
+#googleConflictDialog form { gap: 12px; }
+#icloudConflictDialog textarea,
+#googleConflictDialog textarea {
   width: 100%;
   box-sizing: border-box;
   resize: vertical;
@@ -17,4 +20,5 @@
   font-size: 12px;
   line-height: 1.4;
 }
-#icloudConflictDialog .project-form-actions { flex-wrap: wrap; }
+#icloudConflictDialog .project-form-actions,
+#googleConflictDialog .project-form-actions { flex-wrap: wrap; }

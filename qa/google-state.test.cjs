@@ -32,12 +32,17 @@ const state = (task, extras = {}) => ({
 test('concurrent local edit survives returned Google sync metadata', () => {
   const before = state(baseTask());
   const current = state(baseTask({ title: 'Edited while syncing', updatedAt: 30 }));
-  const returned = state(baseTask({ googleRemoteUpdatedAt: 20, lastGoogleSyncAt: 20 }));
+  const returned = state(baseTask({
+    googleRemoteUpdatedAt: 20,
+    lastGoogleSyncAt: 20,
+    googleConflict: { source: 'tasks', type: 'both-modified', detectedAt: 20 },
+  }));
   const merged = mergeResult(before, current, returned);
   assert.equal(merged.tasks[0].title, 'Edited while syncing');
   assert.equal(merged.tasks[0].updatedAt, 30);
   assert.equal(merged.tasks[0].googleRemoteUpdatedAt, 20);
   assert.equal(merged.tasks[0].lastGoogleSyncAt, 10);
+  assert.equal(merged.tasks[0].googleConflict, undefined);
 });
 
 test('unchanged local task follows remote deletion', () => {

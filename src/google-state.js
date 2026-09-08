@@ -20,6 +20,11 @@
     // local work as pending, while accepting new Google ids/remote timestamps.
     if (hasConcurrentLocalEdit) {
       merged.lastGoogleSyncAt = Number(current?.lastGoogleSyncAt || before?.lastGoogleSyncAt || 0);
+      // A conflict computed from the dispatched copy may no longer describe
+      // the live local values. Recompute it on the next sync instead of
+      // presenting stale choices to the user.
+      delete merged.googleConflict;
+      delete merged.googleResolution;
     }
     return merged;
   }
