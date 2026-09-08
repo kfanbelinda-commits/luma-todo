@@ -96,6 +96,8 @@ function normalizeState(input) {
         googleCalendarId: String(item.googleCalendarId || ''),
         deletedAt: Number(item.deletedAt || 0),
         task: item.task || null,
+        googleConflict: item.googleConflict || null,
+        googleResolution: item.googleResolution || null,
         googleSyncError: String(item.googleSyncError || ''),
       }))
     : [];
@@ -2244,7 +2246,10 @@ function renderGoogleStatus(status) {
 }
 
 function googleConflictEntries() {
-  return state.tasks.filter((task) => task.googleConflict);
+  return [
+    ...state.tasks.filter((task) => task.googleConflict),
+    ...(state.googleDeletedItems || []).filter((item) => item.googleConflict),
+  ];
 }
 
 function refreshGoogleConflictButton() {
@@ -2263,20 +2268,34 @@ function showGoogleConflict(requestedIndex = 0) {
   if (!entry) { refreshGoogleConflictButton(); return; }
 
   const conflict = entry.googleConflict;
-  const fieldNames = { title: '标题', dueDate: '日期', completed: '完成状态' };
+  const fieldNames = {
+    title: '标题', dueDate: '开始日期', time: '开始时间', endDate: '结束日期', endTime: '结束时间',
+    completed: '完成状态', itemType: '类型', eventColor: '颜色', projectId: '分类', reminder: '提醒', order: '排序',
+  };
   const fieldText = (conflict.conflictFields || []).map((field) => fieldNames[field] || field).join('、');
   const reasons = {
     'both-modified': fieldText ? 'Luma 和 Google 都修改了' + fieldText + '。' : 'Luma 和 Google 修改了同一内容。',
     'missing-baseline': '这条旧任务尚无安全同步基线，需要确认保留哪一版。',
-    'remote-deleted-local-modified': 'Google 已删除这条任务，但 Luma 仍有新的修改。',
+    'remote-deleted-local-modified': 'Google 已删除这条事项，但 Luma 仍有新的修改。',
+    'local-deleted-remote-modified': 'Luma 已删除这条事项，但 Google 端还有新的修改。',
+    'schedule-conflict': '双方都修改了日期或时间，合并后无法可靠保持原来的时间安排。',
+    'invalid-schedule': '双方修改合并后会形成无效的开始/结束时间。',
   };
-  const format = (value) => value === null
-    ? '已删除'
-    : [
+  const format = (value) => {
+    if (value === null) return '已删除';
+    if (conflict.source === 'calendar') {
+      const start = (value.dueDate || '无日期') + (value.time ? ' ' + value.time : ' · 全天');
+      const end = value.endDate
+        ? value.endDate + (value.endTime ? ' ' + value.endTime : '')
+        : '';
+      return [value.title || '未命名日程', '开始：' + start, end ? '结束：' + end : '', value.itemType === 'todo' ? (value.completed ? '已完成' : '未完成') : '日程'].filter(Boolean).join('\n');
+    }
+    return [
       value.title || '未命名任务',
       '日期：' + (value.dueDate || '无'),
       value.completed ? '已完成' : '未完成',
     ].join('\n');
+  };
 
   $('#googleConflictPosition').textContent = (index + 1) + ' / ' + entries.length;
   $('#googleConflictPrevious').disabled = index === 0;
