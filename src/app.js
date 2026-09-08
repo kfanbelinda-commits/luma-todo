@@ -85,6 +85,9 @@ let collapsedProjects = new Set();
 let privateExtensionStatus = { activated: false, plugins: [], luckyDay: null };
 let privateExtensionsRevealed = false;
 let luckyDaySelectedHourBranch = null;
+const luckyDayMarkCache = new Map();
+const luckyDayLoadedRanges = new Set();
+const luckyDayRangeRequests = new Map();
 
 function normalizeState(input) {
   if (!input || !Array.isArray(input.tasks) || !Array.isArray(input.projects)) return structuredClone(seedState);
@@ -165,9 +168,67 @@ async function persist() {
   await window.luma?.save(state);
 }
 
+function luckyDayMarkForDate(dateKey) {
+  if (!privateExtensionStatus.luckyDay) return null;
+  return luckyDayMarkCache.get(String(dateKey || '')) || null;
+}
+
+function clearLuckyDayMarkCache() {
+  luckyDayMarkCache.clear();
+  luckyDayLoadedRanges.clear();
+  luckyDayRangeRequests.clear();
+}
+
+async function ensureLuckyDayMarksRange(startDate, endDate) {
+  if (!privateExtensionStatus.luckyDay || !window.luma?.luckyDayDayMarks) return;
+  const rangeKey = String(startDate) + '|' + String(endDate);
+  if (luckyDayLoadedRanges.has(rangeKey)) return;
+  if (luckyDayRangeRequests.has(rangeKey)) return luckyDayRangeRequests.get(rangeKey);
+
+  const request = (async () => {
+    try {
+      const payload = await window.luma.luckyDayDayMarks({ startDate, endDate });
+      const cursor = fromDateKey(startDate);
+      const end = fromDateKey(endDate);
+      while (cursor <= end) {
+        luckyDayMarkCache.delete(toDateKey(cursor));
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      for (const mark of payload?.marks || []) {
+        if (!mark?.dateKey || !['cheng', 'chu'].includes(mark.type)) continue;
+        luckyDayMarkCache.set(mark.dateKey, {
+          dateKey: mark.dateKey,
+          type: mark.type,
+          label: mark.type === 'cheng' ? '成日' : '除日',
+          short: mark.type === 'cheng' ? '成' : '除',
+        });
+      }
+      luckyDayLoadedRanges.add(rangeKey);
+      if (typeof renderCalendar === 'function') renderCalendar();
+      window.LumaWeekView?.refresh?.();
+    } catch (error) {
+      if ($('#privateExtensionStatus') && /不受支持|入口无效|版本/.test(String(error?.message || ''))) {
+        $('#privateExtensionStatus').textContent = 'LuckyDay 日期标记需要安装 0.3.0 或更高版本插件。';
+      }
+    } finally {
+      luckyDayRangeRequests.delete(rangeKey);
+    }
+  })();
+  luckyDayRangeRequests.set(rangeKey, request);
+  return request;
+}
+
+window.LumaLuckyDayMarks = {
+  get: luckyDayMarkForDate,
+  ensureRange: ensureLuckyDayMarksRange,
+  clear: clearLuckyDayMarkCache,
+};
+
 function renderPrivateExtensionStatus(status = privateExtensionStatus) {
+  const previousLuckyVersion = privateExtensionStatus?.luckyDay?.version || '';
   privateExtensionStatus = status || { activated: false, plugins: [], luckyDay: null };
   const luckyDay = privateExtensionStatus.luckyDay || null;
+  if ((luckyDay?.version || '') !== previousLuckyVersion) clearLuckyDayMarkCache();
   const settings = $('#privateExtensionsSettings');
   if (settings) settings.hidden = !(privateExtensionsRevealed || privateExtensionStatus.activated || luckyDay);
   const summary = $('#privateExtensionSummary');
