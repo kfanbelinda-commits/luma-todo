@@ -336,6 +336,19 @@
               <span class="private-extension-enabled">已启用</span>
             </div>
             <button id="installPrivateExtension" type="button" class="soft-button private-extension-install" hidden>安装扩展文件</button>
+            <div id="luckyDayIcloudPanel" class="luckyday-icloud-panel" hidden>
+              <div class="private-extension-divider"></div>
+              <div class="private-extension-subtitle"><strong>成日 / 除日到 iPhone</strong><small>私人扩展</small></div>
+              <p class="local-hint">Luma 内只显示日期标记；iPhone 端写入单独的 iCloud Calendar，作为全天透明日历项。</p>
+              <label class="luckyday-icloud-target" for="luckyDayIcloudCalendar">
+                <span>iCloud 日历</span>
+                <select id="luckyDayIcloudCalendar" aria-label="选择 LuckyDay iCloud 日历">
+                  <option value="">选择 LuckyDay 日历…</option>
+                </select>
+              </label>
+              <button id="syncLuckyDayIcloud" type="button" class="soft-button">同步成日 / 除日</button>
+              <p id="luckyDayIcloudStatus" class="settings-note"></p>
+            </div>
             <p id="privateExtensionStatus" class="settings-note private-extension-status"></p>
           </div>
         </details>
