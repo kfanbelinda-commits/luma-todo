@@ -1347,6 +1347,12 @@ async function syncGoogleState(state) {
   // remote item changed after the last successful snapshot, preserve both
   // states and ask the user instead of silently deleting unseen edits.
   const pendingGoogleDeletes = [];
+  const deleteOtherGoogleIdentity = async (entry, source) => {
+    if (source !== 'tasks' && entry.googleTaskId) await deleteGoogleTasksItem(entry.googleTaskId);
+    if (source !== 'calendar' && entry.googleCalendarEventId) {
+      await deleteGoogleCalendarEvent(entry.googleCalendarId || 'primary', entry.googleCalendarEventId);
+    }
+  };
   for (const entry of state.googleDeletedItems) {
     const source = entry.source === 'calendar' ? 'calendar' : 'tasks';
     const previousConflict = entry.googleConflict;
@@ -1356,6 +1362,7 @@ async function syncGoogleState(state) {
       const remote = googleTasksById.get(entry.googleTaskId) || null;
       if (remote) consumedGoogleTaskIds.add(remote.id);
       if (!remote || remote.deleted) {
+        await deleteOtherGoogleIdentity(entry, 'tasks');
         remoteDeletedCount += 1;
         continue;
       }
@@ -1393,6 +1400,7 @@ async function syncGoogleState(state) {
           restored.lastGoogleTaskSnapshot = googleTaskLocalSnapshot(restored);
           restored.lastGoogleSyncAt = syncTime;
           restored.updatedAt = remoteUpdatedAt;
+          await deleteOtherGoogleIdentity(entry, 'tasks');
           delete restored.googleConflict;
           delete restored.googleResolution;
           retainedTasks.push(restored);
@@ -1416,6 +1424,7 @@ async function syncGoogleState(state) {
       }
 
       await deleteGoogleTasksItem(remote.id);
+      await deleteOtherGoogleIdentity(entry, 'tasks');
       remoteDeletedCount += 1;
       continue;
     }
@@ -1426,6 +1435,7 @@ async function syncGoogleState(state) {
         || null;
       if (remote) consumedCalendarIds.add(calendarEventKey(calendarIdForEvent(remote), remote.id));
       if (!remote || remote.status === 'cancelled') {
+        await deleteOtherGoogleIdentity(entry, 'calendar');
         remoteDeletedCount += 1;
         continue;
       }
@@ -1461,6 +1471,7 @@ async function syncGoogleState(state) {
           restored.lastGoogleCalendarSnapshot = googleCalendarLocalSnapshot(restored);
           restored.lastGoogleSyncAt = syncTime;
           restored.updatedAt = remoteUpdatedAt;
+          await deleteOtherGoogleIdentity(entry, 'calendar');
           delete restored.googleConflict;
           delete restored.googleResolution;
           retainedTasks.push(restored);
@@ -1484,6 +1495,7 @@ async function syncGoogleState(state) {
       }
 
       await deleteGoogleCalendarEvent(calendarIdForEvent(remote), remote.id);
+      await deleteOtherGoogleIdentity(entry, 'calendar');
       remoteDeletedCount += 1;
       continue;
     }
