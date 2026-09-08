@@ -701,6 +701,50 @@ function ensureAppleCalendarProject(state) {
   return project;
 }
 
+function icloudTodoRemoteFields(remote) {
+  const rawTitle = String(remote?.title || '').trim();
+  let completed = Boolean(remote?.lumaCompleted);
+  let title = rawTitle;
+
+  if (/^[✓✔]\s*/u.test(rawTitle)) {
+    completed = true;
+    title = rawTitle.replace(/^[✓✔]\s*/u, '');
+  } else if (/^[□☐]\s*/u.test(rawTitle)) {
+    completed = false;
+    title = rawTitle.replace(/^[□☐]\s*/u, '');
+  }
+
+  return {
+    title: title.trim() || '未命名待办',
+    dueDate: String(remote?.dueDate || ''),
+    time: String(remote?.time || ''),
+    completed,
+  };
+}
+
+function classifyIcloudTodoChange(task, remote) {
+  const remoteChanged = Boolean(task?.lastIcloudEtag && task.lastIcloudEtag !== remote?.etag);
+  const lastSyncAt = Number(task?.lastIcloudSyncAt || 0);
+  const localChanged = lastSyncAt > 0 && Number(task?.updatedAt || 0) > lastSyncAt;
+
+  if (remoteChanged && localChanged) return 'conflict';
+  if (remoteChanged) return 'remote';
+  if (localChanged) return 'local';
+  return 'unchanged';
+}
+
+function applyIcloudTodoRemoteChange(task, remote, syncTime) {
+  const fields = icloudTodoRemoteFields(remote);
+  task.title = fields.title;
+  task.dueDate = fields.dueDate;
+  task.time = fields.time;
+  task.completed = fields.completed;
+  task.updatedAt = syncTime;
+  task.lastIcloudSyncAt = syncTime;
+  delete task.icloudConflict;
+  return task;
+}
+
 function shouldRemoveMissingIcloudItem(task, calendarUrl) {
   return Boolean(
     task
@@ -743,6 +787,7 @@ async function syncIcloudEvents(state, calendarUrl) {
   let unchanged = 0;
   let downloaded = 0;
   let deleted = 0;
+  let conflicts = 0;
 
   // First apply remote changes to Luma-origin items and Todo mirrors.
   const retained = [];
@@ -768,6 +813,27 @@ async function syncIcloudEvents(state, calendarUrl) {
       task.icloudCalendarName = calendar.name;
 
       const remoteChanged = Boolean(task.lastIcloudEtag && task.lastIcloudEtag !== linkedRemote.etag);
+      if (linkedRemote.lumaItemType === 'todo' && task.itemType === 'todo') {
+        const todoChange = classifyIcloudTodoChange(task, linkedRemote);
+        if (todoChange === 'conflict') {
+          task.icloudConflict = {
+            type: 'todo-both-modified',
+            detectedAt: syncTime,
+            remoteEtag: linkedRemote.etag,
+            remote: icloudTodoRemoteFields(linkedRemote),
+          };
+          conflicts += 1;
+        } else if (todoChange === 'remote') {
+          applyIcloudTodoRemoteChange(task, linkedRemote, syncTime);
+          task.lastIcloudEtag = linkedRemote.etag;
+          downloaded += 1;
+        } else {
+          delete task.icloudConflict;
+          task.lastIcloudEtag = linkedRemote.etag;
+        }
+        retained.push(task);
+        continue;
+      }
       if (remoteChanged && linkedRemote.lumaItemType === 'event' && task.itemType === 'event') {
         task.title = linkedRemote.title;
         task.dueDate = linkedRemote.dueDate;
@@ -838,6 +904,10 @@ async function syncIcloudEvents(state, calendarUrl) {
     if (!task || !task.dueDate) continue;
     if (task.googleCalendarExternal || task.syncTarget === 'external-calendar') continue;
     if (task.itemType !== 'event' && task.itemType !== 'todo') continue;
+    if (task.icloudConflict?.type === 'todo-both-modified') {
+      unchanged += 1;
+      continue;
+    }
     if (task.icloudCalendarUrl && task.icloudCalendarUrl !== calendar.url) {
       unchanged += 1;
       continue;
@@ -880,6 +950,7 @@ async function syncIcloudEvents(state, calendarUrl) {
       downloaded,
       deleted,
       remoteDeleted,
+      conflicts,
       calendarName: calendar.name,
       mirroredTodos: state.tasks.filter((task) => task && task.itemType === 'todo' && task.dueDate && !task.googleCalendarExternal).length,
       syncedEvents: state.tasks.filter((task) => task && task.itemType === 'event' && task.dueDate && !task.googleCalendarExternal).length
@@ -1788,6 +1859,9 @@ function createWindow() {
             applyCalendarEvent,
             deleteIcloudEvent,
             shouldRemoveMissingIcloudItem,
+            icloudTodoRemoteFields,
+            classifyIcloudTodoChange,
+            applyIcloudTodoRemoteChange,
           });
           console.log('[Luma Todo] Sync protocol smoke: ' + tested.join(', '));
         } catch (error) {
