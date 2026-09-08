@@ -2852,20 +2852,41 @@ async function connectOrSyncGoogle() {
   }
 }
 
-async function disconnectGoogle() {
+function showGoogleDisconnectDialog() {
+  if (googleRequestInFlight) return;
+  const dialog = $('#googleDisconnectDialog');
+  if (!dialog.open) dialog.showModal();
+}
+
+async function disconnectGoogle(removeExternalCalendarItems = false) {
   const button = $('#disconnectGoogle');
+  const keepButton = $('#googleDisconnectKeep');
+  const removeButton = $('#googleDisconnectRemove');
   button.disabled = true;
+  keepButton.disabled = true;
+  removeButton.disabled = true;
+  $('#googleDisconnectDialog').close();
   try {
     const status = await window.luma?.googleDisconnect();
+    let removed = 0;
+    if (removeExternalCalendarItems && typeof LumaGoogleState !== 'undefined' && LumaGoogleState.removeExternalCalendarItems) {
+      const cleanup = LumaGoogleState.removeExternalCalendarItems(state);
+      state = normalizeState(cleanup.state);
+      removed = Number(cleanup.removed || 0);
+    }
     renderGoogleStatus(status);
     state.settings.googleConnected = false;
     await persist();
     render();
-    $('#googleNote').textContent = '已断开 Google；本地待办不会被删除。';
+    $('#googleNote').textContent = removeExternalCalendarItems
+      ? `已断开 Google；已从 Luma 移除 ${removed} 项 Google Calendar 日程，Google 原日历未删除。`
+      : '已断开 Google；Google Calendar 日程继续保留在 Luma。';
   } catch (error) {
     $('#googleNote').textContent = `断开失败：${googleErrorMessage(error)}`;
   } finally {
     button.disabled = false;
+    keepButton.disabled = false;
+    removeButton.disabled = false;
   }
 }
 
@@ -3342,7 +3363,7 @@ function bindEvents() {
     if (settingsDialog.contains(event.target) || event.target.closest('#settingsButton')) return;
     // Sync conflict dialogs are launched from Settings. Interacting with them
     // must not dismiss the Settings panel underneath.
-    if (event.target.closest('#icloudConflictDialog') || event.target.closest('#googleConflictDialog')) return;
+    if (event.target.closest('#icloudConflictDialog') || event.target.closest('#googleConflictDialog') || event.target.closest('#googleDisconnectDialog')) return;
     closeSettingsDialog();
   });
   settingsDialog.addEventListener('close', () => {
@@ -3386,7 +3407,9 @@ function bindEvents() {
       : '请选择一个单独的 iCloud 日历。';
   });
   $('#connectGoogle').addEventListener('click', connectOrSyncGoogle);
-  $('#disconnectGoogle').addEventListener('click', disconnectGoogle);
+  $('#disconnectGoogle').addEventListener('click', showGoogleDisconnectDialog);
+  $('#googleDisconnectKeep').addEventListener('click', () => disconnectGoogle(false));
+  $('#googleDisconnectRemove').addEventListener('click', () => disconnectGoogle(true));
   $('#resolveGoogleConflicts').addEventListener('click', showGoogleConflict);
   $('#connectIcloud').addEventListener('click', connectOrSyncIcloud);
   $('#disconnectIcloud').addEventListener('click', disconnectIcloud);
@@ -3402,7 +3425,7 @@ function bindEvents() {
       $('#privateExtensionCode').focus();
       return;
     }
-    if (event.key === 'Escape' && ($('#icloudConflictDialog').open || $('#googleConflictDialog').open)) return;
+    if (event.key === 'Escape' && ($('#icloudConflictDialog').open || $('#googleConflictDialog').open || $('#googleDisconnectDialog').open)) return;
     if (event.key === 'Escape' && settingsDialog.open) {
       closeSettingsDialog();
       return;
