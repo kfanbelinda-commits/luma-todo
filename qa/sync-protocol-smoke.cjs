@@ -5,6 +5,9 @@ module.exports = async function runSyncProtocolSmokeTests({
   applyCalendarEvent,
   deleteIcloudEvent,
   shouldRemoveMissingIcloudItem,
+  icloudTodoRemoteFields,
+  classifyIcloudTodoChange,
+  applyIcloudTodoRemoteChange,
 }) {
   const qaAssert = (condition, message) => {
     if (!condition) throw new Error(message);
@@ -154,6 +157,46 @@ module.exports = async function runSyncProtocolSmokeTests({
     'A missing item from another Apple calendar must not remove the Luma item'
   );
 
+  const lastSyncAt = Date.parse('2026-09-05T01:00:00Z');
+  const remoteEditedTodo = {
+    ...parsedTodo,
+    title: '✓ QA edited on iPhone',
+    dueDate: '2026-09-06',
+    time: '11:15',
+    etag: '"todo-etag-remote"',
+    lumaCompleted: false,
+  };
+  const syncedTodo = {
+    ...timedTodo,
+    updatedAt: lastSyncAt,
+    lastIcloudSyncAt: lastSyncAt,
+    lastIcloudEtag: '"todo-etag-old"',
+  };
+  qaAssert(
+    classifyIcloudTodoChange(syncedTodo, remoteEditedTodo) === 'remote',
+    'Apple-only Todo edit was not classified as remote'
+  );
+  const appliedTodo = applyIcloudTodoRemoteChange({ ...syncedTodo }, remoteEditedTodo, lastSyncAt + 1000);
+  qaAssert(appliedTodo.title === 'QA edited on iPhone', 'Apple Todo title prefix was not stripped on pull');
+  qaAssert(appliedTodo.dueDate === '2026-09-06' && appliedTodo.time === '11:15', 'Apple Todo date/time edit was not pulled');
+  qaAssert(appliedTodo.completed === true, 'Apple Todo completion prefix was not pulled');
+
+  const locallyEditedTodo = {
+    ...syncedTodo,
+    title: 'QA edited in Luma',
+    updatedAt: lastSyncAt + 500,
+  };
+  qaAssert(
+    classifyIcloudTodoChange(locallyEditedTodo, { ...remoteEditedTodo, etag: '"todo-etag-old"' }) === 'local',
+    'Luma-only Todo edit was not classified as local'
+  );
+  qaAssert(
+    classifyIcloudTodoChange(locallyEditedTodo, remoteEditedTodo) === 'conflict',
+    'Simultaneous Todo edits were not classified as conflict'
+  );
+  const plainRemoteFields = icloudTodoRemoteFields({ ...remoteEditedTodo, title: 'No prefix title', lumaCompleted: false });
+  qaAssert(plainRemoteFields.title === 'No prefix title' && plainRemoteFields.completed === false, 'Apple Todo plain title handling changed completion unexpectedly');
+
   const originalFetch = global.fetch;
   try {
     let deleteRequest = null;
@@ -182,6 +225,8 @@ module.exports = async function runSyncProtocolSmokeTests({
   }
 
   return [
+    'Apple Todo remote edit pullback',
+    'Apple Todo edit conflict detection',
     'Apple remote deletion removes linked Todo/Event',
     'iCloud DELETE with etag',
     'iCloud DELETE missing remote is idempotent',
