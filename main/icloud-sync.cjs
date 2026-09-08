@@ -106,6 +106,8 @@ function finish(task, value, remote, calendar) {
   delete task.icloudConflict;
   delete task.icloudResolution;
   delete task.icloudSyncError;
+  delete task.icloudPendingHref;
+  delete task.icloudPendingUid;
 }
 
 // The transport is injected so full sync sequences can be tested without Apple
@@ -133,6 +135,7 @@ async function syncCalendar(state, calendar, io) {
   const pending = [];
   for (const entry of state.icloudDeletedItems) {
     if (!entry || entry.calendarUrl !== calendar.url) { pending.push(entry); continue; }
+    delete entry.icloudSyncError;
     let remote = byHref.get(entry.href) || byUid.get(entry.uid) || null;
     consume(remote);
     let removed = false;
@@ -184,6 +187,7 @@ async function syncCalendar(state, calendar, io) {
   const retained = [];
   for (const task of state.tasks) {
     if (!eligible(task)) { retained.push(task); continue; }
+    delete task.icloudSyncError;
     let remote = byHref.get(task.icloudHref) || byUid.get(task.icloudUid) || byId.get(task.id) || null;
     consume(remote);
     const linked = Boolean(task.icloudHref || task.icloudUid);
@@ -236,6 +240,10 @@ async function syncCalendar(state, calendar, io) {
         const href = remote?.href || task.icloudHref || calendar.url.replace(/\/?$/, '/') + encodeURIComponent(uid) + '.ics';
         const upload = { ...task };
         applySnapshot(upload, value);
+        // Retain the attempted resource if a response is lost after Apple saves
+        // it, so a concurrent local deletion can still queue reconciliation.
+        task.icloudPendingHref = href;
+        task.icloudPendingUid = uid;
         try {
           const etag = await io.put(href, upload, uid, remote?.etag || '');
           let saved = { href, uid, etag };

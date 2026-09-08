@@ -2211,9 +2211,16 @@ trustedHandle('icloud:disconnect', () => {
   return { connected: false, email: '', calendars: [], selectedCalendarUrl: '' };
 });
 
-trustedHandle('icloud:sync', (_event, payload) => {
+let icloudSyncInFlight = false;
+trustedHandle('icloud:sync', async (_event, payload) => {
+  if (icloudSyncInFlight) throw new Error('Apple 同步正在进行，请等待完成');
   if (DEMO_MODE) return { state: payload?.state, summary: { created: 0, updated: 0, unchanged: 0, calendarName: '' } };
-  return syncIcloudEvents(payload?.state || {}, String(payload?.calendarUrl || ''));
+  icloudSyncInFlight = true;
+  try {
+    return await syncIcloudEvents(payload?.state || {}, String(payload?.calendarUrl || ''));
+  } finally {
+    icloudSyncInFlight = false;
+  }
 });
 
 trustedHandle('settings:auto-start', (_event, enabled) => {

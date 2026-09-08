@@ -198,6 +198,11 @@
     <dialog id="icloudConflictDialog" class="modal" aria-labelledby="icloudConflictTitle">
       <form method="dialog">
         <div class="modal-title"><h3 id="icloudConflictTitle">Apple 同步冲突</h3><button type="submit" class="icon-button" aria-label="关闭">×</button></div>
+        <div class="project-form-actions">
+          <button id="icloudConflictPrevious" type="button" class="soft-button">上一条</button>
+          <span id="icloudConflictPosition" class="settings-note" aria-live="polite"></span>
+          <button id="icloudConflictNext" type="button" class="soft-button">下一条</button>
+        </div>
         <p id="icloudConflictReason" class="settings-note"></p>
         <label>Luma<textarea id="icloudConflictLocal" rows="5" readonly></textarea></label>
         <label>Apple<textarea id="icloudConflictRemote" rows="5" readonly></textarea></label>
@@ -320,6 +325,11 @@
             </div>
             <p id="icloudNote" class="settings-note apple-sync-note">连接 iCloud Calendar。</p>
             <button id="resolveIcloudConflicts" type="button" class="soft-button" hidden>处理同步冲突</button>
+            <details id="icloudFailures" hidden>
+              <summary class="settings-note">查看同步失败事项</summary>
+              <ul id="icloudFailureList" class="settings-note"></ul>
+              <p class="settings-note">处理原因后，点击“同步”重试。</p>
+            </details>
           </section>
         </div>
         </details>
@@ -344,6 +354,7 @@
     <script src="src/appearance-boot.js"></script>
     <script src="src/lifelog-boot.js"></script>
     <script src="src/cn-holidays.js"></script>
+    <script src="src/icloud-state.js"></script>
     <script src="src/app.js"></script>
     <script src="src/cn-holidays-bind.js"></script>
     <script src="src/local-settings.js"></script>

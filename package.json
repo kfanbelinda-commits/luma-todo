@@ -19,7 +19,7 @@
     "start:real": "electron .",
     "start:demo:reset": "electron . --demo --demo-reset",
     "start:icloud": "electron . --icloud-test",
-    "test:unit": "node --test qa/icloud-sync.test.cjs qa/icloud-transport.test.cjs qa/icloud-ics.test.cjs qa/appearance.test.cjs qa/week-drag.test.cjs qa/cn-holidays.test.cjs qa/local-data.test.cjs",
+    "test:unit": "node --test qa/icloud-state.test.cjs qa/icloud-sync.test.cjs qa/icloud-transport.test.cjs qa/icloud-ics.test.cjs qa/appearance.test.cjs qa/week-drag.test.cjs qa/cn-holidays.test.cjs qa/local-data.test.cjs",
     "demo:covers": "node scripts/download-lifelog-covers.cjs",
     "start:demo:reset-lifelog": "electron . --demo --demo-reset-lifelog"
   },

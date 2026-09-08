@@ -1973,12 +1973,13 @@ async function deleteTask(id) {
       $('#googleNote').textContent = `Google 中的对应事项未能删除：${error.message}`;
     }
   }
-  if (task?.icloudHref && task?.icloudCalendarUrl) {
+  const icloudDeleteHref = task?.icloudHref || task?.icloudPendingHref;
+  if (icloudDeleteHref && task?.icloudCalendarUrl) {
     state.icloudDeletedItems ??= [];
-    state.icloudDeletedItems = state.icloudDeletedItems.filter((item) => item.href !== task.icloudHref);
+    state.icloudDeletedItems = state.icloudDeletedItems.filter((item) => item.href !== icloudDeleteHref);
     state.icloudDeletedItems.push({
-      href: task.icloudHref,
-      uid: task.icloudUid || '',
+      href: icloudDeleteHref,
+      uid: task.icloudUid || task.icloudPendingUid || '',
       etag: task.lastIcloudEtag || task.icloudEtag || '',
       calendarUrl: task.icloudCalendarUrl,
       itemType: task.itemType === 'event' ? 'event' : 'todo',
@@ -2388,11 +2389,30 @@ function refreshIcloudConflictButton() {
   const button = $('#resolveIcloudConflicts');
   button.hidden = count === 0;
   button.textContent = '处理同步冲突（' + count + '）';
+  const calendarUrl = $('#icloudCalendarSelect').value;
+  const failures = [
+    ...state.tasks.filter((task) => task.icloudCalendarUrl === calendarUrl && task.icloudSyncError),
+    ...(state.icloudDeletedItems || []).filter((item) => item.calendarUrl === calendarUrl && item.icloudSyncError),
+  ];
+  $('#icloudFailures').hidden = failures.length === 0;
+  $('#icloudFailureList').replaceChildren(...failures.map((item) => {
+    const row = document.createElement('li');
+    row.textContent = (item.title || item.task?.title || '已删除事项') + (item.href ? '（待同步删除）' : '') + '：' + item.icloudSyncError;
+    return row;
+  }));
 }
 
-function showIcloudConflict() {
-  const entry = icloudConflictEntries()[0];
+function showIcloudConflict(requestedIndex = 0) {
+  if (icloudRequestInFlight) return;
+  const entries = icloudConflictEntries();
+  const index = Math.max(0, Math.min(Number.isInteger(requestedIndex) ? requestedIndex : 0, entries.length - 1));
+  const entry = entries[index];
   if (!entry) { refreshIcloudConflictButton(); return; }
+  $('#icloudConflictPosition').textContent = (index + 1) + ' / ' + entries.length;
+  $('#icloudConflictPrevious').disabled = index === 0;
+  $('#icloudConflictNext').disabled = index === entries.length - 1;
+  $('#icloudConflictPrevious').onclick = () => showIcloudConflict(index - 1);
+  $('#icloudConflictNext').onclick = () => showIcloudConflict(index + 1);
   const conflict = entry.icloudConflict;
   const reasons = {
     'both-modified': '双方修改了相同内容。',
@@ -2418,18 +2438,27 @@ function showIcloudConflict() {
   // Older queue entries do not contain enough information to restore the task.
   $('#icloudKeepRemote').disabled = Boolean(entry.href && !entry.task && conflict.remote);
   if ($('#icloudKeepRemote').disabled) $('#icloudConflictReason').textContent += ' 旧删除记录没有本地副本，暂不能在这里恢复。';
+  let choosing = false;
   const choose = async (choice) => {
+    if (choosing || icloudRequestInFlight) return;
+    choosing = true;
     entry.icloudResolution = { choice, detectedAt: conflict.detectedAt };
-    await persist();
-    $('#icloudConflictDialog').close();
-    await syncIcloud();
+    try {
+      await persist();
+      $('#icloudConflictDialog').close();
+      await syncIcloud();
+    } catch (error) {
+      $('#icloudConflictReason').textContent = '保存选择失败：' + googleErrorMessage(error);
+    } finally { choosing = false; }
   };
   $('#icloudKeepLocal').onclick = () => choose('local');
   $('#icloudKeepRemote').onclick = () => choose('remote');
-  $('#icloudConflictDialog').showModal();
+  if (!$('#icloudConflictDialog').open) $('#icloudConflictDialog').showModal();
 }
 
+let icloudRequestInFlight = false;
 async function syncIcloud() {
+  if (icloudRequestInFlight) return;
   const button = $('#connectIcloud');
   const calendarUrl = $('#icloudCalendarSelect').value;
   if (!calendarUrl) {
@@ -2437,12 +2466,14 @@ async function syncIcloud() {
     return;
   }
 
+  icloudRequestInFlight = true;
+  const dispatchedState = structuredClone(state);
   button.disabled = true;
   $('#resolveIcloudConflicts').disabled = true;
   $('#icloudNote').textContent = '正在同步 Luma 日程与待办到 iCloud…';
   try {
-    const result = await window.luma?.icloudSync({ state, calendarUrl });
-    state = normalizeState(result.state);
+    const result = await window.luma?.icloudSync({ state: dispatchedState, calendarUrl });
+    state = normalizeState(LumaIcloudState.mergeResult(dispatchedState, state, result.state));
     await persist();
     render();
     const summary = result.summary || {};
@@ -2453,6 +2484,7 @@ async function syncIcloud() {
   } catch (error) {
     $('#icloudNote').textContent = '同步失败：' + googleErrorMessage(error);
   } finally {
+    icloudRequestInFlight = false;
     button.disabled = false;
     $('#resolveIcloudConflicts').disabled = false;
     refreshIcloudConflictButton();
