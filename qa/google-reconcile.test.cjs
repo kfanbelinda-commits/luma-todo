@@ -4,6 +4,8 @@ const {
   googleTaskLocalSnapshot,
   googleTaskRemoteSnapshot,
   reconcileGoogleTaskNative,
+  normalizeGoogleCalendarSnapshot,
+  reconcileGoogleCalendar,
 } = require('../main/google-reconcile.cjs');
 
 const base = { title: '报销', dueDate: '2026-09-10', completed: false };
@@ -98,4 +100,54 @@ test('missing baseline freezes ambiguous mismatch', () => {
   });
   assert.equal(result.action, 'conflict');
   assert.equal(result.type, 'missing-baseline');
+});
+
+
+const calendarBase = normalizeGoogleCalendarSnapshot({
+  title: '项目会', dueDate: '2026-09-10', time: '10:00',
+  endDate: '2026-09-10', endTime: '11:00', itemType: 'event',
+  eventColor: '#91a9c7', projectId: 'work', completed: false, reminder: 15, order: 1,
+});
+
+test('Google Calendar different-field edits merge', () => {
+  const result = reconcileGoogleCalendar({
+    base: calendarBase,
+    local: { ...calendarBase, title: '季度项目会' },
+    remote: { ...calendarBase, time: '11:00', endTime: '12:00' },
+  });
+  assert.equal(result.action, 'merge');
+  assert.equal(result.merged.title, '季度项目会');
+  assert.equal(result.merged.time, '11:00');
+  assert.equal(result.merged.endTime, '12:00');
+});
+
+test('Google Calendar same-field edits conflict', () => {
+  const result = reconcileGoogleCalendar({
+    base: calendarBase,
+    local: { ...calendarBase, time: '15:00', endTime: '16:00' },
+    remote: { ...calendarBase, time: '16:00', endTime: '17:00' },
+  });
+  assert.equal(result.action, 'conflict');
+  assert.equal(result.type, 'both-modified');
+  assert(result.conflictFields.includes('time'));
+});
+
+test('Google Calendar coupled all-day/timed changes conflict', () => {
+  const result = reconcileGoogleCalendar({
+    base: calendarBase,
+    local: { ...calendarBase, time: '', endTime: '' },
+    remote: { ...calendarBase, dueDate: '2026-09-11', endDate: '2026-09-11' },
+  });
+  assert.equal(result.action, 'conflict');
+  assert.equal(result.type, 'schedule-conflict');
+});
+
+test('Google Calendar invalid merged schedule is frozen', () => {
+  const result = reconcileGoogleCalendar({
+    base: calendarBase,
+    local: { ...calendarBase, dueDate: '2026-09-12' },
+    remote: { ...calendarBase, endDate: '2026-09-11' },
+  });
+  assert.equal(result.action, 'conflict');
+  assert.equal(result.type, 'invalid-schedule');
 });
