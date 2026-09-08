@@ -1,6 +1,12 @@
 const { app, BrowserWindow, Tray, Menu, ipcMain, dialog, screen, nativeImage, safeStorage, shell } = require('electron');
 const { taskToIcloudIcs, parseIcloudEvent, parseIcloudEventIdentity } = require('./main/icloud-ics.cjs');
 const { syncCalendar } = require('./main/icloud-sync.cjs');
+const {
+  googleTaskLocalSnapshot,
+  googleTaskRemoteSnapshot,
+  reconcileGoogleTaskNative,
+  googleTaskSnapshotEqual,
+} = require('./main/google-reconcile.cjs');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -927,8 +933,10 @@ function previousDateKey(dateKey) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-const LUMA_TASK_NOTES_PREFIX = '[Luma Todo]\n';
-const LUMA_METADATA_NOTES_PREFIX = '[Luma Todo Sync Metadata v1]\n';
+const LUMA_TASK_NOTES_PREFIX = '[Luma Todo]\\n';
+const LUMA_TASK_METADATA_START = '[Luma Todo Metadata v4]';
+const LUMA_TASK_METADATA_END = '[/Luma Todo Metadata]';
+const LUMA_METADATA_NOTES_PREFIX = '[Luma Todo Sync Metadata v1]\\n';
 const LUMA_METADATA_TITLE = 'Luma Todo 同步数据（请勿删除）';
 const FALLBACK_PROJECT_COLORS = ['#7289f5', '#8b6ef5', '#4fb58f', '#f0a85a', '#ef7180', '#4da7c9'];
 const GOOGLE_CALENDAR_PROJECT_ID = 'google-calendar';
@@ -963,9 +971,26 @@ function parseJsonAfterPrefix(notes, prefix) {
   }
 }
 
+function googleTaskNoteParts(notes) {
+  const value = typeof notes === 'string' ? notes : '';
+  const legacy = parseJsonAfterPrefix(value, LUMA_TASK_NOTES_PREFIX);
+  if (legacy) return { metadata: legacy, userNotes: '' };
+
+  const start = value.lastIndexOf(LUMA_TASK_METADATA_START);
+  const end = start >= 0 ? value.indexOf(LUMA_TASK_METADATA_END, start + LUMA_TASK_METADATA_START.length) : -1;
+  if (start < 0 || end < 0) return { metadata: null, userNotes: value };
+  const raw = value.slice(start + LUMA_TASK_METADATA_START.length, end).trim();
+  let metadata = null;
+  try { metadata = JSON.parse(raw); } catch {}
+  const before = value.slice(0, start).replace(/\s+$/, '');
+  const after = value.slice(end + LUMA_TASK_METADATA_END.length).replace(/^\s+/, '');
+  const userNotes = [before, after].filter(Boolean).join('\n\n');
+  return { metadata, userNotes };
+}
+
 function googleTaskMetadata(remoteTask) {
-  const parsed = parseJsonAfterPrefix(remoteTask?.notes, LUMA_TASK_NOTES_PREFIX);
-  if (parsed) return parsed;
+  const parts = googleTaskNoteParts(remoteTask?.notes);
+  if (parts.metadata) return parts.metadata;
   if (typeof remoteTask?.notes !== 'string' || !remoteTask.notes.startsWith(LUMA_TASK_NOTES_PREFIX)) return null;
   const legacyProject = remoteTask.notes.match(/(?:^|\n)分类：([^\n]+)/)?.[1]?.trim();
   return { version: 1, projectId: legacyProject || 'inbox' };
@@ -1012,16 +1037,29 @@ function projectMetadataForTask(state, task) {
   };
 }
 
-function taskNotes(state, task) {
-  return LUMA_TASK_NOTES_PREFIX + JSON.stringify({
-    version: 3,
+function taskNotes(state, task, existingNotes = '') {
+  const metadata = {
+    version: 4,
     taskId: task.id,
     ...projectMetadataForTask(state, task),
     order: Number(task.order ?? task.createdAt ?? 0),
     reminder: task.reminder ?? null,
     time: /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(task.time || '') ? task.time : '',
     updatedAt: Number(task.updatedAt || task.createdAt || Date.now()),
-  });
+  };
+  const { userNotes } = googleTaskNoteParts(existingNotes);
+  const prefix = userNotes ? userNotes.replace(/\s+$/, '') + '\n\n' : '';
+  return prefix + LUMA_TASK_METADATA_START + '\n' + JSON.stringify(metadata) + '\n' + LUMA_TASK_METADATA_END;
+}
+
+function googleTaskBody(state, task, existingNotes = '') {
+  return {
+    title: task.title,
+    notes: taskNotes(state, task, existingNotes),
+    status: task.completed ? 'completed' : 'needsAction',
+    completed: task.completed ? new Date(task.updatedAt || Date.now()).toISOString() : null,
+    due: task.dueDate ? `${task.dueDate}T00:00:00.000Z` : null,
+  };
 }
 
 function calendarBody(state, task) {
@@ -1111,14 +1149,19 @@ function applyCalendarEvent(task, event) {
   if (details.lumaOrder) task.order = Number(details.lumaOrder);
 }
 
-function applyGoogleTask(task, remoteTask, details = {}) {
-  task.title = remoteTask.title || task.title;
+function applyGoogleTaskNative(task, snapshot) {
+  task.title = snapshot.title || task.title;
   task.itemType = 'todo';
-  task.completed = remoteTask.status === 'completed';
-  task.dueDate = remoteTask.due ? remoteTask.due.slice(0, 10) : '';
+  task.completed = Boolean(snapshot.completed);
+  task.dueDate = snapshot.dueDate || '';
   task.endDate = '';
   task.endTime = '';
-  task.time = /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(details.time || '') ? details.time : '';
+}
+
+function applyGoogleTaskMetadata(task, details) {
+  if (!details) return;
+  if (/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(details.time || '')) task.time = details.time;
+  else if (Object.hasOwn(details, 'time')) task.time = '';
   task.projectId = details.projectId || task.projectId || 'inbox';
   if (details.order != null) task.order = Number(details.order);
   if (Object.hasOwn(details, 'reminder')) task.reminder = details.reminder;
