@@ -613,3 +613,52 @@ body.week-dragging .week-block.is-dragging { pointer-events: none; }
   height: 14px;
   display: block;
 }
+
+
+.week-col-subline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+}
+.week-luckyday-mark {
+  flex: 0 0 auto;
+  padding: 2px 5px;
+  border-radius: 999px;
+  font-size: 8.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.week-luckyday-mark-cheng {
+  color: #d8ad64;
+  background: rgba(197, 151, 72, .12);
+}
+.week-luckyday-mark-chu {
+  color: #c39a61;
+  background: rgba(181, 137, 77, .10);
+}
+html[data-theme="light"] .week-luckyday-mark-cheng {
+  color: #8f5a11;
+  background: rgba(197, 151, 72, .11);
+}
+html[data-theme="light"] .week-luckyday-mark-chu {
+  color: #7d6039;
+  background: rgba(164, 126, 73, .10);
+}
+.week-mini-luckyday {
+  position: absolute;
+  left: 2px;
+  bottom: 1px;
+  color: #c99a4d;
+  font-size: 6.5px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+.week-mini-day.is-anchor .week-mini-luckyday {
+  color: color-mix(in srgb, var(--action-on-primary, #f6f7f9) 84%, #c99a4d);
+}
