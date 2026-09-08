@@ -2732,7 +2732,18 @@ trustedHandle('private-extensions:luckyday-day-marks', (_event, payload) => {
   return privateExtensions.call('luckyday', 'getDayMarks', { startDate, endDate });
 });
 
-trustedHandle('private-extensions:luckyday-icloud-status', () => luckyDayIcloudStatus());
+trustedHandle('private-extensions:luckyday-icloud-status', async () => {
+  const credentials = loadIcloudCredentials();
+  if (!credentials) return luckyDayIcloudStatus();
+  try {
+    const discovery = await discoverIcloudCalendars({ email: credentials.email, password: credentials.password });
+    credentials.principalUrl = discovery.principalUrl;
+    credentials.calendarHomeUrl = discovery.calendarHomeUrl;
+    credentials.calendars = discovery.calendars;
+    saveIcloudCredentials(credentials);
+  } catch {}
+  return luckyDayIcloudStatus();
+});
 
 let luckyDayIcloudSyncInFlight = false;
 trustedHandle('private-extensions:luckyday-sync-icloud', async (_event, payload) => {
