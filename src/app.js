@@ -46,6 +46,7 @@ const seedState = {
     { id: 'internal', name: '内部系统', color: '#8b6ef5', order: 2 },
   ],
   tasks: [],
+  icloudDeletedItems: [],
 };
 
 let state = structuredClone(seedState);
@@ -84,6 +85,18 @@ let collapsedProjects = new Set();
 function normalizeState(input) {
   if (!input || !Array.isArray(input.tasks) || !Array.isArray(input.projects)) return structuredClone(seedState);
   input.settings ??= {};
+  input.icloudDeletedItems = Array.isArray(input.icloudDeletedItems)
+    ? input.icloudDeletedItems
+      .filter((item) => item && typeof item.href === 'string' && item.href && typeof item.calendarUrl === 'string' && item.calendarUrl)
+      .map((item) => ({
+        href: item.href,
+        uid: String(item.uid || ''),
+        etag: String(item.etag || ''),
+        calendarUrl: item.calendarUrl,
+        itemType: item.itemType === 'event' ? 'event' : 'todo',
+        deletedAt: Number(item.deletedAt || 0),
+      }))
+    : [];
   input.settings.googleConnected ??= false;
   input.settings.alwaysOnTop = Boolean(input.settings.alwaysOnTop ?? input.settings.desktopPinned);
   delete input.settings.desktopPinned;
@@ -1955,6 +1968,18 @@ async function deleteTask(id) {
       $('#googleNote').textContent = `Google 中的对应事项未能删除：${error.message}`;
     }
   }
+  if (task?.icloudHref && task?.icloudCalendarUrl) {
+    state.icloudDeletedItems ??= [];
+    state.icloudDeletedItems = state.icloudDeletedItems.filter((item) => item.href !== task.icloudHref);
+    state.icloudDeletedItems.push({
+      href: task.icloudHref,
+      uid: task.icloudUid || '',
+      etag: task.icloudEtag || '',
+      calendarUrl: task.icloudCalendarUrl,
+      itemType: task.itemType === 'event' ? 'event' : 'todo',
+      deletedAt: Date.now(),
+    });
+  }
   state.tasks = state.tasks.filter((task) => task.id !== id);
   await persist();
   render();
@@ -2359,8 +2384,8 @@ async function syncIcloud() {
     render();
     const summary = result.summary || {};
     $('#icloudNote').textContent =
-      '同步完成：从 iCloud 下载 ' + (summary.downloaded || 0) + ' 项、删除 ' + (summary.deleted || 0)
-      + ' 项；上传新增 ' + (summary.created || 0) + '、更新 ' + (summary.updated || 0)
+      '同步完成：从 iCloud 下载 ' + (summary.downloaded || 0) + ' 项、本地移除 ' + (summary.deleted || 0)
+      + ' 项；远端删除 ' + (summary.remoteDeleted || 0) + ' 项；上传新增 ' + (summary.created || 0) + '、更新 ' + (summary.updated || 0)
       + '。当前日程 ' + (summary.syncedEvents || 0) + ' 项，待办镜像 ' + (summary.mirroredTodos || 0) + ' 项。';
   } catch (error) {
     $('#icloudNote').textContent = '同步失败：' + googleErrorMessage(error);
