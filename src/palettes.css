@@ -96,6 +96,7 @@
 }
 
 html[data-theme="light"][data-palette="warm"] {
+  --panel-edge-rgb: 92, 70, 42;
   --ink: #2c2418;
   --muted: #6e5f4e;
   --line: rgba(92, 70, 42, .16);
@@ -197,6 +198,7 @@ html[data-theme="light"][data-palette="warm"] .calendar-panel .day-number {
 }
 
 html[data-palette="dusk"] {
+  --panel-edge-rgb: 190, 163, 124;
   --ink: #f4ead8;
   --muted: #c6b49a;
   --line: rgba(228, 194, 122, .16);
@@ -213,7 +215,6 @@ html[data-palette="dusk"] {
 html[data-palette="dusk"] .todo-panel,
 html[data-palette="dusk"] .calendar-panel {
   background: rgba(22, 18, 14, var(--panel-opacity));
-  border-color: rgba(176, 137, 72, .28);
 }
 html[data-palette="dusk"] .popover,
 html[data-palette="dusk"] .modal,

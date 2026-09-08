@@ -19,6 +19,11 @@
   --control-deep: rgba(7, 8, 11, .28);
   --control-deep-hover: rgba(7, 8, 11, .42);
   --panel-opacity: .88;
+  /* Keep a quiet contour as the fill fades; fully clear at zero opacity. */
+  --panel-edge-presence: min(1, calc(var(--panel-opacity) * 4));
+  --panel-edge-alpha: calc(.10 * var(--panel-edge-presence) + .08 * var(--panel-opacity));
+  --panel-edge-rgb: 210, 217, 228;
+  --panel-shadow-strength: .20;
   --panel-radius: 16px;
   font-family: "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
 }
@@ -66,12 +71,14 @@ body:hover .resize-corner::after { opacity: .28; }
 .app-shell.expanded { grid-template-columns: minmax(585px, 1fr) var(--todo-column-width, 390px); }
 
 .panel {
-  border: 1px solid rgba(255,255,255,.11);
+  border: 1px solid rgba(var(--panel-edge-rgb), var(--panel-edge-alpha));
   border-radius: var(--panel-radius);
   background:
     linear-gradient(145deg, rgba(83, 87, 96, .45), rgba(40, 42, 49, .58)),
     rgba(36, 38, 45, .48);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+  /* The transparent native window has only a 2px gutter: keep shadows short. */
+  box-shadow: 0 1px 2px -1px rgba(0,0,0,calc(var(--panel-shadow-strength) * var(--panel-opacity))),
+    inset 0 1px 0 rgba(255,255,255,calc(.08 * var(--panel-opacity)));
   /* Chromium can recursively sample a transparent Electron window after a
      native resize, producing a second "ghost" copy of the UI on Windows. */
   backdrop-filter: none;
@@ -697,6 +704,8 @@ h3 { font-size: 19px; }
 /* Optional light glass theme. Structural sizing stays shared with graphite. */
 :root[data-theme="light"] {
   color-scheme: light;
+  --panel-edge-rgb: 45, 50, 58;
+  --panel-shadow-strength: .14;
   --action-primary: #111318;
   --action-primary-strong: #000000;
   --action-on-primary: #ffffff;
@@ -708,8 +717,6 @@ h3 { font-size: 19px; }
 }
 
 html[data-theme="light"] .panel {
-  border-color: rgba(255,255,255,.68);
-  box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -2408,7 +2415,6 @@ html[data-theme="light"] .calendar-panel.calendar-detail-open .calendar-detail {
 html[data-theme="light"] .todo-panel,
 html[data-theme="light"] .calendar-panel {
   background: rgba(var(--luma-bg-app-rgb), calc(var(--panel-opacity) + .03));
-  border-color: rgba(255,255,255,.82);
 }
 
 /* Text hierarchy: neutral grays, no blue cast. */
@@ -2618,11 +2624,10 @@ html[data-theme="light"] .calendar-panel.calendar-detail-open .calendar-detail {
   --luma-bg-subtle: rgba(245,245,245,calc(var(--panel-opacity) * .62));
 }
 
-/* Main Luma surfaces use a neutral translucent fill with no visible outer edge. */
+/* Main surfaces share a translucent fill and the opacity-aware panel contour. */
 html[data-theme="light"] .todo-panel,
 html[data-theme="light"] .calendar-panel {
   position: relative;
-  border-color: transparent;
   background: rgba(255,255,255,var(--panel-opacity));
 }
 

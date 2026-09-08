@@ -21,34 +21,37 @@
   white-space: nowrap;
 }
 .day-holiday {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  line-height: 1;
-  padding: 2px 4px;
-  border-radius: 4px;
-  flex: 0 0 auto;
   margin-left: auto;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: 4px;
   white-space: nowrap;
 }
 .day-holiday-off {
-  color: #c45c5c;
-  background: rgba(196, 92, 92, 0.14);
+  color: #dfa09a;
+  background: rgba(196, 92, 92, .14);
 }
 .day-holiday-work {
-  color: #5b6b88;
-  background: rgba(91, 107, 136, 0.16);
+  color: #a9b7cd;
+  background: rgba(135, 154, 186, .16);
 }
 .calendar-day.muted .day-holiday,
-.calendar-day.muted .day-fest { opacity: 0.55; }
+.calendar-day.muted .day-fest { opacity: 0.78; }
 html[data-theme="light"] .day-fest {
   color: #b42318;
 }
 html[data-theme="light"] .day-holiday-off {
-  color: #b42318;
-  background: rgba(180, 35, 24, 0.10);
+  color: #a55f58;
+  background: rgba(165, 95, 88, .10);
 }
 html[data-theme="light"] .day-holiday-work {
-  color: #3d4a63;
-  background: rgba(61, 74, 99, 0.10);
+  color: #5a6a81;
+  background: rgba(90, 106, 129, .10);
 }
