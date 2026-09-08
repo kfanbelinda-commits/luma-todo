@@ -37,5 +37,8 @@ contextBridge.exposeInMainWorld('luma', {
   privateExtensionsActivate: (code) => ipcRenderer.invoke('private-extensions:activate', code),
   privateExtensionsInstall: () => ipcRenderer.invoke('private-extensions:install'),
   luckyDaySummary: (payload) => ipcRenderer.invoke('private-extensions:luckyday-summary', payload),
+  luckyDayDayMarks: (payload) => ipcRenderer.invoke('private-extensions:luckyday-day-marks', payload),
+  luckyDayIcloudStatus: () => ipcRenderer.invoke('private-extensions:luckyday-icloud-status'),
+  luckyDaySyncIcloud: (payload) => ipcRenderer.invoke('private-extensions:luckyday-sync-icloud', payload),
   openLuckyDay: () => ipcRenderer.invoke('private-extensions:open-luckyday'),
 });
