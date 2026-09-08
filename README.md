@@ -7,11 +7,11 @@
 ![界面预览](./assets/Lumatodo.png)
 
 
-## 下载 当前版本：v1.4.2
+## 下载 当前版本：v1.4.3
 
 **[下载最新版 Luma Todo](https://github.com/kfanbelinda-commits/luma-todo/releases/latest)**
 
-推荐下载 `Luma-Todo-Setup-1.4.2.zip`，解压后运行其中的 `Luma-Todo-Setup-1.4.2.exe`；也可以直接下载 `.exe` 安装。其他 Assets 无需手动下载。
+推荐下载 `Luma-Todo-Setup-1.4.3.zip`，解压后运行其中的 `Luma-Todo-Setup-1.4.3.exe`；也可以直接下载 `.exe` 安装。其他 Assets 无需手动下载。
 
 
 
