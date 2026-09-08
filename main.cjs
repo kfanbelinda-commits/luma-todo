@@ -697,12 +697,12 @@ async function listIcloudCalendarEvents(credentials, calendar) {
   if (!response.ok) throw new Error('读取 iCloud 日历失败（HTTP ' + response.status + '）');
 
   const blocks = xml.match(
-    /<(?:[A-Za-z0-9_-]+:)?response\\b[\\s\\S]*?<\\/(?:[A-Za-z0-9_-]+:)?response\\s*>/gi
+    /<(?:[A-Za-z0-9_-]+:)?response\b[\s\S]*?<\/(?:[A-Za-z0-9_-]+:)?response\s*>/gi
   ) || [];
 
-  if (!/<(?:[A-Za-z0-9_-]+:)?multistatus\\b/i.test(xml)
-    || !/<\\/(?:[A-Za-z0-9_-]+:)?multistatus\\s*>\\s*$/i.test(xml)
-    || (xml.match(/<(?:[A-Za-z0-9_-]+:)?response\\b/gi) || []).length !== blocks.length) {
+  if (!/<(?:[A-Za-z0-9_-]+:)?multistatus\b/i.test(xml)
+    || !/<\/(?:[A-Za-z0-9_-]+:)?multistatus\s*>\s*$/i.test(xml)
+    || (xml.match(/<(?:[A-Za-z0-9_-]+:)?response\b/gi) || []).length !== blocks.length) {
     throw new Error('iCloud 日历列表不完整，已停止同步');
   }
 
