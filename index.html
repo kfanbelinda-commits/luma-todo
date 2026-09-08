@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="src/cn-holidays.css" />
     <link rel="stylesheet" href="src/local-settings.css" />
     <link rel="stylesheet" href="src/icloud-conflicts.css" />
+    <link rel="stylesheet" href="src/private-extensions.css" />
   </head>
   <body>
     <div class="resize-handle resize-edge resize-n" data-edge="n"></div>
@@ -50,7 +51,10 @@
                 <h3 id="calendarDetailTitle">9月4日 周五</h3>
                 <p id="calendarDetailLunar" class="calendar-detail-lunar"></p>
               </div>
-              <button id="closeCalendarDetail" class="calendar-detail-close" type="button" aria-label="关闭日期详情">×</button>
+              <div class="calendar-detail-header-actions">
+                <button id="luckyDayButton" class="luckyday-day-button" type="button" title="查看 LuckyDay 今日吉课" aria-label="查看 LuckyDay 今日吉课" hidden>吉</button>
+                <button id="closeCalendarDetail" class="calendar-detail-close" type="button" aria-label="关闭日期详情">×</button>
+              </div>
             </div>
             <div class="calendar-detail-body">
               <section class="calendar-detail-section">
@@ -195,6 +199,23 @@
       <button id="taskDeleteAction" class="task-menu-action danger" type="button">删除任务</button>
     </div>
 
+    <dialog id="luckyDayDialog" class="modal luckyday-modal" aria-labelledby="luckyDayDialogTitle">
+      <div class="luckyday-shell">
+        <div class="luckyday-header">
+          <div>
+            <p class="eyebrow">LuckyDay · 今日吉课</p>
+            <h3 id="luckyDayDialogTitle">今日吉课</h3>
+            <p id="luckyDayLunar" class="luckyday-lunar"></p>
+          </div>
+          <button id="closeLuckyDay" type="button" class="icon-button" aria-label="关闭">×</button>
+        </div>
+        <div id="luckyDayBody" class="luckyday-body"></div>
+        <div class="luckyday-footer">
+          <button id="openFullLuckyDay" type="button" class="soft-button">查看完整吉课 →</button>
+        </div>
+      </div>
+    </dialog>
+
     <dialog id="googleConflictDialog" class="modal" aria-labelledby="googleConflictTitle">
       <form method="dialog">
         <div class="modal-title"><h3 id="googleConflictTitle">Google 同步冲突</h3><button type="submit" class="icon-button" aria-label="关闭">×</button></div>
@@ -307,6 +328,22 @@
             <button id="checkUpdatesButton" type="button" class="soft-button">检查更新</button>
           </section>
         </div>
+        <details id="privateExtensionsSettings" class="local-settings private-extension-settings">
+          <summary>私人扩展 <span id="privateExtensionSummary">未启用</span></summary>
+          <div class="local-settings-body private-extension-body">
+            <p class="local-hint">私人扩展不随公开版 Luma 提供。输入收到的授权码后，可安装对应的 .luma-plugin 文件。</p>
+            <div class="private-extension-activation">
+              <input id="privateExtensionCode" type="password" autocomplete="off" spellcheck="false" placeholder="LD-…" aria-label="私人扩展授权码" />
+              <button id="activatePrivateExtension" type="button" class="soft-button">验证授权</button>
+            </div>
+            <div id="privateExtensionInstalled" class="private-extension-installed" hidden>
+              <div><strong id="privateExtensionName">私人扩展</strong><small id="privateExtensionVersion"></small></div>
+              <span class="private-extension-enabled">已启用</span>
+            </div>
+            <button id="installPrivateExtension" type="button" class="soft-button private-extension-install" hidden>安装扩展文件</button>
+            <p id="privateExtensionStatus" class="settings-note private-extension-status"></p>
+          </div>
+        </details>
         <details class="local-settings"><summary>账户与同步 <span>Google · Apple</span></summary>
         <div class="sync-settings">
           <section class="sync-card google-sync-card">
