@@ -1,8 +1,9 @@
-module.exports = function runSyncProtocolSmokeTests({
+module.exports = async function runSyncProtocolSmokeTests({
   taskToIcloudIcs,
   parseIcloudEvent,
   calendarBody,
   applyCalendarEvent,
+  deleteIcloudEvent,
 }) {
   const qaAssert = (condition, message) => {
     if (!condition) throw new Error(message);
@@ -134,7 +135,36 @@ module.exports = function runSyncProtocolSmokeTests({
   qaAssert(appliedEvent.itemType === 'event', 'Google Event round-trip changed item type');
   qaAssert(appliedEvent.dueDate === allDayEvent.dueDate && appliedEvent.endDate === allDayEvent.endDate, 'Google Event round-trip changed date range');
 
+  const originalFetch = global.fetch;
+  try {
+    let deleteRequest = null;
+    global.fetch = async (url, options) => {
+      deleteRequest = { url, options };
+      return {
+        ok: true,
+        status: 204,
+        text: async () => '',
+        headers: { get: () => '' },
+      };
+    };
+    await deleteIcloudEvent('https://qa.invalid/calendar/item.ics', { email: 'qa@example.com', password: 'app-password' }, '"delete-etag"');
+    qaAssert(deleteRequest?.options?.method === 'DELETE', 'iCloud deletion did not use CalDAV DELETE');
+    qaAssert(deleteRequest?.options?.headers?.['If-Match'] === '"delete-etag"', 'iCloud deletion lost If-Match etag');
+
+    global.fetch = async () => ({
+      ok: false,
+      status: 404,
+      text: async () => '',
+      headers: { get: () => '' },
+    });
+    await deleteIcloudEvent('https://qa.invalid/calendar/missing.ics', { email: 'qa@example.com', password: 'app-password' }, '');
+  } finally {
+    global.fetch = originalFetch;
+  }
+
   return [
+    'iCloud DELETE with etag',
+    'iCloud DELETE missing remote is idempotent',
     'iCloud timed Todo round-trip',
     'iCloud completed Todo metadata',
     'iCloud all-day Event round-trip',
