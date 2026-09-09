@@ -82,12 +82,8 @@ const expandedCompleted = new Set();
 const COMPLETION_GRACE_MS = 1500;
 const pendingTaskCompletions = new Map();
 let collapsedProjects = new Set();
-let privateExtensionStatus = { activated: false, plugins: [], luckyDay: null };
+let privateExtensionStatus = { activated: false, plugins: [] };
 let privateExtensionsRevealed = false;
-let luckyDaySelectedHourBranch = null;
-const luckyDayMarkCache = new Map();
-const luckyDayLoadedRanges = new Set();
-const luckyDayRangeRequests = new Map();
 
 function normalizeState(input) {
   if (!input || !Array.isArray(input.tasks) || !Array.isArray(input.projects)) return structuredClone(seedState);
@@ -168,104 +164,17 @@ async function persist() {
   await window.luma?.save(state);
 }
 
-function luckyDayMarkForDate(dateKey) {
-  if (!privateExtensionStatus.luckyDay) return null;
-  return luckyDayMarkCache.get(String(dateKey || '')) || null;
+function renderPrivateExtensionStatus(status = privateExtensionStatus, force = false) {
+  privateExtensionStatus = status || {activated:false,plugins:[]};
+  $('#privateExtensionsSettings').hidden = !(privateExtensionsRevealed || privateExtensionStatus.activated || privateExtensionStatus.plugins.length);
+  $('#privateExtensionSummary').textContent = privateExtensionStatus.plugins.length ? '已安装 '+privateExtensionStatus.plugins.length+' 个' : privateExtensionStatus.activated ? '已保存授权' : '未启用';
+  $('#installPrivateExtension').hidden = !privateExtensionStatus.activated;
+  window.LumaExtensions.setStatus(privateExtensionStatus,force);
 }
-
-function clearLuckyDayMarkCache() {
-  luckyDayMarkCache.clear();
-  luckyDayLoadedRanges.clear();
-  luckyDayRangeRequests.clear();
-}
-
-async function ensureLuckyDayMarksRange(startDate, endDate) {
-  if (!privateExtensionStatus.luckyDay || !window.luma?.luckyDayDayMarks) return;
-  const rangeKey = String(startDate) + '|' + String(endDate);
-  if (luckyDayLoadedRanges.has(rangeKey)) return;
-  if (luckyDayRangeRequests.has(rangeKey)) return luckyDayRangeRequests.get(rangeKey);
-
-  const request = (async () => {
-    try {
-      const payload = await window.luma.luckyDayDayMarks({ startDate, endDate });
-      const cursor = fromDateKey(startDate);
-      const end = fromDateKey(endDate);
-      while (cursor <= end) {
-        luckyDayMarkCache.delete(toDateKey(cursor));
-        cursor.setDate(cursor.getDate() + 1);
-      }
-      for (const mark of payload?.marks || []) {
-        if (!mark?.dateKey || !['cheng', 'chu'].includes(mark.type)) continue;
-        luckyDayMarkCache.set(mark.dateKey, {
-          dateKey: mark.dateKey,
-          type: mark.type,
-          label: mark.type === 'cheng' ? '成日' : '除日',
-          short: mark.type === 'cheng' ? '成' : '除',
-        });
-      }
-      luckyDayLoadedRanges.add(rangeKey);
-      if (typeof renderCalendar === 'function') renderCalendar();
-      window.LumaWeekView?.refresh?.();
-    } catch (error) {
-      if ($('#privateExtensionStatus') && /不受支持|入口无效|版本/.test(String(error?.message || ''))) {
-        $('#privateExtensionStatus').textContent = 'LuckyDay 日期标记需要安装 0.3.0 或更高版本插件。';
-      }
-    } finally {
-      luckyDayRangeRequests.delete(rangeKey);
-    }
-  })();
-  luckyDayRangeRequests.set(rangeKey, request);
-  return request;
-}
-
-window.LumaLuckyDayMarks = {
-  get: luckyDayMarkForDate,
-  ensureRange: ensureLuckyDayMarksRange,
-  clear: clearLuckyDayMarkCache,
-};
-
-function renderPrivateExtensionStatus(status = privateExtensionStatus) {
-  const previousLuckyVersion = privateExtensionStatus?.luckyDay?.version || '';
-  privateExtensionStatus = status || { activated: false, plugins: [], luckyDay: null };
-  const luckyDay = privateExtensionStatus.luckyDay || null;
-  if ((luckyDay?.version || '') !== previousLuckyVersion) clearLuckyDayMarkCache();
-  const settings = $('#privateExtensionsSettings');
-  if (settings) settings.hidden = !(privateExtensionsRevealed || privateExtensionStatus.activated || luckyDay);
-  const summary = $('#privateExtensionSummary');
-  const install = $('#installPrivateExtension');
-  const installed = $('#privateExtensionInstalled');
-  const dayButton = $('#luckyDayButton');
-  const icloudPanel = $('#luckyDayIcloudPanel');
-
-  if (summary) summary.textContent = luckyDay
-    ? `LuckyDay ${luckyDay.version}`
-    : (privateExtensionStatus.activated ? '已保存授权' : '未启用');
-  if (install) install.hidden = !privateExtensionStatus.activated;
-  if (installed) installed.hidden = !luckyDay;
-  if ($('#privateExtensionName')) $('#privateExtensionName').textContent = luckyDay?.name || 'LuckyDay 吉课';
-  if ($('#privateExtensionVersion')) $('#privateExtensionVersion').textContent = luckyDay ? `版本 ${luckyDay.version}` : '';
-  if (dayButton) dayButton.hidden = !luckyDay;
-  if (icloudPanel) icloudPanel.hidden = !luckyDay;
-}
-
 async function refreshPrivateExtensionStatus() {
-  if (!window.luma?.privateExtensionsStatus) {
-    renderPrivateExtensionStatus({ activated: false, plugins: [], luckyDay: null });
-    return privateExtensionStatus;
-  }
-  try {
-    const status = await window.luma.privateExtensionsStatus();
-    renderPrivateExtensionStatus(status);
-    if (status?.luckyDay) {
-      renderCalendar();
-      refreshLuckyDayIcloudStatus();
-    }
-    return status;
-  } catch (error) {
-    renderPrivateExtensionStatus({ activated: false, plugins: [], luckyDay: null });
-    if ($('#privateExtensionStatus')) $('#privateExtensionStatus').textContent = error?.message || '无法读取私人扩展';
-    return privateExtensionStatus;
-  }
+  try {renderPrivateExtensionStatus(await window.luma?.privateExtensionsStatus?.());}
+  catch(error){$('#privateExtensionStatus').textContent=error?.message || '无法读取私人扩展';}
+  return privateExtensionStatus;
 }
 
 async function activatePrivateExtension() {
@@ -302,289 +211,16 @@ async function installPrivateExtension() {
       status.textContent = '';
       return;
     }
-    renderPrivateExtensionStatus(result);
-    status.textContent = result?.luckyDay
-      ? `LuckyDay ${result.luckyDay.version} 已安装并启用。`
-      : '扩展安装完成。';
+    renderPrivateExtensionStatus(result,true);
+    status.textContent = '扩展安装完成。';
     renderCalendar();
     if (calendarDetailDate) renderCalendarDetail();
-    if (result?.luckyDay) refreshLuckyDayIcloudStatus();
+
   } catch (error) {
     status.textContent = error?.message || '扩展安装失败';
   } finally {
     button.disabled = false;
   }
-}
-
-function luckyDayIcloudRange() {
-  const start = new Date();
-  start.setHours(12, 0, 0, 0);
-  start.setDate(start.getDate() - 30);
-  const end = new Date();
-  end.setHours(12, 0, 0, 0);
-  end.setMonth(end.getMonth() + 18);
-  return { startDate: toDateKey(start), endDate: toDateKey(end) };
-}
-
-async function refreshLuckyDayIcloudStatus() {
-  const panel = $('#luckyDayIcloudPanel');
-  const select = $('#luckyDayIcloudCalendar');
-  const statusText = $('#luckyDayIcloudStatus');
-  if (!panel || panel.hidden || !privateExtensionStatus.luckyDay || !window.luma?.luckyDayIcloudStatus) return null;
-  try {
-    const status = await window.luma.luckyDayIcloudStatus();
-    select.innerHTML = '<option value="">选择 LuckyDay 日历…</option>';
-    for (const calendar of status?.calendars || []) {
-      const option = document.createElement('option');
-      option.value = calendar.url;
-      option.textContent = calendar.name;
-      select.appendChild(option);
-    }
-    if (status?.selectedCalendarUrl) select.value = status.selectedCalendarUrl;
-    if (!status?.connected) {
-      statusText.textContent = '请先在「账户与同步」连接 Apple 日历。';
-      $('#syncLuckyDayIcloud').disabled = true;
-    } else {
-      statusText.textContent = status.selectedCalendarUrl
-        ? '已设置。以后正常 Apple 同步时会一并更新成日 / 除日。'
-        : '建议在 iCloud 先建一个名为 LuckyDay 的独立日历，再在这里选择。';
-      $('#syncLuckyDayIcloud').disabled = false;
-    }
-    return status;
-  } catch (error) {
-    statusText.textContent = '无法读取 LuckyDay iCloud 设置：' + googleErrorMessage(error);
-    return null;
-  }
-}
-
-async function syncLuckyDayIcloud() {
-  const button = $('#syncLuckyDayIcloud');
-  const select = $('#luckyDayIcloudCalendar');
-  const statusText = $('#luckyDayIcloudStatus');
-  const calendarUrl = String(select?.value || '');
-  if (!calendarUrl) {
-    statusText.textContent = '请选择一个单独的 iCloud 日历。';
-    return;
-  }
-  button.disabled = true;
-  statusText.textContent = '正在同步成日 / 除日…';
-  try {
-    const result = await window.luma.luckyDaySyncIcloud({ calendarUrl, ...luckyDayIcloudRange() });
-    statusText.textContent = `已同步到 ${result.calendarName}：新增 ${result.created}，更新 ${result.updated}，删除旧标记 ${result.deleted}，保持 ${result.unchanged}。`;
-    await refreshLuckyDayIcloudStatus();
-  } catch (error) {
-    statusText.textContent = '同步失败：' + googleErrorMessage(error);
-  } finally {
-    button.disabled = false;
-  }
-}
-
-function hourBranchForTime(value) {
-  const match = /^(\d{1,2}):(\d{2})$/.exec(String(value || ''));
-  if (!match) return null;
-  const hour = Number(match[1]);
-  if (!Number.isInteger(hour) || hour < 0 || hour > 23) return null;
-  if (hour === 23) return 0;
-  return Math.floor((hour + 1) / 2) % 12;
-}
-
-function luckyDayReferenceHour(dateKey) {
-  const today = toDateKey(new Date());
-  if (dateKey === today) {
-    const hour = new Date().getHours();
-    return hour === 23 ? 0 : Math.floor((hour + 1) / 2) % 12;
-  }
-  const firstTimed = state.tasks
-    .filter((task) => {
-      if (!task.time || task.completed) return false;
-      if (isCalendarEvent(task)) return eventCoversDate(task, dateKey);
-      return task.dueDate === dateKey;
-    })
-    .sort((a, b) => String(a.time).localeCompare(String(b.time)))[0];
-  return hourBranchForTime(firstTimed?.time) ?? 6;
-}
-
-function luckyDayLumaItems(dateKey) {
-  return state.tasks
-    .filter((task) => {
-      if (task.completed) return false;
-      if (isCalendarEvent(task)) return eventCoversDate(task, dateKey);
-      return task.dueDate === dateKey;
-    })
-    .sort((a, b) => {
-      if (a.time && b.time) return a.time.localeCompare(b.time);
-      if (a.time) return -1;
-      if (b.time) return 1;
-      return String(a.title || '').localeCompare(String(b.title || ''));
-    });
-}
-
-function luckyDayItemListHtml(dateKey) {
-  const items = luckyDayLumaItems(dateKey);
-  if (!items.length) return '<p class="luckyday-sub-line">当天没有安排。</p>';
-  const visible = items.slice(0, 6);
-  const rows = visible.map((task) => {
-    const time = task.time || (isCalendarEvent(task) ? '全天' : '待办');
-    return `<div class="luckyday-luma-item"><time>${escapeAttribute(time)}</time><span>${escapeAttribute(task.title || '未命名事项')}</span></div>`;
-  }).join('');
-  const more = items.length > visible.length
-    ? `<p class="luckyday-sub-line">还有 ${items.length - visible.length} 项未显示</p>`
-    : '';
-  return `<div class="luckyday-luma-list">${rows}</div>${more}`;
-}
-
-function luckyDayJudgementClass(value) {
-  const text = String(value || '');
-  if (/凶|破|危|空|绝|死/.test(text)) return 'is-risk';
-  if (/吉|贵|安|喜|生|旺/.test(text)) return 'is-good';
-  return 'is-neutral';
-}
-
-function luckyDayPaddedDate(summary) {
-  const year = Number(summary?.solar?.year || fromDateKey(summary.dateKey).getFullYear());
-  const month = Number(summary?.solar?.month || fromDateKey(summary.dateKey).getMonth() + 1);
-  const day = Number(summary?.solar?.day || fromDateKey(summary.dateKey).getDate());
-  return `${year}年${pad(month)}月${pad(day)}日 ${summary.weekday || ''}`;
-}
-
-function luckyDayHourCells(summary) {
-  return (summary.hours || []).map((hour) => {
-    const selected = Number(hour.index) === Number(summary.hour.branchIndex);
-    return `<button type="button" class="luckyday-v2-hour${selected ? ' selected' : ''}" data-lucky-hour="${Number(hour.index)}" aria-pressed="${String(selected)}" title="${escapeAttribute(hour.range || '')}">
-      <span>${escapeAttribute(hour.stem || '')}</span>
-      <b>${escapeAttribute(hour.branch || '')}</b>
-    </button>`;
-  }).join('');
-}
-
-function luckyDayTiandiItems(items) {
-  return (items || []).map((item) => {
-    const value = `${item.label || ''}${item.name || ''}`;
-    return `<span class="luckyday-v2-td-chip ${luckyDayJudgementClass(item.name)}">${escapeAttribute(value)}</span>`;
-  }).join('');
-}
-
-function luckyDayWutuLines(items) {
-  const values = (items || []).filter(Boolean);
-  if (!values.length) return '<span class="luckyday-v2-empty">—</span>';
-  return values.map((item) => `<div>${escapeAttribute(item)}</div>`).join('');
-}
-
-async function loadLuckyDayDialog() {
-  if (!calendarDetailDate || !privateExtensionStatus.luckyDay) return;
-  const body = $('#luckyDayBody');
-  const dateKey = calendarDetailDate;
-  const hourBranch = Number.isInteger(luckyDaySelectedHourBranch)
-    ? luckyDaySelectedHourBranch
-    : luckyDayReferenceHour(dateKey);
-
-  $('#luckyDayDialogTitle').textContent = '正在读取…';
-  body.innerHTML = '<div class="luckyday-v2-loading">正在计算吉课…</div>';
-
-  try {
-    const summary = await window.luma.luckyDaySummary({ dateKey, hourBranch });
-    if (!Array.isArray(summary.hours) || summary.hours.length !== 12) {
-      throw new Error('LuckyDay 插件版本过旧，请安装 0.2.0 版本');
-    }
-    luckyDaySelectedHourBranch = Number(summary.hour.branchIndex);
-    $('#luckyDayDialogTitle').textContent = luckyDayPaddedDate(summary);
-
-    const pillars = [
-      ['年', summary.pillars.year],
-      ['月', summary.pillars.month],
-      ['日', summary.pillars.day],
-      ['时', summary.pillars.hour],
-    ].map(([label, value]) =>
-      `<div class="luckyday-v2-pillar"><span>${label}</span><b>${escapeAttribute(value)}</b></div>`
-    ).join('');
-
-    const xlr = [summary.xiaoliuRen.month, summary.xiaoliuRen.day, summary.xiaoliuRen.hour]
-      .map((value) => `<span class="luckyday-v2-xlr-chip">${escapeAttribute(value)}</span>`).join('');
-
-    body.innerHTML = `
-      <section class="luckyday-v2-hero">
-        <div class="luckyday-v2-lunar-side">农历</div>
-        <div class="luckyday-v2-lunar">${escapeAttribute(summary.lunar.label)}</div>
-        <div class="luckyday-v2-day-flags">
-          <span>${escapeAttribute(summary.day.jianchu)}日</span>
-          <b>冲${escapeAttribute(summary.day.clash)}</b>
-        </div>
-      </section>
-
-      <section class="luckyday-v2-pillars">${pillars}</section>
-
-      <section class="luckyday-v2-hours" aria-label="十二时辰">
-        ${luckyDayHourCells(summary)}
-      </section>
-
-      <section class="luckyday-v2-current-hour">
-        <div>
-          <strong>${escapeAttribute(summary.hour.branch)}时 · ${escapeAttribute(summary.pillars.hour)}</strong>
-          <span>${escapeAttribute(summary.hour.range)} · 冲${escapeAttribute(summary.hour.clash)}</span>
-        </div>
-        ${summary.hour.wubuyu ? '<span class="luckyday-v2-alert">五不遇</span>' : ''}
-      </section>
-
-      <section class="luckyday-v2-result-card">
-        <div class="luckyday-v2-section-title"><i>玉</i><strong>小六壬</strong></div>
-        <div class="luckyday-v2-xlr-row">${xlr}</div>
-      </section>
-
-      <section class="luckyday-v2-result-card">
-        <div class="luckyday-v2-section-title"><i>掌</i><strong>择日天地掌</strong></div>
-        <div class="luckyday-v2-td-row">
-          <div class="luckyday-v2-td-label">前段 <span class="${luckyDayJudgementClass(summary.tiandiZhang.front.judge)}">${escapeAttribute(summary.tiandiZhang.front.judge)}</span></div>
-          <div class="luckyday-v2-td-items">${luckyDayTiandiItems(summary.tiandiZhang.front.items)}</div>
-        </div>
-        <div class="luckyday-v2-td-row">
-          <div class="luckyday-v2-td-label">后段 <span class="${luckyDayJudgementClass(summary.tiandiZhang.back.judge)}">${escapeAttribute(summary.tiandiZhang.back.judge)}</span></div>
-          <div class="luckyday-v2-td-items">${luckyDayTiandiItems(summary.tiandiZhang.back.items)}</div>
-        </div>
-      </section>
-
-      <section class="luckyday-v2-result-card">
-        <div class="luckyday-v2-section-title"><i>兔</i><strong>乌兔择日</strong></div>
-        <div class="luckyday-v2-wutu-grid">
-          <div>
-            <h4>${escapeAttribute(summary.wutu.leftTitle)}</h4>
-            <div class="luckyday-v2-wutu-lines">${luckyDayWutuLines(summary.wutu.left)}</div>
-          </div>
-          <div>
-            <h4>${escapeAttribute(summary.wutu.rightTitle)}</h4>
-            <div class="luckyday-v2-wutu-lines">${luckyDayWutuLines(summary.wutu.right)}</div>
-          </div>
-        </div>
-      </section>
-    `;
-
-    body.querySelectorAll('[data-lucky-hour]').forEach((button) => {
-      button.addEventListener('click', async () => {
-        luckyDaySelectedHourBranch = Number(button.dataset.luckyHour);
-        await loadLuckyDayDialog();
-      });
-    });
-  } catch (error) {
-    $('#luckyDayDialogTitle').textContent = 'LuckyDay';
-    body.innerHTML = `<div class="luckyday-v2-error">${escapeAttribute(googleErrorMessage(error))}</div>`;
-  }
-}
-
-async function shiftLuckyDayDate(offset) {
-  if (!calendarDetailDate) return;
-  const next = fromDateKey(calendarDetailDate);
-  next.setDate(next.getDate() + Number(offset || 0));
-  const nextKey = toDateKey(next);
-  luckyDaySelectedHourBranch = luckyDayReferenceHour(nextKey);
-  openCalendarDetail(nextKey);
-  await loadLuckyDayDialog();
-}
-
-async function openLuckyDayDialog() {
-  if (!calendarDetailDate || !privateExtensionStatus.luckyDay) return;
-  luckyDaySelectedHourBranch = luckyDayReferenceHour(calendarDetailDate);
-  const dialog = $('#luckyDayDialog');
-  if (!dialog.open) dialog.showModal();
-  await loadLuckyDayDialog();
 }
 
 function googleDeleteQueueKey(item) {
@@ -1250,8 +886,8 @@ function fitAllCalendarCells() {
 }
 
 function calendarHolidayHeading(dateKey, dayLabel, mark) {
-  const luckyMark = luckyDayMarkForDate(dateKey);
-  if (!mark && !luckyMark) return `<span class="day-number">${dayLabel}</span>`;
+  const extensionBadges = window.LumaExtensions.badges(dateKey,'day-extension-mark',true);
+  if (!mark && !extensionBadges) return `<span class="day-number">${dayLabel}</span>`;
   const lead = mark && typeof cnHolidayIsLeadDay === 'function' && cnHolidayIsLeadDay(dateKey, mark);
   const fest = lead && typeof cnFestivalName === 'function' ? cnFestivalName(mark) : '';
   const badge = mark
@@ -1265,13 +901,10 @@ function calendarHolidayHeading(dateKey, dayLabel, mark) {
   const holidayBadge = mark
     ? `<span class="day-holiday day-holiday-${mark.type}" title="${escaped}" aria-label="${escaped}">${badge}</span>`
     : '';
-  const luckyBadge = luckyMark
-    ? `<span class="day-luckyday day-luckyday-${luckyMark.type}" title="${luckyMark.label}" aria-label="${luckyMark.label}">${luckyMark.short}</span>`
-    : '';
   return `<div class="day-heading">`
     + `<span class="day-number">${dayLabel}</span>`
     + (fest ? `<span class="day-fest">${fest}</span>` : '')
-    + `<span class="day-heading-marks">${luckyBadge}${holidayBadge}</span>`
+    + `<span class="day-heading-marks">${extensionBadges}${holidayBadge}</span>`
     + `</div>`;
 }
 
@@ -1293,7 +926,7 @@ function renderCalendar() {
   const start = new Date(year, month, 1 - mondayIndex);
   const end = new Date(start);
   end.setDate(start.getDate() + 41);
-  ensureLuckyDayMarksRange(toDateKey(start), toDateKey(end));
+  window.LumaExtensions.ensureRange(toDateKey(start), toDateKey(end));
   const host = $('#calendarGrid');
   host.innerHTML = '';
 
@@ -1630,7 +1263,7 @@ function renderCalendarDetail() {
     : '';
   $('#calendarDetailTitle').textContent = `${selectedDate.getMonth() + 1}月${selectedDate.getDate()}日 周${WEEKDAYS[selectedDate.getDay()]}`;
   $('#calendarDetailLunar').textContent = [lunar, holidayLine].filter(Boolean).join(' · ');
-  $('#luckyDayButton').hidden = !privateExtensionStatus.luckyDay;
+
   detail.classList.remove('hidden');
   detail.setAttribute('aria-hidden', 'false');
   setCalendarDetailView(calendarDetailViewMode);
@@ -3020,7 +2653,7 @@ async function connectIcloud() {
   try {
     const status = await window.luma?.icloudConnect({ email, password });
     renderIcloudStatus(status);
-    await refreshLuckyDayIcloudStatus();
+    await window.LumaExtensions.refreshSettings();
   } catch (error) {
     $('#icloudPassword').value = '';
     $('#icloudNote').textContent = '连接失败：' + googleErrorMessage(error);
@@ -3135,14 +2768,7 @@ async function syncIcloud() {
       '同步完成：从 iCloud 下载 ' + (summary.downloaded || 0) + ' 项、本地移除 ' + (summary.deleted || 0)
       + ' 项；远端删除 ' + (summary.remoteDeleted || 0) + ' 项；上传新增 ' + (summary.created || 0) + '、更新 ' + (summary.updated || 0)
       + '；失败 ' + (summary.failed || 0) + ' 项；冲突 ' + (summary.conflicts || 0) + ' 项' + unreadableNote + '。当前日程 ' + (summary.syncedEvents || 0) + ' 项，待办镜像 ' + (summary.mirroredTodos || 0) + ' 项。';
-    if (result.luckyDay) {
-      const luckyStatus = $('#luckyDayIcloudStatus');
-      if (luckyStatus) {
-        luckyStatus.textContent = result.luckyDay.error
-          ? 'LuckyDay 同步失败：' + result.luckyDay.error
-          : `LuckyDay 已一并更新：新增 ${result.luckyDay.created}，更新 ${result.luckyDay.updated}，删除 ${result.luckyDay.deleted}，保持 ${result.luckyDay.unchanged}。`;
-      }
-    }
+    await window.LumaExtensions.refreshSettings(result.extensions || {});
   } catch (error) {
     $('#icloudNote').textContent = '同步失败：' + googleErrorMessage(error);
   } finally {
@@ -3171,7 +2797,7 @@ async function disconnectIcloud() {
     $('#icloudEmail').value = '';
     $('#icloudPassword').value = '';
     $('#icloudNote').textContent = '已断开 iCloud；Luma 本地日程不会被删除。';
-    await refreshLuckyDayIcloudStatus();
+    await window.LumaExtensions.refreshSettings();
   } catch (error) {
     $('#icloudNote').textContent = '断开失败：' + googleErrorMessage(error);
   } finally {
@@ -3430,21 +3056,15 @@ function bindEvents() {
     if (success) $('#exportButton').textContent = '已导出 ✓';
     setTimeout(() => { $('#exportButton').textContent = '导出待办备份'; }, 1800);
   });
-  $('#luckyDayButton').addEventListener('click', openLuckyDayDialog);
-  $('#closeLuckyDay').addEventListener('click', () => {
-    luckyDaySelectedHourBranch = null;
-    $('#luckyDayDialog').close();
+  window.LumaExtensions.configure({
+    date:()=>calendarDetailDate,
+    selectDate:key=>openCalendarDetail(key),
+    status:renderPrivateExtensionStatus,
+    refresh:()=>{renderCalendar();window.LumaWeekView?.refresh?.();},
+    context:dateKey=>({firstTime:state.tasks.filter(task=>!task.completed && task.time && (isCalendarEvent(task)?eventCoversDate(task,dateKey):task.dueDate===dateKey)).sort((a,b)=>a.time.localeCompare(b.time))[0]?.time || ''})
   });
-  $('#luckyDayPrevDate').addEventListener('click', () => shiftLuckyDayDate(-1));
-  $('#luckyDayNextDate').addEventListener('click', () => shiftLuckyDayDate(1));
-  $('#activatePrivateExtension').addEventListener('click', activatePrivateExtension);
-  $('#installPrivateExtension').addEventListener('click', installPrivateExtension);
-  $('#syncLuckyDayIcloud').addEventListener('click', syncLuckyDayIcloud);
-  $('#luckyDayIcloudCalendar').addEventListener('change', () => {
-    $('#luckyDayIcloudStatus').textContent = $('#luckyDayIcloudCalendar').value
-      ? '点击「同步成日 / 除日」保存选择并写入 iCloud。'
-      : '请选择一个单独的 iCloud 日历。';
-  });
+  $('#activatePrivateExtension').addEventListener('click',activatePrivateExtension);
+  $('#installPrivateExtension').addEventListener('click',installPrivateExtension);
   $('#connectGoogle').addEventListener('click', connectOrSyncGoogle);
   $('#disconnectGoogle').addEventListener('click', showGoogleDisconnectDialog);
   $('#googleDisconnectKeep').addEventListener('click', () => disconnectGoogle(false));

@@ -727,7 +727,7 @@ body.week-dragging .week-block.is-dragging { pointer-events: none; }
   min-width: 0;
   max-width: 100%;
 }
-.week-luckyday-mark {
+.week-extension-mark {
   flex: 0 0 auto;
   padding: 2px 5px;
   border-radius: 999px;
@@ -736,23 +736,7 @@ body.week-dragging .week-block.is-dragging { pointer-events: none; }
   line-height: 1.2;
   white-space: nowrap;
 }
-.week-luckyday-mark-cheng {
-  color: #d8ad64;
-  background: rgba(197, 151, 72, .12);
-}
-.week-luckyday-mark-chu {
-  color: #c39a61;
-  background: rgba(181, 137, 77, .10);
-}
-html[data-theme="light"] .week-luckyday-mark-cheng {
-  color: #8f5a11;
-  background: rgba(197, 151, 72, .11);
-}
-html[data-theme="light"] .week-luckyday-mark-chu {
-  color: #7d6039;
-  background: rgba(164, 126, 73, .10);
-}
-.week-mini-luckyday {
+.week-mini-extension {
   position: absolute;
   left: 2px;
   bottom: 1px;
@@ -763,6 +747,12 @@ html[data-theme="light"] .week-luckyday-mark-chu {
   line-height: 1;
   pointer-events: none;
 }
-.week-mini-day.is-anchor .week-mini-luckyday {
+.week-mini-day.is-anchor .week-mini-extension {
   color: color-mix(in srgb, var(--action-on-primary, #f6f7f9) 84%, #c99a4d);
 }
+
+.week-extension-mark {color:var(--extension-color);background:var(--extension-bg);}
+html[data-theme="light"] .week-extension-mark {color:var(--extension-light-color);background:var(--extension-light-bg);}
+
+.week-mini-extension {color:var(--extension-color);}
+html[data-theme="light"] .week-mini-extension {color:var(--extension-light-color);}

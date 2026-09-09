@@ -146,33 +146,31 @@ test('identity survives unsupported or cancelled VEVENT without DTSTART', () => 
     title: 'Cancelled occurrence',
     lumaTaskId: 'qa-linked',
     lumaItemType: 'event',
-    luckyDayMarker: false,
-    luckyDayType: '',
-    luckyDayDate: '',
+    extensionProperties: {},
   });
 });
 
-test('LuckyDay marker identity stays separate from normal Luma items', () => {
+test('Extension marker identity stays separate from normal Luma items', () => {
   const ics = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
     'BEGIN:VEVENT',
-    'UID:luckyday-cheng-2026-09-17@luma-todo',
-    'SUMMARY:成日',
+    'UID:example-cheng-2026-09-17@luma-todo',
+    'SUMMARY:Example mark',
     'DTSTART;VALUE=DATE:20260917',
     'DTEND;VALUE=DATE:20260918',
     'TRANSP:TRANSPARENT',
-    'X-LUMA-LUCKYDAY:TRUE',
-    'X-LUMA-LUCKYDAY-TYPE:cheng',
-    'X-LUMA-LUCKYDAY-DATE:2026-09-17',
+    'X-LUMA-EXAMPLE:TRUE',
+    'X-LUMA-EXAMPLE-TYPE:cheng',
+    'X-LUMA-EXAMPLE-DATE:2026-09-17',
     'END:VEVENT',
     'END:VCALENDAR',
     '',
   ].join('\r\n');
 
-  const parsed = parseIcloudEvent(ics, '/qa/luckyday.ics', '"ld"', calendar);
-  assert.equal(parsed.luckyDayMarker, true);
-  assert.equal(parsed.luckyDayType, 'cheng');
-  assert.equal(parsed.luckyDayDate, '2026-09-17');
+  const parsed = parseIcloudEvent(ics, '/qa/example.ics', '"ld"', calendar);
+  assert.equal(parsed.extensionProperties['X-LUMA-EXAMPLE'], 'TRUE');
+  assert.equal(parsed.extensionProperties['X-LUMA-EXAMPLE-TYPE'], 'cheng');
+  assert.equal(parsed.extensionProperties['X-LUMA-EXAMPLE-DATE'], '2026-09-17');
   assert.equal(parsed.lumaTaskId, '');
 });

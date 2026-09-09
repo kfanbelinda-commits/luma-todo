@@ -39,13 +39,8 @@
   function holidayDetail(mark) {
     return typeof cnHolidayDetailLabel === 'function' ? cnHolidayDetailLabel(mark) : '';
   }
-  function luckyDayMark(dateKey) {
-    return window.LumaLuckyDayMarks?.get?.(dateKey) || null;
-  }
-  function luckyDayBadge(dateKey, className = 'week-luckyday-mark') {
-    const mark = luckyDayMark(dateKey);
-    if (!mark) return '';
-    return `<span class="${className} ${className}-${mark.type}" title="${escapeText(mark.label)}" aria-label="${escapeText(mark.label)}">${escapeText(mark.label)}</span>`;
+  function extensionBadge(dateKey, className = 'week-extension-mark') {
+    return window.LumaExtensions?.badges(dateKey,className) || '';
   }
   function holidayCaption(dateKey) {
     if (typeof cnHolidayWeekCaption === 'function') return cnHolidayWeekCaption(dateKey);
@@ -65,14 +60,14 @@
   }
   function weekHolidaySubline(dateKey, lunar) {
     const caption = holidayCaption(dateKey);
-    const lucky = luckyDayBadge(dateKey);
+    const extension = extensionBadge(dateKey);
     if (!caption) {
       const lunarText = lunar ? `<span class="week-col-lunar">${lunar}</span>` : '';
-      return `<span class="week-col-subline">${lunarText}${lucky}</span>`;
+      return `<span class="week-col-subline">${lunarText}${extension}</span>`;
     }
     const title = caption.detail ? ` title="${escapeText(caption.detail)}"` : '';
     const holiday = `<span class="week-col-lunar is-holiday is-holiday-${caption.type}"${title}><span class="week-col-fest">${escapeText(caption.full)}</span><span class="week-col-mark" aria-hidden="true">${escapeText(caption.badge)}</span></span>`;
-    return `<span class="week-col-subline">${holiday}${lucky}</span>`;
+    return `<span class="week-col-subline">${holiday}${extension}</span>`;
   }
   let view = 'month';
   let anchorKey = todayKey();
@@ -275,9 +270,8 @@
       const title = detail ? ` title="${escapeText(detail)}"` : '';
       const aria = detail ? ` aria-label="${date.getDate()}日，${escapeText(detail)}"` : '';
       const workdot = mark?.type === 'work' ? '<i class="week-mini-workdot" aria-hidden="true"></i>' : '';
-      const lucky = luckyDayMark(key);
-      const luckyMini = lucky ? `<i class="week-mini-luckyday week-mini-luckyday-${lucky.type}" aria-hidden="true">${escapeText(lucky.short)}</i>` : '';
-      cells.push(`<button type="button" class="week-mini-day${muted ? ' is-muted' : ''}${weekSet.has(key) ? ' is-week' : ''}${key === today ? ' is-today' : ''}${key === anchorKey ? ' is-anchor' : ''}${holidayClass}" data-date="${key}"${title}${aria}>${date.getDate()}${luckyMini}${workdot}</button>`);
+      const extensionMini = window.LumaExtensions?.badges(key,'week-mini-extension',true) || '';
+      cells.push(`<button type="button" class="week-mini-day${muted ? ' is-muted' : ''}${weekSet.has(key) ? ' is-week' : ''}${key === today ? ' is-today' : ''}${key === anchorKey ? ' is-anchor' : ''}${holidayClass}" data-date="${key}"${title}${aria}>${date.getDate()}${extensionMini}${workdot}</button>`);
     }
     const stats = monthStats(year, month);
     const statRows = stats.rows.map((row) => (
@@ -381,7 +375,7 @@
     const existing = board.querySelector('.week-scroll');
     if (existing) savedScroll = existing.scrollTop;
     const keys = weekKeys(anchorKey);
-    window.LumaLuckyDayMarks?.ensureRange?.(keys[0], keys[6]);
+    window.LumaExtensions?.ensureRange?.(keys[0], keys[6]);
     const start = parseKey(keys[0]);
     const end = parseKey(keys[6]);
     const labels = hourLabels();

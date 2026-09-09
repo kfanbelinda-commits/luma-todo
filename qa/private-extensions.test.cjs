@@ -19,21 +19,23 @@ function encrypt(key, plaintext) {
   };
 }
 
-function packFor(code, entrySource = "module.exports={getSummary:()=>({ok:true}),getDayMarks:()=>({marks:[{dateKey:'2026-09-17',type:'cheng'}]})};") {
+function packFor(code, entrySource = "module.exports={getPanel:()=>({ok:true}),getDayMarks:()=>({marks:[{dateKey:'2026-09-17',label:'Test'}]})};") {
   const contentKey = crypto.randomBytes(32);
   const salt = crypto.randomBytes(16);
   const wrapKey = crypto.scryptSync(code.toUpperCase(), salt, 32);
   return JSON.stringify({
     format: 1,
-    id: "luckyday",
+    id: "example",
     version: "0.1.0",
     payload: encrypt(contentKey, JSON.stringify({
       manifest: {
-        id: "luckyday",
-        name: "LuckyDay 吉课",
+        id: "example",
+        name: "Example extension",
         version: "0.1.0",
         entry: "plugin-entry.cjs",
-        fullUrl: "https://example.com/luckyday",
+        apiVersion: 2,
+        contributions: {panel:{label:"E"}},
+        fullUrl: "https://example.com/example",
       },
       files: { "plugin-entry.cjs": entrySource },
     })),
@@ -83,9 +85,9 @@ test("only a recipient code can decrypt and install the plugin package", () => {
 
     manager.activate(right);
     const status = manager.installPackage(packFor(right));
-    assert.equal(status.luckyDay.version, "0.1.0");
-    assert.deepEqual(manager.call("luckyday", "getSummary", {}), { ok: true });
-    assert.deepEqual(manager.call("luckyday", "getDayMarks", {}), { marks: [{ dateKey: "2026-09-17", type: "cheng" }] });
+    assert.equal(status.plugins[0].version, "0.1.0");
+    assert.deepEqual(manager.call("example", "getPanel", {}), { ok: true });
+    assert.deepEqual(manager.call("example", "getDayMarks", {}), { marks: [{ dateKey: "2026-09-17", label: "Test" }] });
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -99,10 +101,10 @@ test("unsafe plugin paths are rejected after decryption", () => {
     const wrapKey = crypto.scryptSync(code, salt, 32);
     const pack = JSON.stringify({
       format: 1,
-      id: "luckyday",
+      id: "example",
       version: "0.1.0",
       payload: encrypt(contentKey, JSON.stringify({
-        manifest: { id: "luckyday", version: "0.1.0", entry: "../evil.cjs" },
+        manifest: { id: "example", version: "0.1.0", entry: "../evil.cjs" },
         files: { "../evil.cjs": "module.exports={}" },
       })),
       recipients: [{
@@ -116,8 +118,24 @@ test("unsafe plugin paths are rejected after decryption", () => {
 });
 
 
-test("LuckyDay IPC date validator accepts ISO date keys", () => {
+test("Extension IPC date validator accepts ISO date keys", () => {
   assert.equal(isIsoDateKey("2026-09-08"), true);
   assert.equal(isIsoDateKey("2026-9-8"), false);
   assert.equal(isIsoDateKey("\\d{4}-09-08"), false);
+});
+
+test('upgrade refreshes cached code and uninstall removes capabilities',()=>{
+  const {root,manager}=fixture();
+  try {
+    const code='LD-ABCDEF-123456-789ABC-DEF012';manager.activate(code);
+    manager.installPackage(packFor(code));
+    assert.deepEqual(manager.call('example','getPanel',{}),{ok:true});
+    manager.installPackage(packFor(code,'module.exports={getPanel:()=>({upgraded:true})}'));
+    assert.deepEqual(manager.call('example','getPanel',{}),{upgraded:true});
+    assert.throws(()=>manager.call('example','constructor',{}),/不受支持/);
+    assert.equal(manager.uninstall('example').plugins.length,0);
+    assert.throws(()=>manager.call('example','getPanel',{}),/尚未安装/);
+    assert.equal(manager.status().activated,true);
+    assert.throws(()=>manager.uninstall('../outside'),/标识/);
+  } finally {fs.rmSync(root,{recursive:true,force:true});}
 });

@@ -67,7 +67,7 @@ html[data-theme="light"] .day-holiday-work {
 .day-heading-marks .day-holiday {
   margin-left: 0;
 }
-.day-luckyday {
+.day-extension-mark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -80,20 +80,7 @@ html[data-theme="light"] .day-holiday-work {
   line-height: 1;
   white-space: nowrap;
 }
-.day-luckyday-cheng {
-  color: #e4b96d;
-  background: rgba(197, 151, 72, .14);
-}
-.day-luckyday-chu {
-  color: #cda36a;
-  background: rgba(181, 137, 77, .11);
-}
-.calendar-day.muted .day-luckyday { opacity: .72; }
-html[data-theme="light"] .day-luckyday-cheng {
-  color: #966116;
-  background: rgba(197, 151, 72, .12);
-}
-html[data-theme="light"] .day-luckyday-chu {
-  color: #84653d;
-  background: rgba(164, 126, 73, .10);
-}
+.calendar-day.muted .day-extension-mark { opacity: .72; }
+
+.day-extension-mark {color:var(--extension-color);background:var(--extension-bg);}
+html[data-theme="light"] .day-extension-mark {color:var(--extension-light-color);background:var(--extension-light-bg);}

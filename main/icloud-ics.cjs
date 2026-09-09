@@ -156,9 +156,7 @@ function parseIcloudEventIdentity(ics) {
     title: unescapeIcsText(icsProperty(lines, 'SUMMARY')?.value || ''),
     lumaTaskId: unescapeIcsText(icsProperty(lines, 'X-LUMA-TASK-ID')?.value || ''),
     lumaItemType: String(icsProperty(lines, 'X-LUMA-ITEM-TYPE')?.value || '').toLowerCase(),
-    luckyDayMarker: String(icsProperty(lines, 'X-LUMA-LUCKYDAY')?.value || '').toLowerCase() === 'true',
-    luckyDayType: String(icsProperty(lines, 'X-LUMA-LUCKYDAY-TYPE')?.value || '').toLowerCase(),
-    luckyDayDate: String(icsProperty(lines, 'X-LUMA-LUCKYDAY-DATE')?.value || ''),
+    extensionProperties: Object.fromEntries(lines.filter(line => /^X-LUMA-/i.test(line) && !/^X-LUMA-(TASK-ID|ITEM-TYPE|COMPLETED|EVENT-COLOR):/i.test(line)).map(line => {const i=line.indexOf(':'); return [line.slice(0,i).toUpperCase(),line.slice(i+1)];})),
   };
 }
 
@@ -208,9 +206,7 @@ function parseIcloudEvent(ics, href, etag, calendar) {
     lumaTaskId,
     lumaItemType,
     lumaCompleted,
-    luckyDayMarker: Boolean(identity.luckyDayMarker),
-    luckyDayType: identity.luckyDayType || '',
-    luckyDayDate: identity.luckyDayDate || start.dateKey,
+    extensionProperties: identity.extensionProperties || {},
     eventColor: /^#[0-9a-f]{6}$/i.test(color) ? color : DEFAULT_EVENT_COLOR,
     remoteUpdatedAt: Number.isFinite(remoteUpdatedAt) ? remoteUpdatedAt : Date.now(),
     calendarUrl: calendar.url,
