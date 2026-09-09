@@ -3346,9 +3346,13 @@ function bindEvents() {
   const positionSettingsDialog = () => {
     if (!settingsDialog.open) return;
     const anchor = $('#settingsButton').getBoundingClientRect();
-    const bounds = settingsDialog.getBoundingClientRect();
-    const left = Math.max(10, Math.min(anchor.right - bounds.width, window.innerWidth - bounds.width - 10));
-    const top = Math.max(10, Math.min(anchor.bottom + 7, window.innerHeight - bounds.height - 10));
+    // Use layout dimensions here. getBoundingClientRect() includes the opening
+    // scale transform, which made the first position a few pixels different
+    // from later clicks after the animation had finished.
+    const width = settingsDialog.offsetWidth;
+    const height = settingsDialog.offsetHeight;
+    const left = Math.max(10, Math.min(anchor.right - width, window.innerWidth - width - 10));
+    const top = Math.max(10, Math.min(anchor.bottom + 7, window.innerHeight - height - 10));
     settingsDialog.style.left = `${Math.round(left)}px`;
     settingsDialog.style.top = `${Math.round(top)}px`;
   };
