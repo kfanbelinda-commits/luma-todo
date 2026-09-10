@@ -75,7 +75,7 @@
     if(!active || webLink.disabled)return;
     webLink.disabled=true;
     try {
-      await window.luma.privateExtensionPanel(active.id,{...active.args,__hostAction:'open-web'});
+      await window.luma.privateExtensionOpenWeb(active.id);
     } catch(error) {report(error);}
     finally {webLink.disabled=false;}
   });
