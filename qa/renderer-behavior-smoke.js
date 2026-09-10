@@ -1,4 +1,5 @@
 (async () => {
+  console.log('QA: Todo checks');
   const assertQa = (condition, message) => {
     if (!condition) throw new Error(message);
   };
@@ -136,6 +137,38 @@
   assertQa(document.querySelector('#privateExtensionActions').childElementCount === 0, 'Uninstalled extensions have visible actions');
   assertQa(document.querySelector('#privateExtensionPanel').shadowRoot.childElementCount === 0, 'Uninstalled extensions have visible UI');
 
+  const cursorBeforeDrag = new Date(calendarCursor);
+  console.log('QA: calendar event drag checks');
+  const eventId = '__QA_EVENT_MOVE__';
+  const spanId = '__QA_SPAN_MOVE__';
+  const eventTask = {id:eventId,itemType:'event',title:'日程拖拽测试',dueDate:'2027-03-10',endDate:'2027-03-10',time:'10:00',endTime:'11:00',projectId:task.projectId,source:'icloud',icloudUid:'qa-uid',icloudHref:'/qa-event.ics'};
+  const spanTask = {...eventTask,id:spanId,title:'跨日拖拽测试',dueDate:'2027-03-14',endDate:'2027-03-17',time:'',endTime:''};
+  state.tasks.push(eventTask,spanTask);
+  calendarCursor=fromDateKey('2027-03-01');renderCalendar();
+  const dragTo = async (selector,targetDate) => {
+    const source=document.querySelector(selector);
+    assertQa(source?.draggable,'Event body is not draggable');
+    const dataTransfer=new DataTransfer();
+    source.dispatchEvent(new DragEvent('dragstart',{bubbles:true,cancelable:true,dataTransfer}));
+    const target=document.querySelector('.calendar-day[data-date="'+targetDate+'"]');
+    const over=new DragEvent('dragover',{bubbles:true,cancelable:true,dataTransfer});target.dispatchEvent(over);
+    assertQa(over.defaultPrevented,'Calendar rejected the event drop');
+    target.dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer}));
+    source.dispatchEvent(new DragEvent('dragend',{bubbles:true,dataTransfer}));
+    await new Promise(resolve=>setTimeout(resolve,100));
+  };
+  await dragTo('.calendar-event-item[data-task-id="'+eventId+'"]','2027-03-24');
+  console.log('QA: single event moved');
+  assertQa(eventTask.dueDate==='2027-03-24' && eventTask.endDate==='2027-03-24','Single event date did not move');
+  assertQa(eventTask.time==='10:00' && eventTask.endTime==='11:00' && eventTask.icloudUid==='qa-uid','Moving changed time or sync identity');
+  await dragTo('.calendar-day[data-date="2027-03-16"] .calendar-span-event[data-task-id="'+spanId+'"]','2027-03-22');
+  console.log('QA: multi-day event moved');
+  assertQa(spanTask.dueDate==='2027-03-20' && spanTask.endDate==='2027-03-23','Middle-segment move lost the date span');
+  assertQa(document.querySelector('.calendar-day[data-date="2027-03-20"] .event-resize-start'),'Moving removed the start resize control');
+  assertQa(document.querySelector('.calendar-day[data-date="2027-03-23"] .event-resize-end'),'Moving removed the end resize control');
+  state.tasks=state.tasks.filter(item=>item.id!==eventId && item.id!==spanId);
+  calendarCursor=cursorBeforeDrag;
+
   // Cleanup is demo-only and keeps repeated CI runs deterministic.
   state.tasks = state.tasks.filter((item) => item.id !== task.id);
   await persist();
@@ -153,7 +186,11 @@
       'opacity survives calendar expand',
       'iCloud conflict keeps settings open',
       'Google conflict keeps settings open',
-      'Empty private extension host'
+      'Empty private extension host',
+      'month event body drag',
+      'multi-day middle-segment drag',
+      'event times and Apple identity preserved',
+      'event edge resize controls preserved'
     ]
   };
 })()

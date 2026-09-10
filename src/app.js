@@ -65,6 +65,7 @@ let calendarEventResizeState = null;
 let selectedEventColor = DEFAULT_EVENT_COLOR;
 let pendingReminderTaskId = null;
 let draggedTaskId = null;
+let draggedCalendarEvent = null;
 let draggedProjectId = null;
 let selectedProjectColor = COLORS[0];
 let editingProjectId = null;
@@ -310,6 +311,25 @@ function localResizableCalendarEvent(task) {
     && isCalendarEvent(task)
     && !task.googleCalendarExternal
     && task.syncTarget !== 'external-calendar');
+}
+
+function bindCalendarEventMove(host, task, dateKey) {
+  host.draggable = localResizableCalendarEvent(task) && !task.completed;
+  host.dataset.taskId = task.id;
+  if (!host.draggable) return;
+  host.addEventListener('dragstart', (event) => {
+    if (calendarEventResizeState || event.target.closest('.event-resize-handle')) {
+      event.preventDefault();
+      return;
+    }
+    draggedCalendarEvent = { taskId: task.id, anchorDate: dateKey };
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', task.id);
+  });
+  host.addEventListener('dragend', () => {
+    draggedCalendarEvent = null;
+    document.querySelectorAll('.calendar-day.drag-over').forEach(day => day.classList.remove('drag-over'));
+  });
 }
 
 function addCalendarEventResizeHandle(host, task, edge) {
@@ -989,6 +1009,8 @@ function renderCalendar() {
       if (key === task.dueDate) addCalendarEventResizeHandle(segment, task, 'start');
       if (key === endDate) addCalendarEventResizeHandle(segment, task, 'end');
       segment.title = `${task.title} · ${eventRangeLabel(task)}${external ? ' · Google Calendar' : ''}`;
+      bindCalendarEventMove(segment, task, key);
+      if (segment.draggable) segment.title += ' · 拖动主体移动日期，两端调整范围';
       segment.addEventListener('click', (clickEvent) => {
         clickEvent.stopPropagation();
         openCalendarDetail(key);
@@ -1037,10 +1059,13 @@ function renderCalendar() {
       if (calendarEvent && !external) {
         addCalendarEventResizeHandle(item, task, 'start');
         addCalendarEventResizeHandle(item, task, 'end');
+        bindCalendarEventMove(item, task, key);
+        if (item.draggable) item.title += ' · 拖动主体移动日期，两端调整范围';
       }
 
       item.addEventListener('dragstart', (dragEvent) => {
-        if (calendarEvent || task.completed) {
+        if (calendarEvent) return;
+        if (task.completed) {
           dragEvent.preventDefault();
           return;
         }
@@ -1073,7 +1098,7 @@ function renderCalendar() {
     cell.setAttribute('tabindex', '0');
     cell.setAttribute('title', `${date.getMonth() + 1}月${date.getDate()}日 · 单击查看当天详情，双击添加事项`);
     cell.addEventListener('dragover', (dragEvent) => {
-      if (!draggedTaskId) return;
+      if (!draggedTaskId && !draggedCalendarEvent) return;
       dragEvent.preventDefault();
       dragEvent.dataTransfer.dropEffect = 'move';
       cell.classList.add('drag-over');
@@ -1085,9 +1110,11 @@ function renderCalendar() {
       dropEvent.preventDefault();
       dropEvent.stopPropagation();
       cell.classList.remove('drag-over');
-      const taskId = draggedTaskId || dropEvent.dataTransfer.getData('text/plain');
+      const eventMove = draggedCalendarEvent;
+      const taskId = eventMove?.taskId || draggedTaskId || dropEvent.dataTransfer.getData('text/plain');
       draggedTaskId = null;
-      if (taskId) await moveTaskToDate(taskId, key);
+      draggedCalendarEvent = null;
+      if (taskId) await moveTaskToDate(taskId, key, eventMove?.anchorDate);
     });
     cell.addEventListener('click', () => openCalendarDetail(key));
     cell.addEventListener('dblclick', (event) => {
@@ -1341,10 +1368,19 @@ function renderCalendarDetail() {
   }
 }
 
-async function moveTaskToDate(taskId, dateKey) {
+async function moveTaskToDate(taskId, dateKey, anchorDate) {
   const task = state.tasks.find((item) => item.id === taskId);
-  if (!task || task.googleCalendarExternal || task.syncTarget === 'external-calendar' || task.dueDate === dateKey) return;
-  task.dueDate = dateKey;
+  if (!task || task.completed || task.googleCalendarExternal || task.syncTarget === 'external-calendar') return;
+  if (isCalendarEvent(task)) {
+    const days = Math.round((fromDateKey(dateKey) - fromDateKey(anchorDate || task.dueDate)) / 86400000);
+    if (!Number.isFinite(days) || days === 0) return;
+    const shift = key => { const date = fromDateKey(key); date.setDate(date.getDate() + days); return toDateKey(date); };
+    task.dueDate = shift(task.dueDate);
+    if (task.endDate) task.endDate = shift(task.endDate);
+  } else {
+    if (task.dueDate === dateKey) return;
+    task.dueDate = dateKey;
+  }
   task.updatedAt = Date.now();
   await persist();
   render();
