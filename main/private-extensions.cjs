@@ -3,6 +3,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const { registerPrivateExtensionWebOpener } = require("./private-extension-open.cjs");
 
 const MAX_PACKAGE_BYTES = 8 * 1024 * 1024;
 const MAX_FILES = 24;
@@ -275,7 +276,7 @@ function createPrivateExtensionManager({
     return readManifest(id);
   }
 
-  return {
+  const api = {
     activate,
     status,
     installPackage,
@@ -284,6 +285,8 @@ function createPrivateExtensionManager({
     manifest,
     _test: { codeHash, parseAndDecryptPackage, safeRelativePath },
   };
+  registerPrivateExtensionWebOpener(api);
+  return api;
 }
 
 function isIsoDateKey(value) {
