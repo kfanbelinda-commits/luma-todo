@@ -4,10 +4,17 @@
   let hooks = {}, active = null;
   const marks = new Map(), loaded = new Set(), requests = new Map(), settingsRoots = new Map();
   const dialog = document.querySelector('#privateExtensionDialog');
-  const panel = document.querySelector('#privateExtensionPanel').attachShadow({mode:'open'});
+  const panelHost = document.querySelector('#privateExtensionPanel');
+  const panel = panelHost.attachShadow({mode:'open'});
+  const webLink = document.createElement('button');
+  webLink.type = 'button';
+  webLink.className = 'private-extension-web-link';
+  webLink.hidden = true;
+  dialog.append(webLink);
   const escape = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const report = error => {document.querySelector('#privateExtensionStatus').textContent=error?.message || String(error);};
   const ready = () => plugins.filter(p=>p.apiVersion === 2);
+  const activePlugin = () => plugins.find(plugin => plugin.id === active?.id) || null;
 
   function paint(root,view) {
     if (!view || typeof view.html !== 'string' || typeof view.css !== 'string') throw new Error('扩展界面不可用');
@@ -23,9 +30,60 @@
     const style=document.createElement('style'); style.textContent=view.css;
     root.replaceChildren(style,template.content);
   }
-  function close() {active=null;panelRequest++;if(dialog.open)dialog.close();panel.replaceChildren();}
-  dialog.addEventListener('close',()=>{active=null;panelRequest++;});
+  function positionDialog() {
+    if (!active) return;
+    const detail=document.querySelector('#calendarDetail');
+    if (!detail || detail.classList.contains('hidden')) return;
+    const rect=detail.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    dialog.style.left=Math.round(rect.left)+'px';
+    dialog.style.top=Math.round(rect.top)+'px';
+    dialog.style.width=Math.round(rect.width)+'px';
+    dialog.style.height=Math.round(rect.height)+'px';
+  }
+  function refreshWebLink() {
+    const plugin=activePlugin();
+    const contribution=plugin?.contributions?.panel;
+    const visible=Boolean(contribution?.web);
+    webLink.hidden=!visible;
+    webLink.textContent=(contribution?.webLabel || '网页详情')+' ↗';
+    dialog.classList.toggle('has-web-link',visible);
+  }
+  function close() {
+    active=null;
+    panelRequest++;
+    webLink.hidden=true;
+    webLink.disabled=false;
+    dialog.classList.remove('has-web-link');
+    if(dialog.open)dialog.close();
+    panel.replaceChildren();
+  }
+  dialog.addEventListener('close',()=>{
+    active=null;
+    panelRequest++;
+    webLink.hidden=true;
+    webLink.disabled=false;
+    dialog.classList.remove('has-web-link');
+  });
+  dialog.addEventListener('click',event=>{
+    if(event.target!==dialog)return;
+    const rect=dialog.getBoundingClientRect();
+    if(event.clientX<rect.left || event.clientX>rect.right || event.clientY<rect.top || event.clientY>rect.bottom)close();
+  });
   document.querySelector('#closePrivateExtension').addEventListener('click',close);
+  webLink.addEventListener('click',async()=>{
+    if(!active || webLink.disabled)return;
+    webLink.disabled=true;
+    try {
+      await window.luma.privateExtensionOpenWeb(active.id);
+    } catch(error) {report(error);}
+    finally {webLink.disabled=false;}
+  });
+  window.addEventListener('resize',()=>{if(dialog.open)positionDialog();});
+  const calendarDetail=document.querySelector('#calendarDetail');
+  if(calendarDetail && typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(()=>{if(dialog.open)positionDialog();}).observe(calendarDetail);
+  }
   async function renderPanel(args) {
     if(!active)return;
     const id=active.id, request=++panelRequest;
@@ -37,14 +95,18 @@
       document.querySelector('#closePrivateExtension').hidden=Boolean(panel.querySelector('[data-extension-action="close"]'));
       active.args={...args,...view.state};
       dialog.setAttribute('aria-label',view.title || '私人扩展');
-      dialog.style.width=Math.min(800,Math.max(280,Number(view.width)||520))+'px';
+      refreshWebLink();
+      requestAnimationFrame(positionDialog);
     } catch(error) {if(request === panelRequest){panel.textContent=error?.message || '无法打开扩展';}}
   }
   async function open(id,dateKey) {
     active={id,args:{dateKey}};
     panel.textContent='正在读取…';
     document.querySelector('#closePrivateExtension').hidden=false;
+    refreshWebLink();
+    positionDialog();
     if(!dialog.open)dialog.showModal();
+    positionDialog();
     await renderPanel({dateKey});
   }
   panel.addEventListener('click',async event=>{

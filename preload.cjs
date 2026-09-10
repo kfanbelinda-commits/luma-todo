@@ -40,5 +40,6 @@ contextBridge.exposeInMainWorld('luma', {
   privateExtensionMarks: (id,args) => ipcRenderer.invoke('private-extensions:marks',{id,args}),
   privateExtensionSettings: (id,result,error) => ipcRenderer.invoke('private-extensions:settings',{id,result,error}),
   privateExtensionSyncCalendar: (id,calendarUrl) => ipcRenderer.invoke('private-extensions:sync-calendar',{id,calendarUrl}),
+  privateExtensionOpenWeb: (id) => ipcRenderer.invoke('private-extensions:open-web', id),
   privateExtensionUninstall: id => ipcRenderer.invoke('private-extensions:uninstall',id),
 });
