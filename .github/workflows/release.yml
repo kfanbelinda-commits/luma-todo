@@ -81,6 +81,11 @@ jobs:
             $tag = "v$version"
           }
 
+          $releaseOptions = @()
+          if ($tag -match '-') {
+            $releaseOptions = @('--prerelease', '--latest=false')
+          }
+
           gh release view $tag *> $null
           $releaseExists = $LASTEXITCODE -eq 0
 
@@ -89,9 +94,9 @@ jobs:
               gh api --method PATCH "/repos/$env:GITHUB_REPOSITORY/git/refs/tags/$tag" -f sha="$env:GITHUB_SHA" -F force=true
             }
             gh release upload $tag $releaseFiles --clobber
-            gh release edit $tag --title "Luma Todo $tag"
+            gh release edit $tag --title "Luma Todo $tag" @releaseOptions
           } elseif ($env:GITHUB_REF_TYPE -eq 'tag') {
-            gh release create $tag $releaseFiles --verify-tag --generate-notes --title "Luma Todo $tag"
+            gh release create $tag $releaseFiles --verify-tag --generate-notes --title "Luma Todo $tag" @releaseOptions
           } else {
-            gh release create $tag $releaseFiles --target $env:GITHUB_SHA --generate-notes --title "Luma Todo $tag"
+            gh release create $tag $releaseFiles --target $env:GITHUB_SHA --generate-notes --title "Luma Todo $tag" @releaseOptions
           }
