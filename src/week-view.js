@@ -210,6 +210,53 @@
     const label = hidden === 1 ? '+1' : `+${hidden}`;
     return `<button type="button" class="week-overflow" data-date="${key}" data-kind="${kind}" aria-label="还有 ${hidden} 项">${label}</button>`;
   }
+  function weekAllDayLayout(keys) {
+    const byId = new Map();
+    keys.forEach((key, index) => {
+      weekItemsOnDate(key).allDayEvents.forEach((task) => {
+        const item = byId.get(task.id);
+        if (item) item.end = index;
+        else byId.set(task.id, { task, start: index, end: index });
+      });
+    });
+    // Assign one lane for the whole visible range, rather than independently
+    // truncating each day and breaking a multi-day event into separate chips.
+    const items = [...byId.values()].sort((a, b) => a.start - b.start
+      || (b.end - b.start) - (a.end - a.start)
+      || String(a.task.title || '').localeCompare(String(b.task.title || ''))
+      || String(a.task.id).localeCompare(String(b.task.id)));
+    const laneEnds = [];
+    const hiddenByDay = keys.map(() => 0);
+    items.forEach((item) => {
+      let lane = laneEnds.findIndex((end) => end < item.start);
+      if (lane < 0) lane = laneEnds.length;
+      laneEnds[lane] = item.end;
+      item.lane = lane;
+      if (lane >= WEEK_ALLDAY_VISIBLE) {
+        for (let day = item.start; day <= item.end; day++) hiddenByDay[day]++;
+      }
+    });
+    return { items, hiddenByDay, lanes: Math.max(1, Math.min(WEEK_ALLDAY_VISIBLE, laneEnds.length)) };
+  }
+  function weekAllDayMarkup(keys) {
+    const layout = weekAllDayLayout(keys);
+    const spans = layout.items.filter((item) => item.lane < WEEK_ALLDAY_VISIBLE).map(({ task, start, end, lane }) => {
+      const continuesBefore = task.dueDate < keys[0] ? ' continues-before' : '';
+      const continuesAfter = (task.endDate || task.dueDate) > keys[keys.length - 1] ? ' continues-after' : '';
+      return `<button type="button" class="week-chip week-allday-span${continuesBefore}${continuesAfter}" data-date="${keys[start]}" data-id="${escapeText(task.id)}" style="grid-column:${start + 1}/${end + 2};grid-row:${lane + 1};--event-color:${projectColor(task)}">${escapeText(task.title)}</button>`;
+    }).join('');
+    const columns = keys.map((key, index) => `<div class="week-allday-col" data-date="${key}">${weekOverflowMarkup(key, layout.hiddenByDay[index], 'allday')}</div>`).join('');
+    return { ...layout, spans, columns, overflowRows: layout.hiddenByDay.some(Boolean) ? 1 : 0 };
+  }
+  function weekItemClickDate(item, event) {
+    if (item?.classList.contains('week-allday-span') && event.detail > 0) {
+      const columns = item.closest('.week-allday-cols');
+      const rect = columns.getBoundingClientRect();
+      const day = clamp(Math.floor((event.clientX - rect.left) * 7 / rect.width), 0, 6);
+      return columns.children[day]?.dataset.date || item.dataset.date;
+    }
+    return item?.dataset.date;
+  }
   function hourLabels() {
     return Array.from({ length: DAY_END - DAY_START }, (_, index) => DAY_START + index);
   }
@@ -409,12 +456,7 @@
       const overflow = weekOverflowMarkup(key, Math.max(0, items.length - WEEK_TODO_VISIBLE), 'todo');
       return `<div class="week-todo-col" data-date="${key}">${visible}${overflow}</div>`;
     }).join('');
-    const allDayCols = keys.map((key) => {
-      const items = weekItemsOnDate(key).allDayEvents;
-      const chips = items.slice(0, WEEK_ALLDAY_VISIBLE).map((task) => `<button type="button" class="week-chip" data-date="${key}" data-id="${escapeText(task.id)}" style="--event-color:${projectColor(task)}">${escapeText(task.title)}</button>`).join('');
-      const overflow = weekOverflowMarkup(key, Math.max(0, items.length - WEEK_ALLDAY_VISIBLE), 'allday');
-      return `<div class="week-allday-col" data-date="${key}">${chips}${overflow}</div>`;
-    }).join('');
+    const allDay = weekAllDayMarkup(keys);
     const dayCols = keys.map((key) => {
       const blocks = weekItemsOnDate(key).timedEvents.map((task) => blockMarkup(task, key, rangeStart, rangeMinutes)).join('');
       return `<div class="week-day-col" data-date="${key}"><div class="week-hour-lines">${labels.map(() => '<i></i>').join('')}</div>${blocks}</div>`;
@@ -422,7 +464,7 @@
     const todayIndex = keys.indexOf(todayKey()) + 1;
     const nowLine = nowLineMarkup(keys, rangeStart, rangeMinutes);
     const gutter = labels.map((hour) => `<span>${pad(hour)}:00</span>`).join('');
-    board.innerHTML = `<aside class="week-mini" aria-label="周视图侧栏"></aside><section class="week-main"><div class="week-main-head"><span class="week-gutter-spacer"></span><div class="week-col-heads${todayIndex ? ' has-today' : ''}" style="--today-index:${todayIndex}">${header}</div></div><div class="week-hairline" aria-hidden="true"></div><div class="week-todos"><span class="week-gutter-label">待办</span><div class="week-todo-cols${todayIndex ? ' has-today' : ''}" style="--today-index:${todayIndex}">${todoCols}</div></div><div class="week-hairline" aria-hidden="true"></div><div class="week-allday"><span class="week-gutter-label">全天</span><div class="week-allday-cols${todayIndex ? ' has-today' : ''}" style="--today-index:${todayIndex}">${allDayCols}</div></div><div class="week-hairline" aria-hidden="true"></div><div class="week-scroll"><div class="week-gutter" style="--hour-h:${HOUR_PX}px;--hours:${labels.length}">${gutter}</div><div class="week-days${todayIndex ? ' has-today' : ''}" data-start-hour="${DAY_START}" data-hours="${labels.length}" style="--hour-h:${HOUR_PX}px;--hours:${labels.length};--today-index:${todayIndex}">${dayCols}${nowLine}</div></div></section>`;
+    board.innerHTML = `<aside class="week-mini" aria-label="周视图侧栏"></aside><section class="week-main"><div class="week-main-head"><span class="week-gutter-spacer"></span><div class="week-col-heads${todayIndex ? ' has-today' : ''}" style="--today-index:${todayIndex}">${header}</div></div><div class="week-hairline" aria-hidden="true"></div><div class="week-todos"><span class="week-gutter-label">待办</span><div class="week-todo-cols${todayIndex ? ' has-today' : ''}" style="--today-index:${todayIndex}">${todoCols}</div></div><div class="week-hairline" aria-hidden="true"></div><div class="week-allday"><span class="week-gutter-label">全天</span><div class="week-allday-cols${todayIndex ? ' has-today' : ''}" style="--today-index:${todayIndex};--allday-lanes:${allDay.lanes};--allday-overflow:${allDay.overflowRows}">${allDay.columns}<div class="week-allday-spans">${allDay.spans}</div></div></div><div class="week-hairline" aria-hidden="true"></div><div class="week-scroll"><div class="week-gutter" style="--hour-h:${HOUR_PX}px;--hours:${labels.length}">${gutter}</div><div class="week-days${todayIndex ? ' has-today' : ''}" data-start-hour="${DAY_START}" data-hours="${labels.length}" style="--hour-h:${HOUR_PX}px;--hours:${labels.length};--today-index:${todayIndex}">${dayCols}${nowLine}</div></div></section>`;
     renderMini(board.querySelector('.week-mini'), keys);
     restoreScroll(board);
     syncWeekScrollbarGutter();
@@ -690,7 +732,8 @@
       const mini = event.target.closest('.week-mini-day');
       if (mini?.dataset.date) { jumpTo(mini.dataset.date); return; }
       const item = event.target.closest('.week-block, .week-chip, .week-col-head, .week-day-col, .week-allday-col, .week-todo-col');
-      if (item?.dataset.date && typeof openCalendarDetail === 'function') openCalendarDetail(item.dataset.date);
+      const clickedDate = weekItemClickDate(item, event);
+      if (clickedDate && typeof openCalendarDetail === 'function') openCalendarDetail(clickedDate);
     });
     const panel = document.querySelector('#calendarPanel');
     if (panel && panel.dataset.weekWheel !== '1') {

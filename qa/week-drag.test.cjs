@@ -5,6 +5,58 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 
+function allDayBoard(tasks) {
+  const text = fs.readFileSync(path.join(__dirname, '../src/week-view.js'), 'utf8')
+    .replace(/  boot\(\);\s+document.addEventListener\('DOMContentLoaded', boot\);/,
+      '  globalThis.allDay = { layout: weekAllDayLayout, markup: weekAllDayMarkup, clickDate: weekItemClickDate };');
+  const context = vm.createContext({ window: {}, state: { tasks },
+    isCalendarEvent: item => item.itemType === 'event',
+    eventCoversDate: (item, key) => key >= item.dueDate && key <= (item.endDate || item.dueDate),
+  });
+  vm.runInContext(text, context);
+  return context.allDay;
+}
+const spanWeek = Array.from({ length: 7 }, (_, i) => '2026-09-' + String(i + 7).padStart(2, '0'));
+
+test('all-day events render once across their inclusive date range; Todos and timed events stay separate', () => {
+  const api = allDayBoard([
+    { id: 'trip', title: '出差·南充', itemType: 'event', dueDate: '2026-09-10', endDate: '2026-09-11' },
+    { id: 'todo', itemType: 'todo', dueDate: '2026-09-10', completed: true },
+    { id: 'timed', itemType: 'event', dueDate: '2026-09-10', time: '09:00' },
+  ]);
+  const result = api.markup(spanWeek);
+  assert.equal(result.items.length, 1);
+  assert.equal((result.spans.match(/data-id="trip"/g) || []).length, 1);
+  assert.match(result.spans, /grid-column:4\/6;grid-row:1/);
+  assert.equal(result.lanes, 1);
+});
+
+test('overlapping spans keep a stable lane, clip at week boundaries, and retain per-day overflow', () => {
+  const tasks = [
+    { id: 'long', itemType: 'event', dueDate: '2026-09-06', endDate: '2026-09-15' },
+    { id: 'middle', itemType: 'event', dueDate: '2026-09-08', endDate: '2026-09-11' },
+    { id: 'hidden', itemType: 'event', dueDate: '2026-09-09', endDate: '2026-09-12' },
+  ];
+  const before = JSON.stringify(tasks);
+  const result = allDayBoard(tasks).markup(spanWeek);
+  assert.deepEqual(Array.from(result.hiddenByDay), [0, 0, 1, 1, 1, 1, 0]);
+  assert.match(result.spans, /continues-before continues-after/);
+  assert.match(result.spans, /grid-column:1\/8;grid-row:1/);
+  assert.doesNotMatch(result.spans, /data-id="hidden"/);
+  assert.equal(result.overflowRows, 1);
+  assert.equal(JSON.stringify(tasks), before);
+});
+
+test('clicking either side of a continuous bar opens that day; keyboard activation uses its first visible day', () => {
+  const columns = { getBoundingClientRect: () => ({ left: 50, width: 700 }),
+    children: spanWeek.map(date => ({ dataset: { date } })) };
+  const item = { dataset: { date: '2026-09-10' }, classList: { contains: () => true }, closest: () => columns };
+  const api = allDayBoard([]);
+  assert.equal(api.clickDate(item, { detail: 1, clientX: 400 }), '2026-09-10');
+  assert.equal(api.clickDate(item, { detail: 1, clientX: 500 }), '2026-09-11');
+  assert.equal(api.clickDate(item, { detail: 0, clientX: 0 }), '2026-09-10');
+});
+
 // Exercise the real drag handlers, replacing only boot/render and the DOM.
 const source = fs.readFileSync(path.join(__dirname, '../src/week-view.js'), 'utf8')
   .replace(/  boot\(\);\s+document.addEventListener\('DOMContentLoaded', boot\);/,

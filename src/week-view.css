@@ -519,13 +519,26 @@ html[data-theme="light"] .week-col-lunar.is-holiday-work {
 .week-allday {
   min-height: 34px;
 }
+.week-allday-cols {
+  position: relative;
+}
 .week-allday-col {
   display: flex;
   min-width: 0;
-  min-height: 34px;
+  min-height: max(34px, calc(6px + var(--allday-lanes, 1) * 20px + var(--allday-overflow, 0) * 20px));
   flex-direction: column;
   gap: 2px;
   padding: 4px 3px;
+  justify-content: flex-end;
+}
+.week-allday-spans {
+  position: absolute;
+  inset: 4px 0 auto;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-auto-rows: 18px;
+  row-gap: 2px;
+  pointer-events: none;
 }
 .week-chip,
 .week-block {
@@ -545,6 +558,21 @@ html[data-theme="light"] .week-col-lunar.is-holiday-work {
   line-height: 18px;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+.week-allday-span {
+  min-width: 0;
+  margin: 0 3px;
+  pointer-events: auto;
+}
+.week-allday-span.continues-before {
+  margin-left: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.week-allday-span.continues-after {
+  margin-right: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
 }
 .week-scroll {
   display: grid;
