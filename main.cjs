@@ -1,6 +1,7 @@
 const { app, BrowserWindow, Tray, Menu, ipcMain, dialog, screen, nativeImage, safeStorage, shell } = require('electron');
 const { taskToIcloudIcs, parseIcloudEvent, parseIcloudEventIdentity } = require('./main/icloud-ics.cjs');
 const { syncCalendar } = require('./main/icloud-sync.cjs');
+const { backupBeforeIcloudSync } = require('./main/icloud-backup.cjs');
 const {
   googleTaskLocalSnapshot,
   googleTaskRemoteSnapshot,
@@ -3014,6 +3015,8 @@ trustedHandle('icloud:sync', async (_event, payload) => {
   if (DEMO_MODE) return { state: payload?.state, summary: { created: 0, updated: 0, unchanged: 0, calendarName: '' } };
   icloudSyncInFlight = true;
   try {
+    try { backupBeforeIcloudSync(localData.root(), payload?.state); }
+    catch (error) { throw new Error('无法保存同步前备份，已停止 iCloud 同步：' + error.message); }
     const result = await syncIcloudEvents(payload?.state || {}, String(payload?.calendarUrl || ''));
     const credentials = loadIcloudCredentials();
     result.extensions = {};
