@@ -125,13 +125,43 @@ test('main IPC rejects concurrent sync and releases guard on rejection', async (
   let handler, reject;
   const pending = new Promise((_resolve, fail) => { reject = fail; });
   let calls = 0;
-  const context = vm.createContext({ DEMO_MODE: false, trustedHandle: (_name, fn) => { handler = fn; }, syncIcloudEvents: () => { calls++; return pending; } });
+  const context = vm.createContext({ DEMO_MODE: false, localData: { root: () => 'isolated' }, backupBeforeIcloudSync: () => {},
+    trustedHandle: (_name, fn) => { handler = fn; }, syncIcloudEvents: () => { calls++; return pending; } });
   vm.runInContext(source.slice(source.indexOf('let icloudSyncInFlight = false;'), source.indexOf("trustedHandle('settings:auto-start'")), context);
   const first = handler({}, {});
   await assert.rejects(handler({}, {}), /正在进行/);
   reject(new Error('offline')); await assert.rejects(first, /offline/);
   await assert.rejects(handler({}, {}), /offline/);
   assert.equal(calls, 2);
+});
+
+test('main IPC backs up before network access and refuses sync if backup fails', async () => {
+  const source = fs.readFileSync(path.join(__dirname, '../main.cjs'), 'utf8');
+  let handler;
+  const calls = [];
+  const context = vm.createContext({ DEMO_MODE: false, localData: { root: () => 'isolated' },
+    trustedHandle: (_name, fn) => { handler = fn; },
+    backupBeforeIcloudSync: (root, state) => { calls.push(['backup', root, state]); },
+    syncIcloudEvents: async () => { calls.push(['network']); throw new Error('offline'); },
+  });
+  vm.runInContext(source.slice(source.indexOf('let icloudSyncInFlight = false;'), source.indexOf("trustedHandle('settings:auto-start'")), context);
+  const payload = { state: initial() };
+  await assert.rejects(handler({}, payload), /offline/);
+  assert.deepEqual(calls.map((call) => call[0]), ['backup', 'network']);
+  assert.equal(calls[0][2], payload.state);
+  context.backupBeforeIcloudSync = () => { throw new Error('disk full'); };
+  await assert.rejects(handler({}, payload), /无法保存同步前备份.*disk full/);
+  assert.equal(calls.length, 2, 'failed backup must block all network side effects');
+});
+
+test('remote deletion review says history is preserved and labels removal explicitly', () => {
+  const { context, $ } = renderer(async () => {});
+  context.state.tasks[0].icloudCalendarUrl = calendar.url;
+  context.state.tasks[0].icloudConflict = { type: 'remote-deleted', local: snapshot(context.state.tasks[0]), remote: null };
+  context.showIcloudConflict();
+  assert.match($('#icloudConflictReason').textContent, /本地记录已保留/);
+  assert.equal($('#icloudKeepRemote').textContent, '从本地移除这条记录');
+  assert.equal(context.state.tasks.length, 1);
 });
 
 test('conflict navigation reaches later entries without resolving the first', () => {

@@ -71,16 +71,18 @@ for (const itemType of ['todo', 'event']) {
     assert.equal(h.calls.length, 0);
     assert.equal(h.state.tasks[0].lastIcloudSnapshot.title, 'Same');
   });
-  test(itemType + ': Apple deletion removes unchanged item but protects local edit', async () => {
+  test(itemType + ': Apple deletion preserves unchanged history and local edits for review', async () => {
     const value = task({ itemType });
     const unchanged = harness([value], []);
     await unchanged.run();
-    assert.equal(unchanged.state.tasks.length, 0);
+    assert.equal(unchanged.state.tasks.length, 1);
+    assert.equal(unchanged.state.tasks[0].icloudConflict.type, 'remote-deleted');
+    assert.deepEqual(unchanged.calls, [['get', value.icloudHref]]);
     value.title = 'New local work';
     const edited = harness([value], []);
     await edited.run();
     assert.equal(edited.state.tasks[0].icloudConflict.type, 'remote-deleted-local-modified');
-    assert.equal(edited.calls.length, 0);
+    assert.deepEqual(edited.calls, [['get', value.icloudHref]]);
   });
   test(itemType + ': local deletion deletes unchanged remote and freezes edited remote', async () => {
     const value = task({ itemType });
@@ -128,7 +130,7 @@ test('old data bootstraps only when contents agree; mismatches and missing items
   const missing = harness([value], []);
   await missing.run();
   assert.equal(missing.state.tasks.length, 1);
-  assert.equal(missing.calls.length, 0);
+  assert.deepEqual(missing.calls, [['get', value.icloudHref]]);
 });
 
 test('legacy deletion uses the last known etag conservatively', async () => {
@@ -342,8 +344,9 @@ test('accepting remote deletion removes local item; keeping local recreates cond
     h.state.tasks[0].icloudResolution = { choice, detectedAt: h.state.tasks[0].icloudConflict.detectedAt };
     await h.run();
     assert.equal(h.state.tasks.length, choice === 'local' ? 1 : 0);
-    if (choice === 'local') assert.equal(h.calls[0][3], '');
-    else assert.equal(h.calls.length, 0);
+    assert.equal(h.calls.filter((call) => call[0] === 'get').length, 2);
+    if (choice === 'local') assert.equal(h.calls.find((call) => call[0] === 'put')[3], '');
+    else assert.equal(h.calls.filter((call) => call[0] !== 'get').length, 0);
   }
 });
 
@@ -364,4 +367,100 @@ test('other calendars and Google read-only items remain untouched', async () => 
   await h.run();
   assert.deepEqual(h.state.tasks, [value, google]);
   assert.equal(h.calls.length, 0);
+});
+
+test('empty remote lists preserve all 135 records and 14 completed Todos across sync and reload', async () => {
+  const values = Array.from({ length: 135 }, (_, i) => task({
+    id: 'history-' + i, icloudUid: 'history-' + i + '@luma',
+    icloudHref: calendar.url + 'history-' + i + '.ics',
+    itemType: i < 18 ? 'todo' : 'event', completed: i < 14,
+    completedDate: i < 14 ? '2026-09-08' : null,
+  }));
+  let saved = { tasks: values, projects: [{ id: 'inbox', name: 'QA history' }], settings: { lightMode: true } };
+  const { mergeResult } = require('../src/icloud-state.js');
+  for (let run = 0; run < 3; run++) {
+    const before = structuredClone(saved);
+    const h = harness(saved.tasks, []);
+    h.state.projects = structuredClone(saved.projects);
+    const result = await h.run();
+    saved = JSON.parse(JSON.stringify(mergeResult(before, saved, result.state)));
+    assert.deepEqual(saved.tasks.map((item) => item.id), values.map((item) => item.id));
+    assert.equal(saved.tasks.filter((item) => item.completed).length, 14);
+    assert.equal(saved.tasks.filter((item) => item.completedDate === '2026-09-08').length, 14);
+    assert.equal(result.summary.deleted, 0);
+    assert.equal(result.summary.conflicts, 135);
+    assert.equal(h.calls.filter((call) => call[0] === 'get').length, 135);
+    assert.equal(h.calls.filter((call) => call[0] !== 'get').length, 0);
+    assert.deepEqual(saved.projects, before.projects);
+    assert.deepEqual(saved.settings, before.settings);
+  }
+});
+
+test('REPORT omission is recovered with GET without creating a duplicate or deletion conflict', async () => {
+  const value = task({ itemType: 'todo', completed: true, completedDate: '2026-09-08' });
+  let reads = 0;
+  const h = harness([value], [], { get: async (href) => { reads++; assert.equal(href, value.icloudHref); return remote(value); } });
+  const { summary } = await h.run();
+  assert.equal(reads, 1);
+  assert.equal(summary.unchanged, 1);
+  assert.equal(summary.deleted, 0);
+  assert.equal(h.state.tasks[0].icloudConflict, undefined);
+  assert.equal(h.state.tasks[0].completed, true);
+  assert.equal(h.state.tasks[0].completedDate, value.completedDate);
+  assert.equal(h.calls.length, 0);
+});
+
+test('failed verification preserves local history, baseline and pending deletions', async () => {
+  for (const reason of ['HTTP 403', 'HTTP 503', 'unreadable resource']) {
+    const value = task({ itemType: 'todo', completed: true });
+    const h = harness([value], [], { get: async () => { throw new Error(reason); } });
+    const result = await h.run();
+    assert.equal(result.summary.deleted, 0);
+    assert.equal(result.summary.failed, 1);
+    assert.equal(h.state.tasks[0].completed, true);
+    assert.deepEqual(h.state.tasks[0].lastIcloudSnapshot, value.lastIcloudSnapshot);
+    assert.equal(h.state.tasks[0].icloudSyncError, reason);
+    const pending = harness([], [], { get: async () => { throw new Error(reason); } }, [deleted(value)]);
+    await pending.run();
+    assert.equal(pending.state.icloudDeletedItems.length, 1);
+    assert.equal(pending.state.icloudDeletedItems[0].icloudSyncError, reason);
+  }
+});
+
+test('legacy UID without an address and replaced resource identities cannot authorize removal', async () => {
+  const value = task({ icloudHref: '' });
+  const missingAddress = harness([value], []);
+  await missingAddress.run();
+  assert.equal(missingAddress.state.tasks.length, 1);
+  assert.match(missingAddress.state.tasks[0].icloudSyncError, /地址/);
+  assert.equal(missingAddress.calls.length, 0);
+  const original = task();
+  const replaced = harness([original], [], { get: async () => remote(original, { uid: 'different@apple' }) });
+  await replaced.run();
+  assert.equal(replaced.state.tasks.length, 1);
+  assert.match(replaced.state.tasks[0].icloudSyncError, /身份/);
+});
+
+test('a pending deletion omitted from REPORT still checks remote edits before acknowledging it', async () => {
+  const value = task();
+  const h = harness([], [], { get: async () => remote(value, { title: 'New Apple work', etag: '"2"' }) }, [deleted(value)]);
+  await h.run();
+  assert.equal(h.state.icloudDeletedItems.length, 1);
+  assert.equal(h.state.icloudDeletedItems[0].icloudConflict.type, 'local-deleted-remote-modified');
+  assert.equal(h.calls.length, 0);
+});
+
+test('confirmed remote deletion of unchanged history requires an explicit choice and fresh GET', async () => {
+  const value = task({ itemType: 'todo', completed: true });
+  const h = harness([value], []);
+  await h.run();
+  const entry = h.state.tasks[0];
+  entry.icloudResolution = { choice: 'remote', detectedAt: entry.icloudConflict.detectedAt };
+  const reappeared = harness(h.state.tasks, [], { get: async () => remote(value) });
+  await reappeared.run();
+  assert.equal(reappeared.state.tasks.length, 1, 'an item that reappears cannot use a stale deletion choice');
+  const result = await h.run();
+  assert.equal(h.state.tasks.length, 0);
+  assert.equal(result.summary.deleted, 1);
+  assert.deepEqual(h.calls, [['get', value.icloudHref], ['get', value.icloudHref]]);
 });

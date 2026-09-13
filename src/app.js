@@ -2740,6 +2740,7 @@ function showIcloudConflict(requestedIndex = 0) {
     'both-modified': '双方修改了相同内容。',
     'missing-baseline': '这条旧事项尚无同步基线，无法安全判断修改来自哪一边。',
     'local-deleted-remote-modified': 'Luma 已删除，Apple 仍有修改后的内容。',
+    'remote-deleted': 'Apple 中已找不到这条事项，本地记录已保留。请确认是否保留本地内容，或从本地移除。',
     'remote-deleted-local-modified': 'Apple 已删除，Luma 内容有修改或尚无同步基线。',
     'schedule-conflict': '双方日期和时间修改相互关联，需要选择完整版本。',
     'invalid-schedule': '合并后的日期和时间无效，请选择有效版本或先编辑事项。',
@@ -2756,7 +2757,7 @@ function showIcloudConflict(requestedIndex = 0) {
   $('#icloudConflictLocal').value = format(conflict.local ?? null);
   $('#icloudConflictRemote').value = format(conflict.remote ?? null);
   $('#icloudKeepLocal').textContent = conflict.local === null ? '保留 Luma 删除' : '保留 Luma';
-  $('#icloudKeepRemote').textContent = conflict.remote === null ? '保留 Apple 删除' : '保留 Apple';
+  $('#icloudKeepRemote').textContent = conflict.remote === null ? '从本地移除这条记录' : '保留 Apple';
   // Older queue entries do not contain enough information to restore the task.
   $('#icloudKeepRemote').disabled = Boolean(entry.href && !entry.task && conflict.remote);
   if ($('#icloudKeepRemote').disabled) $('#icloudConflictReason').textContent += ' 旧删除记录没有本地副本，暂不能在这里恢复。';

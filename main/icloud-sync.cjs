@@ -134,12 +134,26 @@ async function syncCalendar(state, calendar, io) {
   const eligible = (task) => task && ['todo', 'event'].includes(task.itemType)
     && !task.googleCalendarExternal && task.syncTarget !== 'external-calendar'
     && (!task.icloudCalendarUrl || task.icloudCalendarUrl === calendar.url);
+  // A valid REPORT can still omit a resource. Only a direct GET may establish
+  // absence; transport errors and unknown legacy addresses must preserve data.
+  const readMissing = async (href, uid) => {
+    if (!href) throw new Error('Apple 列表缺少事项，且本地没有可核实的地址；已保留本地内容');
+    const remote = await io.get(href);
+    if (remote && uid && remote.uid && remote.uid !== uid) {
+      throw new Error('Apple 事项地址对应的身份已变化；已保留本地内容');
+    }
+    return remote;
+  };
 
   const pending = [];
   for (const entry of state.icloudDeletedItems) {
     if (!entry || entry.calendarUrl !== calendar.url) { pending.push(entry); continue; }
     delete entry.icloudSyncError;
     let remote = byHref.get(entry.href) || byUid.get(entry.uid) || null;
+    if (!remote) {
+      try { remote = await readMissing(entry.href, entry.uid); }
+      catch (error) { fail(entry, error); pending.push(entry); continue; }
+    }
     consume(remote);
     if (remote?.unreadable) {
       entry.icloudSyncError = remote.readError || 'Apple 日历事项暂时无法读取；未执行删除';
@@ -197,6 +211,11 @@ async function syncCalendar(state, calendar, io) {
     if (!eligible(task)) { retained.push(task); continue; }
     delete task.icloudSyncError;
     let remote = byHref.get(task.icloudHref) || byUid.get(task.icloudUid) || byId.get(task.id) || null;
+    const linked = Boolean(task.icloudHref || task.icloudUid);
+    if (!remote && linked) {
+      try { remote = await readMissing(task.icloudHref, task.icloudUid); }
+      catch (error) { fail(task, error); retained.push(task); continue; }
+    }
     consume(remote);
     if (remote?.unreadable) {
       task.icloudCalendarUrl = calendar.url;
@@ -205,7 +224,6 @@ async function syncCalendar(state, calendar, io) {
       retained.push(task);
       continue;
     }
-    const linked = Boolean(task.icloudHref || task.icloudUid);
     if (!linked && !remote && !task.dueDate) { retained.push(task); continue; }
     task.icloudCalendarUrl = calendar.url;
     task.icloudCalendarName = calendar.name;
@@ -217,13 +235,16 @@ async function syncCalendar(state, calendar, io) {
         const choice = resolutionFor(task, local, remoteValue, remote?.etag);
         let value = local;
         if (!remote && linked) {
-          if (choice === 'remote' || (choice !== 'local' && same(task.lastIcloudSnapshot, local))) {
+          // Even a confirmed remote deletion must not silently erase local
+          // history. Only a choice for this exact reviewed version may do so.
+          if (choice === 'remote') {
             removeLocal = true;
             summary.deleted += 1;
             break;
           }
           if (choice !== 'local') {
-            markConflict(task, 'remote-deleted-local-modified', local, null, '');
+            markConflict(task, same(task.lastIcloudSnapshot, local)
+              ? 'remote-deleted' : 'remote-deleted-local-modified', local, null, '');
             break;
           }
         } else if (remote) {
