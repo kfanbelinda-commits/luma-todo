@@ -163,8 +163,9 @@ async function syncCalendar(state, calendar, io) {
     let removed = false;
     let restoredFromApple = false;
     try {
-      for (let attempt = 0; attempt < 2; attempt += 1) {
-        if (!remote) { removed = true; break; }
+      if (!remote) {
+        removed = true;
+      } else {
         const remoteValue = snapshot(remote, entry.itemType, true);
         const choice = resolutionFor(entry, null, remoteValue, remote.etag);
         if (choice === 'remote' && entry.task) {
@@ -175,29 +176,41 @@ async function syncCalendar(state, calendar, io) {
           summary.downloaded += 1;
           restoredFromApple = true;
           removed = true;
-          break;
-        }
-        const unchanged = entry.lastIcloudSnapshot
-          ? same(entry.lastIcloudSnapshot, remoteValue)
-          : Boolean(entry.etag && entry.etag === remote.etag && !entry.icloudConflict);
-        if (choice !== 'local' && !unchanged) {
-          markConflict(entry, 'local-deleted-remote-modified', null, remoteValue, remote.etag);
-          break;
-        }
-        if (!remote.etag) {
-          markConflict(entry, 'missing-etag', null, remoteValue, '');
-          break;
-        }
-        try {
-          await io.remove(remote.href, remote.etag);
-          removed = true;
-          break;
-        } catch (error) {
-          if (error.status !== 412) throw error;
-          remote = await io.get(remote.href);
-          consume(remote);
-          if (attempt === 1 && remote) markConflict(entry, 'remote-changing', null, snapshot(remote, entry.itemType, true), remote.etag);
-          if (!remote) removed = true;
+        } else {
+          let expectedEtag = String(entry.etag || '');
+          if (choice === 'local') {
+            // The user explicitly approved deleting the exact remote version
+            // represented by this conflict. Establish a new deletion basis only
+            // from that reviewed version; never from an automatic retry.
+            expectedEtag = String(remote.etag || '');
+            entry.etag = expectedEtag;
+            entry.lastIcloudSnapshot = { ...remoteValue };
+          }
+
+          if (!expectedEtag || !remote.etag) {
+            markConflict(entry, 'missing-etag', null, remoteValue, remote.etag || '');
+          } else if (expectedEtag !== remote.etag) {
+            markConflict(entry, 'delete-version-changed', null, remoteValue, remote.etag);
+          } else {
+            const unchanged = entry.lastIcloudSnapshot ? same(entry.lastIcloudSnapshot, remoteValue) : true;
+            if (choice !== 'local' && !unchanged) {
+              markConflict(entry, 'local-deleted-remote-modified', null, remoteValue, remote.etag);
+            } else {
+              try {
+                await io.remove(remote.href, expectedEtag);
+                removed = true;
+              } catch (error) {
+                if (error.status !== 412) throw error;
+                const latest = await io.get(remote.href);
+                consume(latest);
+                if (!latest) {
+                  removed = true;
+                } else {
+                  markConflict(entry, 'delete-version-changed', null, snapshot(latest, entry.itemType, true), latest.etag);
+                }
+              }
+            }
+          }
         }
       }
     } catch (error) { fail(entry, error); }
