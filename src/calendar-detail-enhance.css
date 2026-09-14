@@ -1,0 +1,160 @@
+/* Calendar date-detail refinements. */
+.calendar-detail-completed {
+  margin-top: 7px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(128, 128, 128, .11);
+}
+
+.calendar-detail-completed-toggle {
+  width: 100%;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted, rgba(90, 96, 108, .72));
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+
+.calendar-detail-completed-toggle:hover {
+  background: rgba(128, 128, 128, .055);
+  color: inherit;
+}
+
+.calendar-detail-completed-check {
+  width: 15px;
+  height: 15px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--green, #4fb58f) 78%, transparent);
+  color: white;
+  font-size: 9px;
+  line-height: 1;
+}
+
+.calendar-detail-completed-chevron {
+  margin-left: auto;
+  transition: transform .15s ease;
+}
+
+.calendar-detail-completed-toggle[aria-expanded="true"] .calendar-detail-completed-chevron {
+  transform: rotate(180deg);
+}
+
+.calendar-detail-completed-list {
+  display: grid;
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.calendar-detail-completed-row {
+  opacity: .68;
+  cursor: default;
+}
+
+.calendar-detail-completed-row:hover {
+  opacity: .82;
+}
+
+.calendar-detail-completed-row .calendar-detail-task-title {
+  color: var(--muted, rgba(90, 96, 108, .7));
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.calendar-detail-completed-row .calendar-detail-check {
+  border-color: color-mix(in srgb, var(--detail-color, #9aa4b8) 72%, transparent);
+  background: color-mix(in srgb, var(--detail-color, #9aa4b8) 82%, transparent);
+}
+
+.calendar-detail-completed-row .calendar-detail-check::after {
+  content: '✓';
+  color: white;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* Month/week date detail keeps LifeLog available without letting it dominate. */
+.lifelog-detail.lifelog-detail-compact {
+  gap: 0;
+  margin-top: 7px;
+  padding-top: 7px;
+}
+
+.lifelog-detail.lifelog-detail-compact:not(.is-expanded) > :not(.lifelog-compact-toggle) {
+  display: none !important;
+}
+
+.lifelog-detail.lifelog-detail-compact.is-expanded > .lifelog-block-title {
+  display: none;
+}
+
+.lifelog-compact-toggle {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 2px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lifelog-compact-toggle:hover {
+  background: rgba(128, 128, 128, .045);
+}
+
+.lifelog-compact-label {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.lifelog-compact-summary {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted, rgba(90, 96, 108, .67));
+  font-size: 11px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lifelog-compact-chevron {
+  color: var(--muted, rgba(90, 96, 108, .6));
+  font-size: 12px;
+  transition: transform .15s ease;
+}
+
+.lifelog-detail-compact.is-expanded .lifelog-compact-chevron {
+  transform: rotate(180deg);
+}
+
+.lifelog-detail-compact.is-expanded .lifelog-compact-toggle {
+  margin-bottom: 8px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid rgba(128, 128, 128, .09);
+  border-radius: 0;
+}
+
+html[data-theme="dark"] .calendar-detail-completed,
+html:not([data-theme="light"]) .calendar-detail-completed,
+html[data-theme="dark"] .lifelog-detail-compact.is-expanded .lifelog-compact-toggle,
+html:not([data-theme="light"]) .lifelog-detail-compact.is-expanded .lifelog-compact-toggle {
+  border-color: rgba(255, 255, 255, .08);
+}
