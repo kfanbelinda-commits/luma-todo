@@ -179,3 +179,63 @@ test('Apple-source task identity discovered in Google Tasks list blocks PATCH an
   );
   assert.equal(mutations, 0);
 });
+
+test('Google Tasks absence is trusted only after a complete first-to-final pagination chain', async () => {
+  const first = 'https://tasks.googleapis.com/tasks/v1/lists/%40default/tasks?showDeleted=true';
+  const second = 'https://tasks.googleapis.com/tasks/v1/lists/%40default/tasks?showDeleted=true&pageToken=next-1';
+  const { context } = await runGoogleVersionGuard({
+    state: state(),
+    parseTaskNotes: () => ({ metadata: {} }),
+    fetchImpl: async (url) => {
+      if (url === first) return response({ items: [{ id: 'task-a', updated: '2026-09-14T01:00:00Z' }], nextPageToken: 'next-1' });
+      if (url === second) return response({ items: [{ id: 'task-b', updated: '2026-09-14T01:01:00Z' }] });
+      throw new Error('unexpected request ' + url);
+    },
+    invoke: async (guardedFetch, liveContext) => {
+      await guardedFetch(first);
+      assert.equal(liveContext.googleTaskListReads.get('@default').complete, false);
+      await guardedFetch(second);
+      assert.equal(liveContext.googleTaskListReads.get('@default').complete, true);
+      return { state: { tasks: [] } };
+    },
+  });
+  assert.equal(context.googleTaskListReads.get('@default').pages, 2);
+  assert.equal(context.googleTaskListReads.get('@default').complete, true);
+});
+
+test('an orphan Google Tasks page cannot prove list completeness', async () => {
+  const orphan = 'https://tasks.googleapis.com/tasks/v1/lists/%40default/tasks?pageToken=orphan';
+  const { context } = await runGoogleVersionGuard({
+    state: state(),
+    fetchImpl: async () => response({ items: [] }),
+    invoke: async (guardedFetch) => {
+      await guardedFetch(orphan);
+      return { state: { tasks: [] } };
+    },
+  });
+  assert.equal(context.googleTaskListReads.get('@default').complete, false);
+});
+
+test('Tasks to Calendar conversion insert receives its stable proposed event id', async () => {
+  const createUrl = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+  const proposedId = 'luma1234567890abcdef';
+  let postedBody = null;
+  const { context } = await runGoogleVersionGuard({
+    state: state(),
+    conversionCalendarIds: new Map([['local-1', proposedId]]),
+    fetchImpl: async (url, options = {}) => {
+      assert.equal(url, createUrl);
+      postedBody = JSON.parse(options.body);
+      return response({ id: proposedId, etag: '"created-v1"', extendedProperties: { private: { lumaTaskId: 'local-1' } } });
+    },
+    invoke: async (guardedFetch) => {
+      await guardedFetch(createUrl, {
+        method: 'POST',
+        body: JSON.stringify({ summary: 'Meeting', extendedProperties: { private: { lumaTaskId: 'local-1' } } }),
+      });
+      return { state: { tasks: [] } };
+    },
+  });
+  assert.equal(postedBody.id, proposedId);
+  assert.equal(context.calendarByLumaTaskId.get('local-1').eventId, proposedId);
+});
