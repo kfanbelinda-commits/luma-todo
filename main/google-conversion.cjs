@@ -49,7 +49,11 @@ function expectedDestination(task, kind, id) {
 function buildOperation(task, kind) {
   const id = operationId(task, kind);
   const source = kind === 'tasks-to-calendar'
-    ? { type: 'tasks', taskId: String(task.googleTaskId || '') }
+    ? {
+        type: 'tasks',
+        listId: String(task.googleTaskListId || '@default'),
+        taskId: String(task.googleTaskId || ''),
+      }
     : {
         type: 'calendar',
         eventId: String(task.googleCalendarEventId || ''),
@@ -180,13 +184,28 @@ function targetIdentity(operation, returnedTask, context) {
   return taskIdentityFromContext(context, operation);
 }
 
+function currentSourceStatus(operation, context) {
+  if (operation.kind === 'calendar-to-tasks') {
+    return operation.sourceVersion?.etag ? 'unchanged' : 'unknown';
+  }
+  if (operation.kind !== 'tasks-to-calendar') return 'unknown';
+
+  const sourceId = String(operation.source?.taskId || '');
+  if (!sourceId) return 'unknown';
+  const remote = context?.googleTasksById?.get(sourceId);
+  if (remote) {
+    const expected = Number(operation.sourceVersion?.remoteUpdatedAt || 0);
+    if (!expected) return 'unknown';
+    return Number(remote.updatedAt || 0) === expected ? 'unchanged' : 'changed';
+  }
+
+  const listId = String(operation.source?.listId || '@default');
+  const read = context?.googleTaskListReads?.get(listId);
+  return read?.complete ? 'absent' : 'unknown';
+}
+
 function currentSourceUnchanged(operation, context) {
-  if (operation.kind === 'calendar-to-tasks') return Boolean(operation.sourceVersion?.etag);
-  const remote = context?.googleTasksById?.get(String(operation.source?.taskId || ''));
-  if (!remote) return true;
-  const expected = Number(operation.sourceVersion?.remoteUpdatedAt || 0);
-  if (!expected) return false;
-  return Number(remote.updatedAt || 0) === expected;
+  return currentSourceStatus(operation, context) === 'unchanged';
 }
 
 function restoreSourceIdentity(task, operation) {
@@ -306,6 +325,7 @@ module.exports = {
   buildOperation,
   planConversions,
   targetIdentity,
+  currentSourceStatus,
   currentSourceUnchanged,
   restoreSourceIdentity,
   applyTargetIdentity,
