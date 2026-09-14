@@ -183,10 +183,11 @@ function getOptionsFromMutation(options) {
   return { ...rest, method: 'GET' };
 }
 
-async function preflightGoogleTaskDelete(url, options, request, context, fetchImpl, parseTaskNotes) {
+async function preflightGoogleTaskMutation(url, options, request, context, fetchImpl, parseTaskNotes, method) {
   const expected = expectedGoogleTaskUpdatedAt(context, request.taskId);
+  const action = method === 'DELETE' ? '删除' : '写回';
   if (!expected) {
-    const error = new Error('缺少 Google Task 已确认版本，已停止删除');
+    const error = new Error(`缺少 Google Task 已确认版本，已停止${action}`);
     error.code = 'GOOGLE_TASK_VERSION_REQUIRED';
     throw error;
   }
@@ -197,12 +198,12 @@ async function preflightGoogleTaskDelete(url, options, request, context, fetchIm
 
   const current = Date.parse(body?.updated || 0) || 0;
   if (!body?.id || !current) {
-    const error = new Error('Google Task 当前版本无法确认，已停止删除');
+    const error = new Error(`Google Task 当前版本无法确认，已停止${action}`);
     error.code = 'GOOGLE_TASK_VERSION_REQUIRED';
     throw error;
   }
   if (current !== expected) {
-    const error = new Error('Google Task 在删除前已发生变化，已停止删除并保留远端事项');
+    const error = new Error(`Google Task 在${action}前已发生变化，已停止本次${action}并保留远端事项`);
     error.code = 'GOOGLE_TASK_VERSION_CHANGED';
     throw error;
   }
@@ -271,8 +272,16 @@ async function runGoogleVersionGuard({ state, protection, fetchImpl, parseTaskNo
       throw error;
     }
 
-    if (task?.taskId && method === 'DELETE') {
-      const shortCircuit = await preflightGoogleTaskDelete(url, options, task, context, fetchImpl, parseTaskNotes);
+    if (task?.taskId && ['PATCH', 'DELETE'].includes(method)) {
+      const shortCircuit = await preflightGoogleTaskMutation(
+        url,
+        options,
+        task,
+        context,
+        fetchImpl,
+        parseTaskNotes,
+        method
+      );
       if (shortCircuit) return shortCircuit;
     }
 
