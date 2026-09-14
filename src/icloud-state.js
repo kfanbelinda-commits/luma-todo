@@ -55,19 +55,30 @@
       if (!href || !synced.icloudCalendarUrl) continue;
       const existing = [...queue.values()].find((item) => item.task?.id === id || item.href === old.icloudHref);
       if (existing) queue.delete(queueKey(existing));
-      const fields = old.itemType === 'event'
-        ? ['title', 'dueDate', 'time', 'endDate', 'endTime', 'eventColor']
-        : ['title', 'dueDate', 'time', 'completed'];
-      const remoteEdited = fields.some((key) => !equal(old[key] ?? '', synced[key] ?? ''));
-      // Deletion was requested before the user saw newly downloaded edits.
-      // Do not acknowledge those unseen edits as a safe deletion baseline.
-      const baseline = remoteEdited ? old : synced;
+
+      // The version approved by a local delete must never drift merely because
+      // an in-flight sync returned a newer ETag. The only exception is a task
+      // that had no Apple identity when the delete was requested and whose
+      // first upload completed while that request was in flight: that resource
+      // was created by the same dispatched operation, so its returned version
+      // is the first version the delete can possibly target.
+      const firstUploadCompleted = !old.icloudHref && !old.icloudUid && Boolean(synced.icloudHref || synced.icloudPendingHref);
+      const deleteEtag = existing?.etag
+        || old.lastIcloudEtag
+        || old.icloudEtag
+        || (firstUploadCompleted ? (synced.lastIcloudEtag || synced.icloudEtag || '') : '');
+      const deleteSnapshot = existing?.lastIcloudSnapshot
+        || old.lastIcloudSnapshot
+        || (firstUploadCompleted ? (synced.lastIcloudSnapshot || null) : null);
+
       const entry = {
         ...existing,
-        href, uid: synced.icloudUid || synced.icloudPendingUid || '',
-        calendarUrl: synced.icloudCalendarUrl, itemType: synced.itemType,
-        etag: baseline.lastIcloudEtag || baseline.icloudEtag || '',
-        lastIcloudSnapshot: baseline.lastIcloudSnapshot || null,
+        href,
+        uid: synced.icloudUid || synced.icloudPendingUid || '',
+        calendarUrl: synced.icloudCalendarUrl,
+        itemType: synced.itemType,
+        etag: deleteEtag,
+        lastIcloudSnapshot: deleteSnapshot,
         task: { ...synced, ...(existing?.task || old) },
         deletedAt: existing?.deletedAt || Date.now(),
       };
