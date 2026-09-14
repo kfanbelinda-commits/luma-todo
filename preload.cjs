@@ -1,4 +1,56 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webFrame } = require('electron');
+
+const SNAPSHOT_TOKEN_KEY = '__lumaSnapshotToken';
+let currentSnapshotToken = null;
+let allowInitialTokenFallback = false;
+
+function clone(value) {
+  return value == null ? value : structuredClone(value);
+}
+
+function stripSnapshotToken(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
+  const result = clone(payload);
+  delete result[SNAPSHOT_TOKEN_KEY];
+  return result;
+}
+
+async function setRendererSnapshotToken(token) {
+  currentSnapshotToken = clone(token);
+  allowInitialTokenFallback = false;
+  const key = JSON.stringify(SNAPSHOT_TOKEN_KEY);
+  const value = JSON.stringify(currentSnapshotToken);
+  try {
+    await webFrame.executeJavaScript(
+      `if (typeof state !== 'undefined' && state && typeof state === 'object') state[${key}] = ${value};`
+    );
+  } catch (error) {
+    console.error('Unable to refresh Luma snapshot token in renderer', error);
+  }
+}
+
+async function loadState() {
+  const result = await ipcRenderer.invoke('data:load');
+  if (!result || !Object.hasOwn(result, 'state') || !result.token) {
+    throw new Error('本地数据未返回有效快照凭证，请重新加载 Luma');
+  }
+  currentSnapshotToken = clone(result.token);
+  allowInitialTokenFallback = result.state == null;
+  if (result.state == null) return null;
+  const state = clone(result.state);
+  state[SNAPSHOT_TOKEN_KEY] = clone(result.token);
+  return state;
+}
+
+async function saveState(payload) {
+  const token = payload?.[SNAPSHOT_TOKEN_KEY]
+    || (allowInitialTokenFallback ? currentSnapshotToken : null);
+  if (!token) throw new Error('当前数据快照缺少保存凭证，请重新加载 Luma');
+  const result = await ipcRenderer.invoke('data:save', stripSnapshotToken(payload), clone(token));
+  if (!result?.token) throw new Error('保存完成状态无法确认，请重新加载 Luma');
+  await setRendererSnapshotToken(result.token);
+  return true;
+}
 
 contextBridge.exposeInMainWorld('luma', {
   localStatus: () => ipcRenderer.invoke('local:status'),
@@ -9,9 +61,9 @@ contextBridge.exposeInMainWorld('luma', {
   setAlwaysOnTop: (enabled) => ipcRenderer.invoke('window:set-always-on-top', enabled),
   activate: () => ipcRenderer.send('window:activate'),
   hide: () => ipcRenderer.send('window:hide'),
-  load: () => ipcRenderer.invoke('data:load'),
-  save: (payload) => ipcRenderer.invoke('data:save', payload),
-  exportData: (payload) => ipcRenderer.invoke('data:export', payload),
+  load: loadState,
+  save: saveState,
+  exportData: (payload) => ipcRenderer.invoke('data:export', stripSnapshotToken(payload)),
   setAutoStart: (enabled) => ipcRenderer.invoke('settings:auto-start', enabled),
   getAutoStart: () => ipcRenderer.invoke('settings:get-auto-start'),
   appVersion: () => ipcRenderer.invoke('app:version'),
@@ -22,12 +74,15 @@ contextBridge.exposeInMainWorld('luma', {
   googleStatus: () => ipcRenderer.invoke('google:status'),
   googleConnect: () => ipcRenderer.invoke('google:connect'),
   googleDisconnect: () => ipcRenderer.invoke('google:disconnect'),
-  googleSync: (payload) => ipcRenderer.invoke('google:sync', payload),
+  googleSync: (payload) => ipcRenderer.invoke('google:sync', stripSnapshotToken(payload)),
   googleDeleteTask: (task) => ipcRenderer.invoke('google:delete-task', task),
   icloudStatus: () => ipcRenderer.invoke('icloud:status'),
   icloudConnect: (payload) => ipcRenderer.invoke('icloud:connect', payload),
   icloudDisconnect: () => ipcRenderer.invoke('icloud:disconnect'),
-  icloudSync: (payload) => ipcRenderer.invoke('icloud:sync', payload),
+  icloudSync: (payload) => ipcRenderer.invoke('icloud:sync', {
+    ...payload,
+    state: stripSnapshotToken(payload?.state),
+  }),
   lifelogLoad: () => ipcRenderer.invoke('lifelog:load'),
   lifelogSave: (payload) => ipcRenderer.invoke('lifelog:save', payload),
   lifelogMediaDataUrl: (relativePath) => ipcRenderer.invoke('lifelog:media-data-url', relativePath),
