@@ -20,8 +20,6 @@ function operationId(task, kind) {
 }
 
 function proposedCalendarEventId(id) {
-  // Google Calendar custom event ids accept base32hex-compatible lowercase
-  // characters. Hex is a safe subset and gives a stable id across retries.
   return 'luma' + crypto.createHash('sha256').update(String(id)).digest('hex').slice(0, 48);
 }
 
@@ -149,8 +147,7 @@ function planConversions(inputState, pendingOperations = []) {
 }
 
 function calendarIdentityFromContext(context, operation) {
-  const localItemId = String(operation.localItemId || '');
-  const found = context?.calendarByLumaTaskId?.get(localItemId);
+  const found = context?.calendarByLumaTaskId?.get(String(operation.localItemId || ''));
   if (!found) return null;
   return {
     eventId: String(found.eventId || ''),
@@ -160,8 +157,7 @@ function calendarIdentityFromContext(context, operation) {
 }
 
 function taskIdentityFromContext(context, operation) {
-  const localItemId = String(operation.localItemId || '');
-  const found = context?.googleTaskByLumaTaskId?.get(localItemId);
+  const found = context?.googleTaskByLumaTaskId?.get(String(operation.localItemId || ''));
   if (!found) return null;
   return {
     taskId: String(found.taskId || ''),
@@ -243,13 +239,20 @@ function findReturnedTask(resultState, operation, identity, context) {
   return null;
 }
 
+function copyGoogleSyncFields(target, source) {
+  if (!source) return target;
+  for (const [key, value] of Object.entries(source)) {
+    if (key.startsWith('google') || key.startsWith('lastGoogle')) target[key] = clone(value);
+  }
+  return target;
+}
+
 function reconcileConversionRecord(resultState, record, context) {
   const operation = record.operation;
-  const identity = targetIdentity(operation, findReturnedTask(resultState, operation, operation.destinationIdentity, context), context);
+  const firstCandidate = findReturnedTask(resultState, operation, operation.destinationIdentity, context);
+  const identity = targetIdentity(operation, firstCandidate, context);
+  const candidate = firstCandidate || findReturnedTask(resultState, operation, identity, context);
   const tasks = Array.isArray(resultState?.tasks) ? resultState.tasks : [];
-  const artifactIds = new Set();
-  if (identity?.eventId) artifactIds.add('event:' + identity.eventId);
-  if (identity?.taskId) artifactIds.add('task:' + identity.taskId);
 
   resultState.tasks = tasks.filter((task) => {
     if (String(task.id || '') === String(operation.localItemId || '')) return false;
@@ -259,11 +262,30 @@ function reconcileConversionRecord(resultState, record, context) {
   });
 
   const item = clone(record.original || operation.recovery?.task || {});
+  copyGoogleSyncFields(item, candidate);
+  item.id = operation.localItemId;
   applyTargetIdentity(item, operation, identity);
   restoreSourceIdentity(item, operation);
   if (!identity) item.googleSyncError = operation.error || item.googleSyncError || 'Google 转换目标尚未确认，源事项已保留';
   resultState.tasks.push(item);
   return { item, identity };
+}
+
+function operationSatisfiedByState(operation, state) {
+  if (operation?.phase !== 'source-delete-confirmed') return false;
+  const task = (state?.tasks || []).find((item) => String(item.id || '') === String(operation.localItemId || ''));
+  if (!task) return false;
+  if (operation.kind === 'tasks-to-calendar') {
+    return Boolean(operation.destinationIdentity?.eventId)
+      && String(task.googleCalendarEventId || '') === String(operation.destinationIdentity.eventId)
+      && !task.googleTaskId;
+  }
+  if (operation.kind === 'calendar-to-tasks') {
+    return Boolean(operation.destinationIdentity?.taskId)
+      && String(task.googleTaskId || '') === String(operation.destinationIdentity.taskId)
+      && !task.googleCalendarEventId;
+  }
+  return false;
 }
 
 module.exports = {
@@ -278,4 +300,5 @@ module.exports = {
   applyTargetIdentity,
   removeSourceIdentity,
   reconcileConversionRecord,
+  operationSatisfiedByState,
 };
