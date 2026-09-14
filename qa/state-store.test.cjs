@@ -25,6 +25,7 @@ function seed(title = 'A') {
 function expected(result) {
   return {
     revision: result.meta.revision,
+    businessRevision: result.meta.businessRevision,
     storageId: result.state == null && result.meta.revision === 0 ? '' : result.meta.storageId,
     sessionId: result.sessionId,
   };
@@ -37,13 +38,16 @@ test('missing store can be created once and receives a revision', () => {
   const loaded = store.load();
   assert.equal(loaded.state, null);
   assert.equal(loaded.meta.revision, 0);
+  assert.equal(loaded.meta.businessRevision, 0);
 
   const saved = store.commit(seed(), expected(loaded));
   assert.equal(saved.meta.revision, 1);
+  assert.equal(saved.meta.businessRevision, 1);
   assert.equal(saved.state.tasks[0].title, 'A');
 
   const disk = JSON.parse(fs.readFileSync(path.join(home, 'luma-data.json'), 'utf8'));
   assert.equal(disk[META_KEY].revision, 1);
+  assert.equal(disk[META_KEY].businessRevision, 1);
   assert.ok(disk[META_KEY].storageId);
   assert.deepEqual(disk[META_KEY].pendingOperations, []);
 });
@@ -58,13 +62,18 @@ test('corrupt JSON is recovery-blocked and never converted into an empty normal 
   assert.throws(() => store.load(), (error) => error.code === 'STATE_PARSE_FAILED');
   assert.equal(store.status().recovery.code, 'STATE_PARSE_FAILED');
   assert.throws(
-    () => store.commit(seed('replacement'), { revision: 0, storageId: '', sessionId: store.status().sessionId }),
+    () => store.commit(seed('replacement'), {
+      revision: 0,
+      businessRevision: 0,
+      storageId: '',
+      sessionId: store.status().sessionId,
+    }),
     (error) => ['STATE_PARSE_FAILED', 'STATE_RECOVERY_REQUIRED'].includes(error.code)
   );
   assert.equal(fs.readFileSync(file, 'utf8'), original);
 });
 
-test('a stale revision cannot overwrite a newer valid state', () => {
+test('a stale business revision cannot overwrite a newer valid state', () => {
   const home = tempDir();
   fs.writeFileSync(path.join(home, 'luma-data.json'), JSON.stringify(seed()), 'utf8');
   const store = createStateStore({ home });
@@ -74,12 +83,35 @@ test('a stale revision cannot overwrite a newer valid state', () => {
   const current = seed('newer');
   const saved = store.commit(current, stale);
   assert.equal(saved.meta.revision, 1);
+  assert.equal(saved.meta.businessRevision, 1);
 
   assert.throws(
     () => store.commit(seed('old'), stale),
     (error) => error.code === 'STATE_REVISION_CONFLICT'
   );
   assert.equal(store.load().state.tasks[0].title, 'newer');
+});
+
+test('metadata-only journal writes do not invalidate the matching business snapshot token', () => {
+  const home = tempDir();
+  fs.writeFileSync(path.join(home, 'luma-data.json'), JSON.stringify(seed()), 'utf8');
+  const store = createStateStore({ home, now: () => 1000 });
+  const loaded = store.load();
+  const operation = {
+    id: 'meta-op',
+    provider: 'google',
+    kind: 'tasks-to-calendar',
+    localItemId: 'one',
+  };
+
+  const journaled = store.prepareOperationMeta(expected(loaded), operation);
+  assert.equal(journaled.meta.revision, loaded.meta.revision + 1);
+  assert.equal(journaled.meta.businessRevision, loaded.meta.businessRevision);
+
+  const saved = store.commit(seed('after journal'), expected(loaded));
+  assert.equal(saved.state.tasks[0].title, 'after journal');
+  assert.equal(saved.meta.businessRevision, loaded.meta.businessRevision + 1);
+  assert.equal(saved.meta.pendingOperations[0].id, 'meta-op');
 });
 
 test('changing storage path rotates the session and rejects a late old-context save', () => {
