@@ -1,5 +1,10 @@
-(function bindCnHolidayMarks() {
-  // Holiday marks are rendered by app.js. This file stays loaded so older
-  // index.html copies keep a valid script src, but it must not wrap renderers
-  // or scan the grid on a timer.
+(function bindCalendarEnhancements() {
+  // Holiday marks are rendered by app.js. Keep this post-app hook small and
+  // load independent calendar interactions here so app.js stays untouched.
+  if (!document.querySelector('script[data-luma-calendar-context-menu]')) {
+    const script = document.createElement('script');
+    script.src = 'src/calendar-context-menu.js';
+    script.dataset.lumaCalendarContextMenu = '1';
+    document.body.appendChild(script);
+  }
 })();
