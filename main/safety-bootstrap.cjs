@@ -342,6 +342,7 @@ function wrapRegistration(channel, registeredHandler) {
 
   if (channel === 'local:choose') {
     return async (event, ...args) => {
+      assertMainRenderer(event);
       const result = await registeredHandler(event, ...args);
       try {
         const loaded = store().load();
@@ -356,6 +357,7 @@ function wrapRegistration(channel, registeredHandler) {
 
   if (channel === 'google:sync') {
     return async (event, payload) => {
+      assertMainRenderer(event);
       assertCloudAllowed();
       const originalState = structuredClone(payload || {});
       const protectedDispatch = protectGoogleDispatch(originalState);
@@ -385,6 +387,7 @@ function wrapRegistration(channel, registeredHandler) {
 
   if (channel === 'google:delete-task') {
     return async (event, entry) => {
+      assertMainRenderer(event);
       assertCloudAllowed();
       const sourceItem = entry?.task || entry;
       if (sourceProvider(sourceItem) === 'apple') {
@@ -403,6 +406,7 @@ function wrapRegistration(channel, registeredHandler) {
 
   if (channel === 'icloud:sync') {
     return async (event, ...args) => {
+      assertMainRenderer(event);
       assertCloudAllowed();
       return registeredHandler(event, ...args);
     };
