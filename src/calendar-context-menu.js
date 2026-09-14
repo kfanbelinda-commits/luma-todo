@@ -8,8 +8,76 @@
   menu.setAttribute('aria-hidden', 'true');
   document.body.appendChild(menu);
 
+  const style = document.createElement('style');
+  style.id = 'calendarContextMenuStyles';
+  style.textContent = `
+    #calendarContextMenu.calendar-context-menu--cell {
+      width: 164px;
+      max-width: calc(100vw - 20px);
+      overflow: hidden;
+      padding: 5px;
+      border-radius: 10px;
+      border-color: rgba(255,255,255,.12);
+      background: rgba(39,42,49,.98);
+      box-shadow: 0 10px 28px rgba(0,0,0,.26), 0 2px 8px rgba(0,0,0,.16);
+    }
+
+    #calendarContextMenu.calendar-context-menu--cell .task-menu-action {
+      min-height: 34px;
+      justify-content: flex-start;
+      gap: 9px;
+      padding: 7px 9px;
+      border-radius: 7px;
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    #calendarContextMenu.calendar-context-menu--cell .calendar-context-menu-icon {
+      width: 16px;
+      height: 16px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 16px;
+      color: rgba(244,247,252,.70);
+    }
+
+    #calendarContextMenu.calendar-context-menu--cell .calendar-context-menu-icon svg {
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.45;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    #calendarContextMenu.calendar-context-menu--cell .task-menu-action:hover,
+    #calendarContextMenu.calendar-context-menu--cell .task-menu-action:focus-visible {
+      background: rgba(255,255,255,.08);
+    }
+
+    html[data-theme="light"] #calendarContextMenu.calendar-context-menu--cell {
+      border-color: rgba(58,71,92,.14);
+      color: #202938;
+      background: rgba(250,251,253,.985);
+      box-shadow: 0 10px 28px rgba(45,55,72,.16), 0 2px 8px rgba(45,55,72,.08);
+    }
+
+    html[data-theme="light"] #calendarContextMenu.calendar-context-menu--cell .calendar-context-menu-icon {
+      color: #667085;
+    }
+
+    html[data-theme="light"] #calendarContextMenu.calendar-context-menu--cell .task-menu-action:hover,
+    html[data-theme="light"] #calendarContextMenu.calendar-context-menu--cell .task-menu-action:focus-visible {
+      background: rgba(58,71,92,.07);
+    }
+  `;
+  document.head.appendChild(style);
+
   function closeCalendarContextMenu() {
     menu.classList.add('hidden');
+    menu.classList.remove('calendar-context-menu--cell');
+    menu.removeAttribute('aria-label');
     menu.setAttribute('aria-hidden', 'true');
     menu.innerHTML = '';
   }
@@ -64,11 +132,25 @@
     menu.appendChild(header);
   }
 
+  function createActionIcon(kind) {
+    const icon = document.createElement('span');
+    icon.className = 'calendar-context-menu-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    if (kind === 'event') {
+      icon.innerHTML = '<svg viewBox="0 0 16 16"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M5 2.5v2.2M11 2.5v2.2M2.7 6.3h10.6"></path></svg>';
+    } else if (kind === 'todo') {
+      icon.innerHTML = '<svg viewBox="0 0 16 16"><rect x="2.7" y="2.7" width="10.6" height="10.6" rx="2.2"></rect><path d="m5.1 8.1 1.8 1.8 4-4.1"></path></svg>';
+    }
+    return icon;
+  }
+
   function appendAction(label, action, options = {}) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = `task-menu-action${options.danger ? ' danger' : ''}`;
     button.disabled = Boolean(options.disabled);
+
+    if (options.icon) button.appendChild(createActionIcon(options.icon));
 
     const span = document.createElement('span');
     span.textContent = label;
@@ -173,14 +255,16 @@
 
   function openCalendarCellMenu(dateKey, clientX, clientY) {
     closeOtherMenus();
-    appendHeader(calendarDateLabel(dateKey), '新建');
-    appendAction('新建日程', () => openCalendarTaskDialog(dateKey, 'event'));
-    appendAction('新建待办', () => openCalendarTaskDialog(dateKey, 'todo'));
+    menu.classList.add('calendar-context-menu--cell');
+    menu.setAttribute('aria-label', `${calendarDateLabel(dateKey)} 新建事项`);
+    appendAction('新建日程', () => openCalendarTaskDialog(dateKey, 'event'), { icon: 'event' });
+    appendAction('新建待办', () => openCalendarTaskDialog(dateKey, 'todo'), { icon: 'todo' });
     positionCalendarContextMenu(clientX, clientY);
   }
 
   function openCalendarItemMenu(task, dateKey, clientX, clientY) {
     closeOtherMenus();
+    menu.classList.remove('calendar-context-menu--cell');
     const eventMode = typeof isCalendarEvent === 'function' && isCalendarEvent(task);
     const googleReadOnly = isGoogleReadOnly(task);
     appendHeader(task.title || (eventMode ? '日程' : '待办'), calendarItemSourceLabel(task));
