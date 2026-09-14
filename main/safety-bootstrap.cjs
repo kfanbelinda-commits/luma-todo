@@ -1,10 +1,8 @@
 'use strict';
 
-// This bootstrap is intentionally narrow. It keeps the published application
-// intact while placing revision/session and provider/version guards around
-// destructive persistence and cloud entry points. The sync engines can migrate
-// behind this boundary without allowing corrupt loads, stale storage sessions,
-// or one provider to authorize another provider's destructive operations.
+// Compatibility boundary for the published sync engine. It adds revisioned
+// persistence, provider ownership checks, conditional Google mutations, and a
+// persistent conversion journal while the older JSON fields remain readable.
 
 const { app, ipcMain, dialog } = require('electron');
 const path = require('path');
@@ -16,8 +14,16 @@ const {
 } = require('./provider-ownership.cjs');
 const { runGoogleVersionGuard } = require('./google-version-guard.cjs');
 const { parseGoogleTaskNotes } = require('./google-task-notes.cjs');
+const {
+  planConversions,
+  currentSourceUnchanged,
+  removeSourceIdentity,
+  reconcileConversionRecord,
+  operationSatisfiedByState,
+} = require('./google-conversion.cjs');
 
 const originalHandle = ipcMain.handle.bind(ipcMain);
+const rawHandlers = new Map();
 let stateStore = null;
 let recoveryDialogShown = false;
 let googleBoundaryInFlight = false;
@@ -57,6 +63,12 @@ function remember(event, result) {
   });
 }
 
+function updateOperationMeta(event, method, ...args) {
+  const result = store()[method](clientExpectation(event), ...args);
+  remember(event, result);
+  return result;
+}
+
 function showRecovery(error) {
   if (recoveryDialogShown) return;
   recoveryDialogShown = true;
@@ -82,15 +94,16 @@ function assertCloudAllowed() {
   }
 }
 
-async function runGuardedGoogle(state, protection, invoke) {
+async function runGuardedGoogle(state, protection, conversionCalendarIds, invoke) {
   if (googleBoundaryInFlight) throw new Error('Google 数据保护检查正在进行，请稍后重试');
   const originalFetch = global.fetch;
   if (typeof originalFetch !== 'function') throw new Error('当前运行环境缺少网络接口');
   googleBoundaryInFlight = true;
   try {
-    const guarded = await runGoogleVersionGuard({
+    return await runGoogleVersionGuard({
       state,
       protection,
+      conversionCalendarIds,
       fetchImpl: originalFetch,
       parseTaskNotes: parseGoogleTaskNotes,
       invoke: async (guardedFetch, context) => {
@@ -99,7 +112,6 @@ async function runGuardedGoogle(state, protection, invoke) {
         finally { global.fetch = originalFetch; }
       },
     });
-    return guarded;
   } finally {
     global.fetch = originalFetch;
     googleBoundaryInFlight = false;
@@ -114,6 +126,160 @@ function includeDiscoveredProtectedIds(protection, context) {
   for (const id of context?.protectedGoogleTaskIds || []) {
     if (id) protection.protectedGoogleTaskIds.add(String(id));
   }
+}
+
+function operationFor(record, metaResult) {
+  return metaResult.meta.pendingOperations.find((item) => item.id === record.operation.id) || record.operation;
+}
+
+function prepareConversionJournal(event, records) {
+  for (const record of records) {
+    if (!record.fresh) continue;
+    let meta = updateOperationMeta(event, 'prepareOperationMeta', record.operation);
+    record.operation = operationFor(record, meta);
+    if (record.allowCreate) {
+      meta = updateOperationMeta(event, 'advanceOperationMeta', record.operation.id, {
+        phase: 'destination-create-pending',
+        error: '',
+      });
+      record.operation = operationFor(record, meta);
+    }
+  }
+}
+
+function conversionCalendarIds(records) {
+  const result = new Map();
+  for (const record of records) {
+    if (record.operation.kind !== 'tasks-to-calendar' || !record.allowCreate) continue;
+    const proposed = String(record.operation.destination?.proposedEventId || '');
+    if (proposed) result.set(String(record.operation.localItemId || ''), proposed);
+  }
+  return result;
+}
+
+function guardStateForConversions(dispatchState, records) {
+  const guarded = structuredClone(dispatchState);
+  guarded.googleDeletedItems = Array.isArray(guarded.googleDeletedItems) ? guarded.googleDeletedItems : [];
+  for (const record of records) {
+    const operation = record.operation;
+    if (operation.kind !== 'calendar-to-tasks' || !operation.source?.eventId) continue;
+    guarded.googleDeletedItems.push({
+      source: 'calendar',
+      googleCalendarEventId: operation.source.eventId,
+      googleCalendarId: operation.source.calendarId || 'primary',
+      googleCalendarEtag: operation.sourceVersion?.etag || '',
+      task: {
+        id: operation.localItemId,
+        googleCalendarEventId: operation.source.eventId,
+        googleCalendarId: operation.source.calendarId || 'primary',
+        googleCalendarEtag: operation.sourceVersion?.etag || '',
+      },
+    });
+  }
+  return guarded;
+}
+
+function sourceDeleteArgument(operation) {
+  if (operation.kind === 'tasks-to-calendar') {
+    return { id: operation.localItemId, sourceProvider: 'luma', googleTaskId: operation.source?.taskId || '' };
+  }
+  return {
+    id: operation.localItemId,
+    sourceProvider: 'luma',
+    googleCalendarEventId: operation.source?.eventId || '',
+    googleCalendarId: operation.source?.calendarId || 'primary',
+    googleCalendarEtag: operation.sourceVersion?.etag || '',
+  };
+}
+
+function conversionFailurePhase(error) {
+  const status = Number(error?.status || 0);
+  if (status === 412 || error?.code === 'GOOGLE_VERSION_REQUIRED' || error?.code === 'PROVIDER_OWNERSHIP_CONFLICT') return 'conflict';
+  return 'source-delete-pending';
+}
+
+async function reconcileConversions(event, result, records, context) {
+  if (!result?.state || !records.length) return result;
+  const rawDelete = rawHandlers.get('google:delete-task');
+
+  for (const record of records) {
+    let operation = record.operation;
+    const reconciled = reconcileConversionRecord(result.state, record, context);
+    const item = reconciled.item;
+    const identity = reconciled.identity;
+
+    if (!identity) {
+      const meta = updateOperationMeta(event, 'advanceOperationMeta', operation.id, {
+        phase: operation.phase === 'conflict' ? 'conflict' : 'unknown',
+        error: operation.error || 'Google 转换目标状态无法确认；源事项保持不变，未再次创建目标',
+      });
+      record.operation = operationFor(record, meta);
+      item.googleSyncError = record.operation.error;
+      continue;
+    }
+
+    if (!operation.destinationIdentity
+      || JSON.stringify(operation.destinationIdentity) !== JSON.stringify(identity)
+      || !['destination-confirmed', 'source-delete-pending', 'source-delete-confirmed'].includes(operation.phase)) {
+      const meta = updateOperationMeta(event, 'advanceOperationMeta', operation.id, {
+        phase: 'destination-confirmed',
+        destinationIdentity: identity,
+        error: '',
+      });
+      operation = operationFor(record, meta);
+      record.operation = operation;
+    }
+
+    if (operation.phase === 'source-delete-confirmed') {
+      removeSourceIdentity(item, operation);
+      delete item.googleSyncError;
+      continue;
+    }
+
+    if (!currentSourceUnchanged(operation, context)) {
+      const message = operation.kind === 'tasks-to-calendar'
+        ? 'Google Task 源事项在转换期间发生变化，已保留源与目标，等待确认'
+        : 'Google Calendar 源事项缺少可验证版本，已保留源与目标，等待确认';
+      const meta = updateOperationMeta(event, 'advanceOperationMeta', operation.id, { phase: 'conflict', error: message });
+      record.operation = operationFor(record, meta);
+      item.googleSyncError = message;
+      continue;
+    }
+
+    if (typeof rawDelete !== 'function') {
+      const message = 'Google 删除接口尚未就绪，已保留源与目标';
+      const meta = updateOperationMeta(event, 'advanceOperationMeta', operation.id, { phase: 'source-delete-pending', error: message });
+      record.operation = operationFor(record, meta);
+      item.googleSyncError = message;
+      continue;
+    }
+
+    try {
+      await rawDelete(event, sourceDeleteArgument(operation));
+      const meta = updateOperationMeta(event, 'advanceOperationMeta', operation.id, {
+        phase: 'source-delete-confirmed',
+        destinationIdentity: identity,
+        error: '',
+      });
+      record.operation = operationFor(record, meta);
+      removeSourceIdentity(item, record.operation);
+      delete item.googleSyncError;
+    } catch (error) {
+      const message = String(error?.message || error || 'Google 源事项删除失败');
+      const meta = updateOperationMeta(event, 'advanceOperationMeta', operation.id, {
+        phase: conversionFailurePhase(error),
+        destinationIdentity: identity,
+        error: message,
+      });
+      record.operation = operationFor(record, meta);
+      item.googleSyncError = message;
+    }
+  }
+  return result;
+}
+
+function completeCommittedConversions(meta, payload) {
+  meta.pendingOperations = (meta.pendingOperations || []).filter((operation) => !operationSatisfiedByState(operation, payload));
 }
 
 function wrapRegistration(channel, registeredHandler) {
@@ -134,7 +300,7 @@ function wrapRegistration(channel, registeredHandler) {
   if (channel === 'data:save') {
     return async (event, payload) => {
       assertMainRenderer(event);
-      const result = store().commit(payload, clientExpectation(event));
+      const result = store().commit(payload, clientExpectation(event), (meta) => completeCommittedConversions(meta, payload));
       remember(event, result);
       return true;
     };
@@ -143,9 +309,6 @@ function wrapRegistration(channel, registeredHandler) {
   if (channel === 'local:choose') {
     return async (event, ...args) => {
       const result = await registeredHandler(event, ...args);
-      // A storage migration changes the file path. Establish the new storage
-      // session from the copied file so a request dispatched against the old
-      // path cannot arrive later and commit into the new context.
       try {
         const loaded = store().load();
         remember(event, loaded);
@@ -161,17 +324,26 @@ function wrapRegistration(channel, registeredHandler) {
     return async (event, payload) => {
       assertCloudAllowed();
       const originalState = structuredClone(payload || {});
-      const prepared = protectGoogleDispatch(originalState);
-      const guarded = await runGuardedGoogle(prepared.state, prepared.protection, () =>
-        registeredHandler(event, prepared.state)
-      );
-      includeDiscoveredProtectedIds(prepared.protection, guarded.context);
+      const protectedDispatch = protectGoogleDispatch(originalState);
+      const pendingOperations = store().status().pendingOperations;
+      const conversionPlan = planConversions(protectedDispatch.state, pendingOperations);
+      prepareConversionJournal(event, conversionPlan.records);
+
+      const guardState = guardStateForConversions(conversionPlan.state, conversionPlan.records);
+      const stableCalendarIds = conversionCalendarIds(conversionPlan.records);
+      const guarded = await runGuardedGoogle(guardState, protectedDispatch.protection, stableCalendarIds, async (context) => {
+        const result = await registeredHandler(event, conversionPlan.state);
+        return reconcileConversions(event, result, conversionPlan.records, context);
+      });
+
+      includeDiscoveredProtectedIds(protectedDispatch.protection, guarded.context);
       if (guarded.result?.state) {
-        guarded.result.state = restoreGoogleProtected(originalState, guarded.result.state, prepared.protection);
+        guarded.result.state = restoreGoogleProtected(originalState, guarded.result.state, protectedDispatch.protection);
       }
       if (guarded.result?.summary) {
-        guarded.result.summary.providerProtected = prepared.protection.protectedTasks.length
-          + prepared.protection.protectedDeletes.length;
+        guarded.result.summary.providerProtected = protectedDispatch.protection.protectedTasks.length
+          + protectedDispatch.protection.protectedDeletes.length;
+        guarded.result.summary.conversionPending = conversionPlan.records.filter((record) => record.operation.phase !== 'source-delete-confirmed').length;
       }
       return guarded.result;
     };
@@ -190,7 +362,7 @@ function wrapRegistration(channel, registeredHandler) {
         tasks: sourceItem ? [structuredClone(sourceItem)] : [],
         googleDeletedItems: entry ? [structuredClone(entry)] : [],
       };
-      const guarded = await runGuardedGoogle(guardState, null, () => registeredHandler(event, entry));
+      const guarded = await runGuardedGoogle(guardState, null, null, () => registeredHandler(event, entry));
       return guarded.result;
     };
   }
@@ -206,6 +378,7 @@ function wrapRegistration(channel, registeredHandler) {
 }
 
 ipcMain.handle = (channel, registeredHandler) => {
+  rawHandlers.set(channel, registeredHandler);
   return originalHandle(channel, wrapRegistration(channel, registeredHandler));
 };
 
