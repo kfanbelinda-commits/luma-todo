@@ -247,6 +247,16 @@ function copyGoogleSyncFields(target, source) {
   return target;
 }
 
+function isSourceArtifact(task, operation) {
+  if (operation.kind === 'tasks-to-calendar') {
+    return Boolean(operation.source?.taskId)
+      && String(task?.googleTaskId || '') === String(operation.source.taskId);
+  }
+  return Boolean(operation.source?.eventId)
+    && String(task?.googleCalendarEventId || '') === String(operation.source.eventId)
+    && String(task?.googleCalendarId || 'primary') === String(operation.source.calendarId || 'primary');
+}
+
 function reconcileConversionRecord(resultState, record, context) {
   const operation = record.operation;
   const firstCandidate = findReturnedTask(resultState, operation, operation.destinationIdentity, context);
@@ -256,6 +266,7 @@ function reconcileConversionRecord(resultState, record, context) {
 
   resultState.tasks = tasks.filter((task) => {
     if (String(task.id || '') === String(operation.localItemId || '')) return false;
+    if (isSourceArtifact(task, operation)) return false;
     if (identity?.eventId && String(task.googleCalendarEventId || '') === identity.eventId) return false;
     if (identity?.taskId && String(task.googleTaskId || '') === identity.taskId) return false;
     return true;
