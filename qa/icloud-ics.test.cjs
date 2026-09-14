@@ -121,6 +121,7 @@ test('native Apple all-day Event parses without Luma linkage metadata', () => {
   assert.equal(parsed.lumaItemType, '');
   assert.equal(parsed.dueDate, '2026-09-10');
   assert.equal(parsed.endDate, '2026-09-11');
+  assert.equal(parsed.rawIcs, ics);
 });
 
 
@@ -173,4 +174,119 @@ test('Extension marker identity stays separate from normal Luma items', () => {
   assert.equal(parsed.extensionProperties['X-LUMA-EXAMPLE-TYPE'], 'cheng');
   assert.equal(parsed.extensionProperties['X-LUMA-EXAMPLE-DATE'], '2026-09-17');
   assert.equal(parsed.lumaTaskId, '');
+});
+
+test('editing a simple Apple event preserves unmodeled properties, folding and VALARM', () => {
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Apple Inc.//iCal 7.0//EN',
+    'BEGIN:VEVENT',
+    'UID:native-rich',
+    'DTSTAMP:20260901T010203Z',
+    'SUMMARY:Original title',
+    'DTSTART;VALUE=DATE:20260910',
+    'DTEND;VALUE=DATE:20260912',
+    'DESCRIPTION:First part of a description that Apple folded for transport',
+    ' and this continuation must stay exactly folded',
+    'LOCATION:Board Room',
+    'ATTENDEE;CN=Alice:mailto:alice@example.com',
+    'X-APPLE-TRAVEL-ADVISORY-BEHAVIOR:AUTOMATIC',
+    'BEGIN:VALARM',
+    'TRIGGER:-PT15M',
+    'ACTION:DISPLAY',
+    'DESCRIPTION:Reminder text',
+    'END:VALARM',
+    'END:VEVENT',
+    'END:VCALENDAR',
+    '',
+  ].join('\r\n');
+  const parsed = parseIcloudEvent(ics, '/qa/native-rich.ics', '"1"', calendar);
+  const task = baseTask({
+    id: 'icloud-native-rich',
+    itemType: 'event',
+    title: 'Renamed in Luma',
+    dueDate: parsed.dueDate,
+    endDate: parsed.endDate,
+    time: parsed.time,
+    endTime: parsed.endTime,
+    eventColor: parsed.eventColor,
+    icloudRawIcs: parsed.rawIcs,
+    updatedAt: Date.parse('2026-09-14T03:30:00Z'),
+  });
+
+  const updated = taskToIcloudIcs(task, parsed.uid);
+  assert.ok(updated.includes('SUMMARY:Renamed in Luma'));
+  assert.ok(updated.includes('DESCRIPTION:First part of a description that Apple folded for transport\r\n and this continuation must stay exactly folded'));
+  assert.ok(updated.includes('LOCATION:Board Room'));
+  assert.ok(updated.includes('ATTENDEE;CN=Alice:mailto:alice@example.com'));
+  assert.ok(updated.includes('X-APPLE-TRAVEL-ADVISORY-BEHAVIOR:AUTOMATIC'));
+  assert.ok(updated.includes('BEGIN:VALARM\r\nTRIGGER:-PT15M\r\nACTION:DISPLAY\r\nDESCRIPTION:Reminder text\r\nEND:VALARM'));
+  assert.ok(updated.includes('DTSTART;VALUE=DATE:20260910'));
+  assert.ok(updated.includes('DTEND;VALUE=DATE:20260912'));
+  assert.ok(updated.includes('X-LUMA-TASK-ID:icloud-native-rich'));
+});
+
+test('simple Apple schedule edits preserve unrelated raw properties', () => {
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'BEGIN:VEVENT',
+    'UID:native-simple-move',
+    'SUMMARY:Move me',
+    'DTSTART;VALUE=DATE:20260910',
+    'DTEND;VALUE=DATE:20260911',
+    'DESCRIPTION:Keep this text',
+    'END:VEVENT',
+    'END:VCALENDAR',
+    '',
+  ].join('\r\n');
+  const parsed = parseIcloudEvent(ics, '/qa/move.ics', '"1"', calendar);
+  const task = baseTask({
+    id: 'icloud-native-simple-move',
+    itemType: 'event',
+    title: parsed.title,
+    dueDate: '2026-09-12',
+    endDate: '2026-09-12',
+    eventColor: parsed.eventColor,
+    icloudRawIcs: parsed.rawIcs,
+  });
+  const updated = taskToIcloudIcs(task, parsed.uid);
+  assert.ok(updated.includes('DTSTART;VALUE=DATE:20260912'));
+  assert.ok(updated.includes('DTEND;VALUE=DATE:20260913'));
+  assert.ok(updated.includes('DESCRIPTION:Keep this text'));
+});
+
+test('complex Apple schedules refuse date/time rewrites instead of flattening the resource', () => {
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'BEGIN:VEVENT',
+    'UID:native-recurring',
+    'SUMMARY:Recurring meeting',
+    'DTSTART;TZID=Asia/Singapore:20260910T090000',
+    'DTEND;TZID=Asia/Singapore:20260910T100000',
+    'RRULE:FREQ=WEEKLY;COUNT=5',
+    'EXDATE;TZID=Asia/Singapore:20260924T090000',
+    'DESCRIPTION:Do not lose recurrence metadata',
+    'END:VEVENT',
+    'END:VCALENDAR',
+    '',
+  ].join('\r\n');
+  const parsed = parseIcloudEvent(ics, '/qa/recur.ics', '"1"', calendar);
+  const task = baseTask({
+    id: 'icloud-native-recurring',
+    itemType: 'event',
+    title: parsed.title,
+    dueDate: '2026-09-11',
+    endDate: '2026-09-11',
+    time: parsed.time,
+    endTime: parsed.endTime,
+    eventColor: parsed.eventColor,
+    icloudRawIcs: parsed.rawIcs,
+  });
+  assert.throws(
+    () => taskToIcloudIcs(task, parsed.uid),
+    (error) => error.code === 'ICLOUD_COMPLEX_SCHEDULE_EDIT'
+  );
 });
