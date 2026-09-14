@@ -32,6 +32,12 @@
       line-height: 1.2;
     }
 
+    #calendarContextMenu.calendar-context-menu--cell .task-menu-action small {
+      margin-left: auto;
+      white-space: nowrap;
+      font-size: 10px;
+    }
+
     #calendarContextMenu.calendar-context-menu--cell .calendar-context-menu-icon {
       width: 16px;
       height: 16px;
@@ -82,8 +88,17 @@
     menu.innerHTML = '';
   }
 
+  function closeReminderPopover() {
+    const reminder = document.querySelector('#reminderPopover');
+    if (!reminder || reminder.classList.contains('hidden')) return;
+    reminder.classList.add('hidden');
+    if (typeof pendingReminderTaskId !== 'undefined') pendingReminderTaskId = null;
+  }
+
   function closeOtherMenus() {
     if (typeof closeTaskMenu === 'function') closeTaskMenu();
+    if (typeof closeTimePickers === 'function') closeTimePickers();
+    closeReminderPopover();
     closeCalendarContextMenu();
   }
 
@@ -176,6 +191,26 @@
     return `${date.getMonth() + 1}月${date.getDate()}日 周${WEEKDAYS[date.getDay()]}`;
   }
 
+  function addThirtyMinutes(time) {
+    if (typeof addMinutesToTime === 'function') return addMinutesToTime(time, 30);
+    const match = String(time || '').match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return '';
+    const value = Number(match[1]) * 60 + Number(match[2]) + 30;
+    return `${String(Math.floor((value % 1440) / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
+  }
+
+  function openNewCalendarItem(dateKey, mode, initialTime = '') {
+    if (typeof openCalendarTaskDialog !== 'function') return;
+    openCalendarTaskDialog(dateKey, mode);
+    if (mode !== 'event' || !initialTime) return;
+
+    const start = document.querySelector('#calendarTaskTime');
+    const end = document.querySelector('#calendarTaskEndTime');
+    if (start) start.value = initialTime;
+    if (end) end.value = addThirtyMinutes(initialTime);
+    if (typeof syncCalendarEventEndTimeState === 'function') syncCalendarEventEndTimeState();
+  }
+
   function isGoogleReadOnly(task) {
     return Boolean(task?.googleCalendarExternal || task?.syncTarget === 'external-calendar');
   }
@@ -253,12 +288,16 @@
     menu.appendChild(section);
   }
 
-  function openCalendarCellMenu(dateKey, clientX, clientY) {
+  function openCalendarCellMenu(dateKey, clientX, clientY, options = {}) {
     closeOtherMenus();
     menu.classList.add('calendar-context-menu--cell');
-    menu.setAttribute('aria-label', `${calendarDateLabel(dateKey)} 新建事项`);
-    appendAction('新建日程', () => openCalendarTaskDialog(dateKey, 'event'), { icon: 'event' });
-    appendAction('新建待办', () => openCalendarTaskDialog(dateKey, 'todo'), { icon: 'todo' });
+    const initialTime = String(options.initialTime || '');
+    menu.setAttribute('aria-label', `${calendarDateLabel(dateKey)} 新建事项${initialTime ? ` ${initialTime}` : ''}`);
+    appendAction('新建日程', () => openNewCalendarItem(dateKey, 'event', initialTime), {
+      icon: 'event',
+      detail: initialTime,
+    });
+    appendAction('新建待办', () => openNewCalendarItem(dateKey, 'todo'), { icon: 'todo' });
     positionCalendarContextMenu(clientX, clientY);
   }
 
@@ -295,9 +334,83 @@
     positionCalendarContextMenu(clientX, clientY);
   }
 
+  function weekDateAtX(container, clientX, fallback = '') {
+    if (!container) return fallback;
+    const columns = [...container.children].filter((child) => child?.dataset?.date);
+    if (!columns.length) return fallback;
+    const rect = container.getBoundingClientRect();
+    if (!rect.width) return fallback;
+    const index = Math.max(0, Math.min(columns.length - 1, Math.floor((clientX - rect.left) * columns.length / rect.width)));
+    return columns[index]?.dataset.date || fallback;
+  }
+
+  function weekItemDate(item, clientX) {
+    if (!item) return '';
+    if (item.classList.contains('week-allday-span')) {
+      return weekDateAtX(item.closest('.week-allday-cols'), clientX, item.dataset.date || '');
+    }
+    return item.dataset.date || item.closest('[data-date]')?.dataset.date || '';
+  }
+
+  function weekTimeAt(clientY, column) {
+    const days = column?.closest('.week-days');
+    if (!days || !column) return '';
+    const rect = column.getBoundingClientRect();
+    const startHour = Number(days.dataset.startHour || 0);
+    const hours = Number(days.dataset.hours || 24);
+    const height = Math.max(rect.height, column.scrollHeight || 0, 1);
+    const ratio = Math.max(0, Math.min(0.999, (clientY - rect.top) / height));
+    const rawMinutes = startHour * 60 + ratio * hours * 60;
+    const snapped = Math.max(0, Math.min(24 * 60 - 15, Math.round(rawMinutes / 15) * 15));
+    return `${String(Math.floor(snapped / 60)).padStart(2, '0')}:${String(snapped % 60).padStart(2, '0')}`;
+  }
+
+  function handleWeekContextMenu(event) {
+    const board = event.target.closest?.('#weekBoard');
+    if (!board || board.hidden) return false;
+
+    if (event.target.closest('.week-overflow, .week-mini, .week-handle')) return false;
+
+    const item = event.target.closest('.week-block, .week-chip, .week-todo-item');
+    if (item?.dataset.id) {
+      const task = typeof state !== 'undefined' ? state.tasks.find((candidate) => candidate.id === item.dataset.id) : null;
+      const dateKey = weekItemDate(item, event.clientX) || task?.dueDate || '';
+      if (!task || !dateKey) return false;
+      event.preventDefault();
+      event.stopPropagation();
+      openCalendarItemMenu(task, dateKey, event.clientX, event.clientY);
+      return true;
+    }
+
+    const timedColumn = event.target.closest('.week-day-col');
+    if (timedColumn?.dataset.date) {
+      event.preventDefault();
+      event.stopPropagation();
+      openCalendarCellMenu(timedColumn.dataset.date, event.clientX, event.clientY, {
+        initialTime: weekTimeAt(event.clientY, timedColumn),
+      });
+      return true;
+    }
+
+    const dateSurface = event.target.closest('.week-todo-col, .week-allday-col, .week-col-head');
+    if (dateSurface?.dataset.date) {
+      event.preventDefault();
+      event.stopPropagation();
+      openCalendarCellMenu(dateSurface.dataset.date, event.clientX, event.clientY);
+      return true;
+    }
+
+    return false;
+  }
+
   document.addEventListener('contextmenu', (event) => {
     const calendarPanel = event.target.closest?.('#calendarPanel');
-    if (!calendarPanel) return;
+    if (!calendarPanel) {
+      if (!menu.classList.contains('hidden')) closeCalendarContextMenu();
+      return;
+    }
+
+    if (handleWeekContextMenu(event)) return;
 
     const item = event.target.closest('.day-event, .calendar-span-event');
     if (item) {
@@ -312,7 +425,10 @@
     }
 
     const cell = event.target.closest('.calendar-day');
-    if (!cell || event.target.closest('.day-overflow')) return;
+    if (!cell || event.target.closest('.day-overflow')) {
+      if (!menu.classList.contains('hidden')) closeCalendarContextMenu();
+      return;
+    }
     const dateKey = cell.dataset.date;
     if (!dateKey) return;
     event.preventDefault();
@@ -320,12 +436,40 @@
     openCalendarCellMenu(dateKey, event.clientX, event.clientY);
   });
 
-  document.addEventListener('pointerdown', (event) => {
-    if (!menu.classList.contains('hidden') && !menu.contains(event.target)) closeCalendarContextMenu();
-  }, { capture: true });
+  function dismissTransientMenus(event) {
+    const target = event.target;
+    if (!menu.classList.contains('hidden') && !menu.contains(target)) closeCalendarContextMenu();
+
+    const taskMenu = document.querySelector('#taskMenu');
+    if (taskMenu && !taskMenu.classList.contains('hidden') && !taskMenu.contains(target) && !target.closest?.('.task-more')) {
+      if (typeof closeTaskMenu === 'function') closeTaskMenu();
+    }
+
+    const reminder = document.querySelector('#reminderPopover');
+    if (reminder && !reminder.classList.contains('hidden') && !reminder.contains(target)) closeReminderPopover();
+
+    if (!target.closest?.('.time-field') && typeof closeTimePickers === 'function') closeTimePickers();
+  }
+
+  // Use several native pointer/click paths. Electron drag/no-drag regions do not
+  // always deliver exactly the same sequence, so any outside interaction gets a
+  // chance to dismiss transient UI without changing modal/editor behavior.
+  window.addEventListener('pointerdown', dismissTransientMenus, true);
+  window.addEventListener('mousedown', dismissTransientMenus, true);
+  window.addEventListener('click', dismissTransientMenus, true);
+  window.addEventListener('contextmenu', (event) => {
+    if (!menu.classList.contains('hidden') && !menu.contains(event.target) && !event.target.closest?.('#calendarPanel')) {
+      closeCalendarContextMenu();
+    }
+  }, true);
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') closeCalendarContextMenu();
+    if (event.key !== 'Escape') return;
+    closeCalendarContextMenu();
+    closeReminderPopover();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) closeCalendarContextMenu();
   });
   window.addEventListener('blur', closeCalendarContextMenu);
   window.addEventListener('resize', closeCalendarContextMenu);
@@ -333,5 +477,7 @@
   window.LumaCalendarContextMenu = {
     bound: true,
     close: closeCalendarContextMenu,
+    openCell: openCalendarCellMenu,
+    openItem: openCalendarItemMenu,
   };
 })();
