@@ -120,6 +120,10 @@ function createStateStore(options) {
     if (!Number.isSafeInteger(revision) || revision < 0) {
       throw stateError('STATE_META_INVALID', 'Luma 数据修订号无效');
     }
+    const businessRevision = Number(meta?.businessRevision ?? revision);
+    if (!Number.isSafeInteger(businessRevision) || businessRevision < 0 || businessRevision > revision) {
+      throw stateError('STATE_META_INVALID', 'Luma 业务数据修订号无效');
+    }
     let storageId = String(meta?.storageId || '');
     if (!storageId) {
       legacyStorageId ||= idFactory();
@@ -130,7 +134,7 @@ function createStateStore(options) {
       : [];
     return {
       stored: parsed,
-      meta: { schema: META_SCHEMA, revision, storageId, pendingOperations: operations },
+      meta: { schema: META_SCHEMA, revision, businessRevision, storageId, pendingOperations: operations },
     };
   }
 
@@ -140,7 +144,7 @@ function createStateStore(options) {
       if (!allowMissing) throw stateError('STATE_MISSING', 'Luma 数据文件不存在');
       return {
         state: null,
-        meta: { schema: META_SCHEMA, revision: 0, storageId: idFactory(), pendingOperations: [] },
+        meta: { schema: META_SCHEMA, revision: 0, businessRevision: 0, storageId: idFactory(), pendingOperations: [] },
         sessionId: ctx.sessionId,
         filePath: ctx.filePath,
       };
@@ -176,16 +180,27 @@ function createStateStore(options) {
     }
   }
 
-  function assertExpected(current, expected) {
+  function assertStorageExpected(current, expected) {
     if (recovery) throw stateError('STATE_RECOVERY_REQUIRED', 'Luma 数据处于恢复状态，已禁止普通保存');
     if (!expected || expected.sessionId !== current.sessionId) {
       throw stateError('STATE_SESSION_STALE', '数据位置已变化或请求来自旧会话，请重新加载后再保存');
     }
+    if (expected.storageId && expected.storageId !== current.meta.storageId) {
+      throw stateError('STATE_STORAGE_MISMATCH', '当前数据文件身份已变化，请重新加载');
+    }
+  }
+
+  function assertExpected(current, expected) {
+    assertStorageExpected(current, expected);
     if (Number(expected.revision) !== Number(current.meta.revision)) {
       throw stateError('STATE_REVISION_CONFLICT', '本地数据已被更新，旧状态不能覆盖新状态');
     }
-    if (expected.storageId && expected.storageId !== current.meta.storageId) {
-      throw stateError('STATE_STORAGE_MISMATCH', '当前数据文件身份已变化，请重新加载');
+  }
+
+  function assertBusinessExpected(current, expected) {
+    assertStorageExpected(current, expected);
+    if (Number(expected.businessRevision) !== Number(current.meta.businessRevision)) {
+      throw stateError('STATE_REVISION_CONFLICT', '本地业务数据已被更新，旧快照不能覆盖新状态');
     }
   }
 
@@ -201,17 +216,7 @@ function createStateStore(options) {
     }
   }
 
-  function commit(state, expected, transformMeta) {
-    validateBusinessState(state);
-    const current = readCurrent();
-    assertExpected(current, expected);
-    const nextMeta = {
-      schema: META_SCHEMA,
-      revision: current.meta.revision + 1,
-      storageId: current.meta.storageId,
-      pendingOperations: current.meta.pendingOperations.map((item) => clone(item)),
-    };
-    if (transformMeta) transformMeta(nextMeta, current);
+  function writeCommit(state, current, nextMeta) {
     nextMeta.pendingOperations = (nextMeta.pendingOperations || []).map((item) => sanitizeOperation(item, now()));
     const stored = clone(state);
     stored[META_KEY] = nextMeta;
@@ -225,10 +230,33 @@ function createStateStore(options) {
     };
   }
 
+  function commit(state, expected, transformMeta) {
+    validateBusinessState(state);
+    const current = readCurrent();
+    assertBusinessExpected(current, expected);
+    const nextMeta = {
+      schema: META_SCHEMA,
+      revision: current.meta.revision + 1,
+      businessRevision: current.meta.businessRevision + 1,
+      storageId: current.meta.storageId,
+      pendingOperations: current.meta.pendingOperations.map((item) => clone(item)),
+    };
+    if (transformMeta) transformMeta(nextMeta, current);
+    return writeCommit(state, current, nextMeta);
+  }
+
   function commitCurrentMeta(expected, transformMeta) {
     const current = readCurrent({ allowMissing: false });
     assertExpected(current, expected);
-    return commit(current.state, expected, transformMeta);
+    const nextMeta = {
+      schema: META_SCHEMA,
+      revision: current.meta.revision + 1,
+      businessRevision: current.meta.businessRevision,
+      storageId: current.meta.storageId,
+      pendingOperations: current.meta.pendingOperations.map((item) => clone(item)),
+    };
+    if (transformMeta) transformMeta(nextMeta, current);
+    return writeCommit(current.state, current, nextMeta);
   }
 
   function operationInsert(meta, operation) {
@@ -298,6 +326,7 @@ function createStateStore(options) {
       recovery: clone(recovery),
       filePath: current?.filePath || contextPath || '',
       revision: current?.meta?.revision ?? null,
+      businessRevision: current?.meta?.businessRevision ?? null,
       storageId: current?.meta?.storageId || '',
       sessionId: current?.sessionId || contextSessionId || '',
       pendingOperations: clone(current?.meta?.pendingOperations || []),
