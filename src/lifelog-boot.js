@@ -1,18 +1,27 @@
-/* Narrow boot for Lifelog — does not rewrite app.js. */
+/* Narrow boot for LifeLog and date-detail refinements — does not rewrite app.js. */
 (function () {
-  function load() {
-    if (!document.querySelector('link[href="src/lifelog.css"]')) {
-      const link = document.createElement("link");
-      link.rel = "stylesheet";
-      link.href = "src/lifelog.css";
-      document.head.appendChild(link);
-    }
-    if (!document.querySelector('script[src="src/lifelog.js"]')) {
-      const script = document.createElement("script");
-      script.src = "src/lifelog.js";
-      document.body.appendChild(script);
-    }
+  function ensureStyle(href) {
+    if (document.querySelector(`link[href="${href}"]`)) return;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = href;
+    document.head.appendChild(link);
   }
+
+  function ensureScript(src) {
+    if (document.querySelector(`script[src="${src}"]`)) return;
+    const script = document.createElement("script");
+    script.src = src;
+    document.body.appendChild(script);
+  }
+
+  function load() {
+    ensureStyle("src/lifelog.css");
+    ensureStyle("src/calendar-detail-enhance.css");
+    ensureScript("src/lifelog.js");
+    ensureScript("src/calendar-detail-enhance.js");
+  }
+
   load();
   document.addEventListener("DOMContentLoaded", load);
 })();
