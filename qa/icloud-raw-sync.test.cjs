@@ -85,3 +85,54 @@ test('local modeled edit uploads against the latest Apple raw resource', async (
   assert.ok(uploaded.includes('LOCATION:Room A'));
   assert.ok(uploaded.includes('BEGIN:VALARM\r\nTRIGGER:-PT10M\r\nACTION:DISPLAY\r\nDESCRIPTION:Keep alarm\r\nEND:VALARM'));
 });
+
+test('legacy Apple-linked item without cached raw ICS uses the current remote raw resource on its first write', async () => {
+  const currentRaw = appleIcs('Remote description survives first legacy write');
+  const currentRemote = parseIcloudEvent(currentRaw, calendar.url + 'rich.ics', '"7"', calendar);
+  const local = {
+    id: 'legacy-rich',
+    itemType: 'event',
+    title: 'First Luma edit',
+    dueDate: currentRemote.dueDate,
+    time: currentRemote.time,
+    endDate: currentRemote.endDate,
+    endTime: currentRemote.endTime,
+    completed: false,
+    eventColor: currentRemote.eventColor,
+    projectId: 'apple-calendar',
+    syncTarget: 'calendar',
+    icloudExternal: true,
+    icloudHref: currentRemote.href,
+    icloudUid: currentRemote.uid,
+    icloudEtag: '"7"',
+    lastIcloudEtag: '"7"',
+    icloudCalendarUrl: calendar.url,
+    updatedAt: Date.parse('2026-09-14T04:00:00Z'),
+  };
+  assert.equal(local.icloudRawIcs, undefined, 'fixture must represent a pre-raw-ICS local record');
+  local.lastIcloudSnapshot = snapshot({ ...local, title: 'Meeting' });
+
+  let uploaded = null;
+  const state = { tasks: [local], projects: [], icloudDeletedItems: [] };
+  const io = {
+    list: async () => [structuredClone(currentRemote)],
+    get: async () => structuredClone(currentRemote),
+    put: async (_href, task, uid, etag) => {
+      assert.equal(etag, '"7"');
+      assert.equal(task.icloudRawIcs, currentRaw, 'first write must use this sync read, not a generated minimal VCALENDAR');
+      uploaded = taskToIcloudIcs(task, uid);
+      return '"8"';
+    },
+    remove: async () => {},
+    uid: (id) => id + '@luma',
+    safeId: (id) => id,
+    ensureProject: () => {},
+  };
+
+  const result = await syncCalendar(state, calendar, io);
+  assert.equal(result.summary.updated, 1);
+  assert.ok(uploaded.includes('SUMMARY:First Luma edit'));
+  assert.ok(uploaded.includes('DESCRIPTION:Remote description survives first legacy write'));
+  assert.ok(uploaded.includes('LOCATION:Room A'));
+  assert.ok(uploaded.includes('BEGIN:VALARM\r\nTRIGGER:-PT10M\r\nACTION:DISPLAY\r\nDESCRIPTION:Keep alarm\r\nEND:VALARM'));
+});
