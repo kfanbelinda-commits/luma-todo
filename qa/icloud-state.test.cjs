@@ -50,8 +50,39 @@ test('in-flight deletion does not acknowledge unseen Apple edits as a deletion b
   returned.tasks[0] = linked({ ...returned.tasks[0], title: 'Apple edit' });
   const merged = mergeResult(before, current, returned);
   assert.equal(merged.icloudDeletedItems.length, 1);
+  assert.equal(merged.icloudDeletedItems[0].etag, '"old"');
   assert.equal(merged.icloudDeletedItems[0].lastIcloudSnapshot.title, 'Before');
   assert.equal(merged.icloudDeletedItems[0].task.title, 'Before', 'preserve deleted local copy');
+});
+
+test('in-flight result cannot replace a deletion ETag when modeled fields are unchanged', () => {
+  const before = initial();
+  before.tasks[0] = linked(before.tasks[0]);
+  before.tasks[0].icloudEtag = '"1"';
+  before.tasks[0].lastIcloudEtag = '"1"';
+  const current = clone(before);
+  current.tasks = [];
+  current.icloudDeletedItems = [{
+    href: before.tasks[0].icloudHref,
+    uid: before.tasks[0].icloudUid,
+    calendarUrl: calendar.url,
+    itemType: 'todo',
+    etag: '"1"',
+    lastIcloudSnapshot: clone(before.tasks[0].lastIcloudSnapshot),
+    task: clone(before.tasks[0]),
+    deletedAt: 123,
+  }];
+  const returned = clone(before);
+  returned.tasks[0].icloudEtag = '"2"';
+  returned.tasks[0].lastIcloudEtag = '"2"';
+  returned.tasks[0].lastIcloudSnapshot = clone(before.tasks[0].lastIcloudSnapshot);
+
+  const merged = mergeResult(before, current, returned);
+  assert.equal(merged.tasks.length, 0);
+  assert.equal(merged.icloudDeletedItems.length, 1);
+  assert.equal(merged.icloudDeletedItems[0].etag, '"1"');
+  assert.equal(merged.icloudDeletedItems[0].deletedAt, 123);
+  assert.deepEqual(merged.icloudDeletedItems[0].lastIcloudSnapshot, before.tasks[0].lastIcloudSnapshot);
 });
 
 test('response-lost upload retains attempted address for a concurrent deletion', async () => {
