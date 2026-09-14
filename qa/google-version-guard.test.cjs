@@ -1,0 +1,181 @@
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const {
+  eventKey,
+  runGoogleVersionGuard,
+} = require('../main/google-version-guard.cjs');
+
+function headers(input = {}) {
+  const map = new Map(Object.entries(input).map(([key, value]) => [key.toLowerCase(), String(value)]));
+  return {
+    get(key) { return map.get(String(key).toLowerCase()) || null; },
+  };
+}
+
+function response(body, { status = 200, headers: headerValues = {} } = {}) {
+  const payload = body == null ? null : structuredClone(body);
+  return {
+    status,
+    ok: status >= 200 && status < 300,
+    headers: headers(headerValues),
+    clone() {
+      return {
+        json: async () => structuredClone(payload),
+      };
+    },
+  };
+}
+
+function requestHeader(options, key) {
+  const h = options?.headers;
+  if (!h) return '';
+  if (typeof h.get === 'function') return h.get(key) || '';
+  const found = Object.entries(h).find(([name]) => name.toLowerCase() === key.toLowerCase());
+  return found ? String(found[1]) : '';
+}
+
+const listUrl = 'https://www.googleapis.com/calendar/v3/calendars/primary/events?showDeleted=true';
+const eventUrl = 'https://www.googleapis.com/calendar/v3/calendars/primary/events/event-1';
+
+function state(overrides = {}) {
+  return {
+    tasks: [],
+    googleDeletedItems: [],
+    ...overrides,
+  };
+}
+
+test('Calendar PATCH uses the exact ETag from the list version used for reconciliation', async () => {
+  const calls = [];
+  const fakeFetch = async (url, options = {}) => {
+    calls.push({ url, options });
+    if (url === listUrl) {
+      return response({ items: [{ id: 'event-1', etag: '"list-v2"', extendedProperties: { private: { lumaTaskId: 'local-1' } } }] });
+    }
+    if (url === eventUrl && options.method === 'PATCH') {
+      assert.equal(requestHeader(options, 'If-Match'), '"list-v2"');
+      return response({ id: 'event-1', etag: '"saved-v3"' });
+    }
+    throw new Error('unexpected request ' + url);
+  };
+
+  const { result, context } = await runGoogleVersionGuard({
+    state: state(),
+    fetchImpl: fakeFetch,
+    invoke: async (guardedFetch) => {
+      await guardedFetch(listUrl);
+      await guardedFetch(eventUrl, { method: 'PATCH', body: '{}' });
+      return { state: { tasks: [{ id: 'local-1', googleCalendarEventId: 'event-1', googleCalendarId: 'primary' }] } };
+    },
+  });
+
+  assert.equal(calls.length, 2);
+  assert.equal(context.calendarEtags.get(eventKey('primary', 'event-1')), '"saved-v3"');
+  assert.equal(result.state.tasks[0].googleCalendarEtag, '"saved-v3"');
+});
+
+test('queued Calendar delete keeps its frozen ETag even when list shows a newer version', async () => {
+  const calls = [];
+  const input = state({
+    googleDeletedItems: [{
+      source: 'calendar',
+      googleCalendarEventId: 'event-1',
+      googleCalendarId: 'primary',
+      googleCalendarEtag: '"intent-v1"',
+      task: { id: 'local-1', googleCalendarEventId: 'event-1', googleCalendarId: 'primary', googleCalendarEtag: '"intent-v1"' },
+    }],
+  });
+  const fakeFetch = async (url, options = {}) => {
+    calls.push({ url, options });
+    if (url === listUrl) return response({ items: [{ id: 'event-1', etag: '"remote-v2"' }] });
+    if (url === eventUrl && options.method === 'DELETE') {
+      assert.equal(requestHeader(options, 'If-Match'), '"intent-v1"');
+      return response({ error: 'precondition' }, { status: 412 });
+    }
+    throw new Error('unexpected request');
+  };
+
+  await runGoogleVersionGuard({
+    state: input,
+    fetchImpl: fakeFetch,
+    invoke: async (guardedFetch) => {
+      await guardedFetch(listUrl);
+      return guardedFetch(eventUrl, { method: 'DELETE' });
+    },
+  });
+  assert.equal(calls.length, 2);
+});
+
+test('destructive Calendar mutation without a known ETag is stopped before network access', async () => {
+  let calls = 0;
+  await assert.rejects(
+    runGoogleVersionGuard({
+      state: state(),
+      fetchImpl: async () => { calls += 1; return response(null, { status: 204 }); },
+      invoke: async (guardedFetch) => guardedFetch(eventUrl, { method: 'DELETE' }),
+    }),
+    (error) => error.code === 'GOOGLE_VERSION_REQUIRED'
+  );
+  assert.equal(calls, 0);
+});
+
+test('Apple-source Luma identity found in Calendar list blocks later Google mutation', async () => {
+  let mutations = 0;
+  const protection = {
+    protectedTaskIds: new Set(['apple-local']),
+    protectedEventIds: new Set(),
+    protectedGoogleTaskIds: new Set(),
+  };
+  await assert.rejects(
+    runGoogleVersionGuard({
+      state: state(),
+      protection,
+      fetchImpl: async (url, options = {}) => {
+        if (url === listUrl) return response({ items: [{
+          id: 'event-1',
+          etag: '"v1"',
+          extendedProperties: { private: { lumaTaskId: 'apple-local' } },
+        }] });
+        if (options.method === 'DELETE') mutations += 1;
+        return response(null, { status: 204 });
+      },
+      invoke: async (guardedFetch) => {
+        await guardedFetch(listUrl);
+        return guardedFetch(eventUrl, { method: 'DELETE' });
+      },
+    }),
+    (error) => error.code === 'PROVIDER_OWNERSHIP_CONFLICT'
+  );
+  assert.equal(mutations, 0);
+});
+
+test('Apple-source task identity discovered in Google Tasks list blocks PATCH and DELETE', async () => {
+  const taskListUrl = 'https://tasks.googleapis.com/tasks/v1/lists/%40default/tasks?showDeleted=true';
+  const taskItemUrl = 'https://tasks.googleapis.com/tasks/v1/lists/%40default/tasks/task-1';
+  let mutations = 0;
+  const protection = {
+    protectedTaskIds: new Set(['apple-local']),
+    protectedEventIds: new Set(),
+    protectedGoogleTaskIds: new Set(),
+  };
+  await assert.rejects(
+    runGoogleVersionGuard({
+      state: state(),
+      protection,
+      parseTaskNotes: () => ({ metadata: { taskId: 'apple-local' } }),
+      fetchImpl: async (url, options = {}) => {
+        if (url === taskListUrl) return response({ items: [{ id: 'task-1', notes: 'metadata' }] });
+        if (options.method === 'PATCH' || options.method === 'DELETE') mutations += 1;
+        return response({ id: 'task-1' });
+      },
+      invoke: async (guardedFetch) => {
+        await guardedFetch(taskListUrl);
+        return guardedFetch(taskItemUrl, { method: 'PATCH', body: '{}' });
+      },
+    }),
+    (error) => error.code === 'PROVIDER_OWNERSHIP_CONFLICT'
+  );
+  assert.equal(mutations, 0);
+});
