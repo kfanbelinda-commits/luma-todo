@@ -84,17 +84,20 @@ for (const itemType of ['todo', 'event']) {
     assert.equal(edited.state.tasks[0].icloudConflict.type, 'remote-deleted-local-modified');
     assert.deepEqual(edited.calls, [['get', value.icloudHref]]);
   });
-  test(itemType + ': local deletion deletes unchanged remote and freezes edited remote', async () => {
+  test(itemType + ': local deletion deletes only the exact approved Apple version', async () => {
     const value = task({ itemType });
     const h = harness([], [remote(value)], {}, [deleted(value)]);
     await h.run();
     assert.deepEqual(h.calls, [['delete', value.icloudHref, '"1"']]);
     assert.equal(h.state.icloudDeletedItems.length, 0);
+
     const edited = harness([], [remote(value, { title: 'Edited remotely', etag: '"2"' })], {}, [deleted(value)]);
     await edited.run();
     assert.equal(edited.calls.length, 0);
     assert.equal(edited.state.tasks.length, 0, 'do not reimport pending deletion');
-    assert.equal(edited.state.icloudDeletedItems[0].icloudConflict.type, 'local-deleted-remote-modified');
+    assert.equal(edited.state.icloudDeletedItems[0].icloudConflict.type, 'delete-version-changed');
+    assert.equal(edited.state.icloudDeletedItems[0].etag, '"1"');
+    assert.equal(edited.state.icloudDeletedItems[0].icloudConflict.remoteEtag, '"2"');
     assert.equal(edited.state.icloudDeletedItems[0].task.title, value.title);
   });
 }
@@ -141,6 +144,8 @@ test('legacy deletion uses the last known etag conservatively', async () => {
   const h = harness([], [remote(value, { etag: '"2"' })], {}, [entry]);
   await h.run();
   assert.equal(h.state.icloudDeletedItems.length, 1);
+  assert.equal(h.state.icloudDeletedItems[0].etag, '"1"');
+  assert.equal(h.state.icloudDeletedItems[0].icloudConflict.type, 'delete-version-changed');
   assert.equal(h.calls.length, 0);
 });
 
@@ -198,7 +203,7 @@ test('PUT 412 followed by deletion does not recreate an edited linked item', asy
   assert.equal(h.state.tasks[0].icloudConflict.type, 'remote-deleted-local-modified');
 });
 
-test('DELETE 412 rereads, preserves remote edit, and continues next deletion', async () => {
+test('DELETE 412 rereads, preserves the new version, and continues next deletion', async () => {
   const first = task(); const second = task({ id: 'two', icloudHref: calendar.url + 'two.ics', icloudUid: 'two@luma' });
   const calls = [];
   const h = harness([], [remote(first), remote(second)], {
@@ -209,21 +214,38 @@ test('DELETE 412 rereads, preserves remote edit, and continues next deletion', a
   assert.equal(summary.remoteDeleted, 1);
   assert.equal(summary.conflicts, 1);
   assert.equal(calls.length, 2);
+  assert.equal(h.state.icloudDeletedItems[0].etag, '"1"');
+  assert.equal(h.state.icloudDeletedItems[0].icloudConflict.type, 'delete-version-changed');
   assert.equal(h.state.tasks.length, 0);
 });
 
-test('DELETE 412 with metadata-only change retries; already missing deletion succeeds', async () => {
+test('DELETE 412 never adopts a newer ETag automatically; already missing deletion succeeds', async () => {
   const value = task(); let count = 0;
   const h = harness([], [remote(value)], {
-    remove: async (_href, etag) => { if (++count === 1) throw precondition(); assert.equal(etag, '"2"'); },
+    remove: async (_href, etag) => { count += 1; assert.equal(etag, '"1"'); throw precondition(); },
     get: async () => remote(value, { etag: '"2"' }),
   }, [deleted(value)]);
   await h.run();
-  assert.equal(count, 2);
-  assert.equal(h.state.icloudDeletedItems.length, 0);
+  assert.equal(count, 1);
+  assert.equal(h.state.icloudDeletedItems.length, 1);
+  assert.equal(h.state.icloudDeletedItems[0].etag, '"1"');
+  assert.equal(h.state.icloudDeletedItems[0].icloudConflict.type, 'delete-version-changed');
+  assert.equal(h.state.icloudDeletedItems[0].icloudConflict.remoteEtag, '"2"');
+
   const missing = harness([], [], {}, [deleted(value)]);
   await missing.run();
   assert.equal(missing.state.icloudDeletedItems.length, 0);
+});
+
+test('remote ETag change with identical modeled fields cannot authorize deletion', async () => {
+  const value = task();
+  const h = harness([], [remote(value, { etag: '"2"' })], {}, [deleted(value)]);
+  await h.run();
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.state.icloudDeletedItems.length, 1);
+  assert.equal(h.state.icloudDeletedItems[0].etag, '"1"');
+  assert.equal(h.state.icloudDeletedItems[0].icloudConflict.type, 'delete-version-changed');
+  assert.equal(h.state.icloudDeletedItems[0].icloudConflict.remoteEtag, '"2"');
 });
 
 test('network failure preserves baseline and pending deletion while other items continue', async () => {
@@ -441,12 +463,14 @@ test('legacy UID without an address and replaced resource identities cannot auth
   assert.match(replaced.state.tasks[0].icloudSyncError, /身份/);
 });
 
-test('a pending deletion omitted from REPORT still checks remote edits before acknowledging it', async () => {
+test('a pending deletion omitted from REPORT keeps the original version basis', async () => {
   const value = task();
   const h = harness([], [], { get: async () => remote(value, { title: 'New Apple work', etag: '"2"' }) }, [deleted(value)]);
   await h.run();
   assert.equal(h.state.icloudDeletedItems.length, 1);
-  assert.equal(h.state.icloudDeletedItems[0].icloudConflict.type, 'local-deleted-remote-modified');
+  assert.equal(h.state.icloudDeletedItems[0].etag, '"1"');
+  assert.equal(h.state.icloudDeletedItems[0].icloudConflict.type, 'delete-version-changed');
+  assert.equal(h.state.icloudDeletedItems[0].icloudConflict.remoteEtag, '"2"');
   assert.equal(h.calls.length, 0);
 });
 
