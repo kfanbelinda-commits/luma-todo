@@ -225,40 +225,68 @@ function createStateStore(options) {
     };
   }
 
-  function prepareOperation(state, expected, operation) {
+  function commitCurrentMeta(expected, transformMeta) {
+    const current = readCurrent({ allowMissing: false });
+    assertExpected(current, expected);
+    return commit(current.state, expected, transformMeta);
+  }
+
+  function operationInsert(meta, operation) {
     const prepared = sanitizeOperation({ ...operation, phase: operation?.phase || 'prepared' }, now());
-    return commit(state, expected, (meta) => {
-      const existing = meta.pendingOperations.find((item) => item.id === prepared.id);
-      if (existing) {
-        if (JSON.stringify(existing) !== JSON.stringify(prepared)) {
-          throw stateError('OPERATION_ID_REUSED', '同步操作 ID 已存在且内容不同');
-        }
-        return;
+    const existing = meta.pendingOperations.find((item) => item.id === prepared.id);
+    if (existing) {
+      if (existing.provider !== prepared.provider
+        || existing.kind !== prepared.kind
+        || existing.localItemId !== prepared.localItemId) {
+        throw stateError('OPERATION_ID_REUSED', '同步操作 ID 已存在且身份不同');
       }
-      meta.pendingOperations.push(prepared);
-    });
+      return existing;
+    }
+    meta.pendingOperations.push(prepared);
+    return prepared;
+  }
+
+  function operationAdvance(meta, operationId, patch) {
+    const index = meta.pendingOperations.findIndex((item) => item.id === operationId);
+    if (index < 0) throw stateError('OPERATION_MISSING', '找不到待恢复的同步操作');
+    const current = meta.pendingOperations[index];
+    meta.pendingOperations[index] = sanitizeOperation({
+      ...current,
+      ...clone(patch || {}),
+      id: current.id,
+      provider: current.provider,
+      kind: current.kind,
+      localItemId: current.localItemId,
+      createdAt: current.createdAt,
+      updatedAt: now(),
+    }, now());
+    return meta.pendingOperations[index];
+  }
+
+  function prepareOperation(state, expected, operation) {
+    return commit(state, expected, (meta) => { operationInsert(meta, operation); });
   }
 
   function advanceOperation(state, expected, operationId, patch) {
-    return commit(state, expected, (meta) => {
-      const index = meta.pendingOperations.findIndex((item) => item.id === operationId);
-      if (index < 0) throw stateError('OPERATION_MISSING', '找不到待恢复的同步操作');
-      const current = meta.pendingOperations[index];
-      meta.pendingOperations[index] = sanitizeOperation({
-        ...current,
-        ...clone(patch || {}),
-        id: current.id,
-        provider: current.provider,
-        kind: current.kind,
-        localItemId: current.localItemId,
-        createdAt: current.createdAt,
-        updatedAt: now(),
-      }, now());
-    });
+    return commit(state, expected, (meta) => { operationAdvance(meta, operationId, patch); });
   }
 
   function completeOperation(state, expected, operationId) {
     return commit(state, expected, (meta) => {
+      meta.pendingOperations = meta.pendingOperations.filter((item) => item.id !== operationId);
+    });
+  }
+
+  function prepareOperationMeta(expected, operation) {
+    return commitCurrentMeta(expected, (meta) => { operationInsert(meta, operation); });
+  }
+
+  function advanceOperationMeta(expected, operationId, patch) {
+    return commitCurrentMeta(expected, (meta) => { operationAdvance(meta, operationId, patch); });
+  }
+
+  function completeOperationMeta(expected, operationId) {
+    return commitCurrentMeta(expected, (meta) => {
       meta.pendingOperations = meta.pendingOperations.filter((item) => item.id !== operationId);
     });
   }
@@ -282,6 +310,9 @@ function createStateStore(options) {
     prepareOperation,
     advanceOperation,
     completeOperation,
+    prepareOperationMeta,
+    advanceOperationMeta,
+    completeOperationMeta,
     status,
     readCurrent,
   };
