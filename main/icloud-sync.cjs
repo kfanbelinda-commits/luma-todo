@@ -100,6 +100,7 @@ function finish(task, value, remote, calendar) {
   task.lastIcloudEtag = remote.etag || '';
   task.icloudCalendarUrl = calendar.url;
   task.icloudCalendarName = calendar.name;
+  if (remote?.rawIcs) task.icloudRawIcs = String(remote.rawIcs);
   task.lastIcloudSnapshot = { ...value };
   task.lastIcloudSyncAt = Date.now();
   if (changed) task.updatedAt = task.lastIcloudSyncAt;
