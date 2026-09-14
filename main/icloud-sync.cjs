@@ -289,6 +289,7 @@ async function syncCalendar(state, calendar, io) {
         const uid = remote?.uid || task.icloudUid || io.uid(task.id);
         const href = remote?.href || task.icloudHref || calendar.url.replace(/\/?$/, '/') + encodeURIComponent(uid) + '.ics';
         const upload = { ...task };
+        if (remote?.rawIcs) upload.icloudRawIcs = String(remote.rawIcs);
         applySnapshot(upload, value);
         // Retain the attempted resource if a response is lost after Apple saves
         // it, so a concurrent local deletion can still queue reconciliation.
