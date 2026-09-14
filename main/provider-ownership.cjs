@@ -54,6 +54,11 @@ function queueTask(entry) {
   return entry?.task && typeof entry.task === 'object' ? entry.task : null;
 }
 
+function queueOwnershipProbe(entry) {
+  const item = queueTask(entry);
+  return item ? { ...(entry || {}), ...item } : entry;
+}
+
 function protectGoogleDispatch(input) {
   const state = structuredClone(input || {});
   state.tasks = Array.isArray(state.tasks) ? state.tasks : [];
@@ -151,6 +156,126 @@ function restoreGoogleProtected(originalState, returnedState, protection) {
   return result;
 }
 
+function protectAppleDispatch(input) {
+  const state = structuredClone(input || {});
+  state.tasks = Array.isArray(state.tasks) ? state.tasks : [];
+  state.icloudDeletedItems = Array.isArray(state.icloudDeletedItems) ? state.icloudDeletedItems : [];
+
+  const protectedTasks = [];
+  const protectedDeletes = [];
+  const protectedTaskIds = new Set();
+  const protectedHrefs = new Set();
+  const protectedUids = new Set();
+
+  const remember = (item) => {
+    if (!item) return;
+    if (item.id) protectedTaskIds.add(String(item.id));
+    const identity = appleIdentity(item);
+    if (identity.href) protectedHrefs.add(identity.href);
+    if (identity.uid) protectedUids.add(identity.uid);
+  };
+
+  state.tasks = state.tasks.filter((item) => {
+    if (!protectedFromApple(item)) return true;
+    const original = structuredClone(item);
+    protectedTasks.push(original);
+    remember(original);
+    return false;
+  });
+
+  state.icloudDeletedItems = state.icloudDeletedItems.filter((entry) => {
+    const probe = queueOwnershipProbe(entry);
+    if (!probe || !protectedFromApple(probe)) return true;
+    const original = structuredClone(entry);
+    protectedDeletes.push(original);
+    remember(probe);
+    return false;
+  });
+
+  return {
+    state,
+    protection: {
+      protectedTasks,
+      protectedDeletes,
+      protectedTaskIds,
+      protectedHrefs,
+      protectedUids,
+    },
+  };
+}
+
+function restoreAppleProtected(originalState, returnedState, protection) {
+  const result = structuredClone(returnedState || {});
+  result.tasks = Array.isArray(result.tasks) ? result.tasks : [];
+  result.icloudDeletedItems = Array.isArray(result.icloudDeletedItems) ? result.icloudDeletedItems : [];
+
+  const taskIds = protection?.protectedTaskIds || new Set();
+  const hrefs = protection?.protectedHrefs || new Set();
+  const uids = protection?.protectedUids || new Set();
+  const conflictsWithProtected = (item) => {
+    if (!item) return false;
+    const identity = appleIdentity(item);
+    return taskIds.has(String(item.id || ''))
+      || Boolean(identity.href && hrefs.has(identity.href))
+      || Boolean(identity.uid && uids.has(identity.uid));
+  };
+
+  // A REPORT result may re-import a protected Google-source Apple residue as a
+  // fresh Apple item. Suppress that duplicate before restoring the original.
+  result.tasks = result.tasks.filter((item) => !conflictsWithProtected(item));
+  for (const item of protection?.protectedTasks || []) result.tasks.push(structuredClone(item));
+
+  const queueKey = (entry) => [
+    String(entry?.calendarUrl || ''),
+    String(entry?.href || ''),
+    String(entry?.uid || ''),
+    String(entry?.task?.id || ''),
+  ].join('\n');
+  const protectedQueueKeys = new Set((protection?.protectedDeletes || []).map(queueKey));
+  result.icloudDeletedItems = result.icloudDeletedItems.filter((entry) => {
+    if (protectedQueueKeys.has(queueKey(entry))) return false;
+    return !conflictsWithProtected(queueOwnershipProbe(entry));
+  });
+  // Keep deletion intent byte-for-byte. Ownership isolation means Apple must
+  // not consume or rewrite another provider's queued operation.
+  for (const entry of protection?.protectedDeletes || []) result.icloudDeletedItems.push(structuredClone(entry));
+
+  const originalProjects = Array.isArray(originalState?.projects) ? originalState.projects : [];
+  result.projects = Array.isArray(result.projects) ? result.projects : [];
+  for (const id of ['google-calendar']) {
+    const project = originalProjects.find((item) => item?.id === id);
+    if (project && !result.projects.some((item) => item?.id === id)) result.projects.push(structuredClone(project));
+  }
+  return result;
+}
+
+function wrapAppleSyncEngine(syncCalendar) {
+  if (typeof syncCalendar !== 'function') throw new TypeError('Apple sync engine must be a function');
+  const wrapped = async (state, calendar, io) => {
+    const originalState = structuredClone(state || {});
+    const prepared = protectAppleDispatch(originalState);
+    const result = await syncCalendar(prepared.state, calendar, io);
+    if (result?.state) {
+      result.state = restoreAppleProtected(originalState, result.state, prepared.protection);
+    }
+    if (result?.summary) {
+      result.summary.providerProtected = prepared.protection.protectedTasks.length
+        + prepared.protection.protectedDeletes.length;
+    }
+    return result;
+  };
+  Object.defineProperty(wrapped, '__lumaAppleOwnershipBoundary', { value: true });
+  return wrapped;
+}
+
+function installAppleOwnershipBoundary() {
+  const module = require('./icloud-sync.cjs');
+  if (typeof module.syncCalendar !== 'function') throw new Error('Apple sync engine is unavailable');
+  if (module.syncCalendar.__lumaAppleOwnershipBoundary) return module.syncCalendar;
+  module.syncCalendar = wrapAppleSyncEngine(module.syncCalendar);
+  return module.syncCalendar;
+}
+
 module.exports = {
   sourceProvider,
   googleIdentity,
@@ -162,4 +287,8 @@ module.exports = {
   protectedFromApple,
   protectGoogleDispatch,
   restoreGoogleProtected,
+  protectAppleDispatch,
+  restoreAppleProtected,
+  wrapAppleSyncEngine,
+  installAppleOwnershipBoundary,
 };
