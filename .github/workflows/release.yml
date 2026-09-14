@@ -6,7 +6,6 @@ on:
       - "v*"
     branches:
       - "main"
-      - "codex/sync-safety-rebuild-20260914"
 
 permissions:
   contents: write
