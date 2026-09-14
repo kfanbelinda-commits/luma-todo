@@ -351,7 +351,7 @@ function samePlain(a, b) {
 
 function complexScheduleResource(analysis) {
   if (analysis.eventCount !== 1) return true;
-  for (const name of ['RRULE', 'RDATE', 'EXDATE', 'RECURRENCE-ID']) {
+  for (const name of ['RRULE', 'RDATE', 'EXDATE', 'RECURRENCE-ID', 'DURATION']) {
     if (analysis.rootProperties.has(name)) return true;
   }
   for (const name of ['DTSTART', 'DTEND']) {
@@ -421,7 +421,7 @@ function preserveAppleIcs(task, uid, raw) {
   const analysis = analyzeRawEvent(raw);
   const scheduleChanged = !samePlain(taskScheduleSnapshot(task), remoteScheduleSnapshot(baseline, task.itemType));
   if (scheduleChanged && complexScheduleResource(analysis)) {
-    const error = new Error('Apple 事项包含重复规则、时区或多个 VEVENT；Luma 已停止重写日期时间以保留原始日历结构');
+    const error = new Error('Apple 事项包含重复规则、时区、DURATION 或多个 VEVENT；Luma 已停止重写日期时间以保留原始日历结构');
     error.code = 'ICLOUD_COMPLEX_SCHEDULE_EDIT';
     throw error;
   }
