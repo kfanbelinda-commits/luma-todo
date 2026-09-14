@@ -6,6 +6,7 @@ const {
   buildOperation,
   planConversions,
   proposedCalendarEventId,
+  currentSourceStatus,
   currentSourceUnchanged,
   reconcileConversionRecord,
   removeSourceIdentity,
@@ -65,6 +66,7 @@ test('fresh Tasks to Calendar conversion hides source and permits one target cre
   assert.equal(plan.state.tasks[0].googleTaskId, null);
   assert.equal(plan.state.tasks[0].syncTarget, 'calendar');
   assert.equal(plan.records[0].operation.source.taskId, 'task-source');
+  assert.equal(plan.records[0].operation.source.listId, '@default');
   assert.equal(plan.records[0].operation.destination.proposedEventId, proposedCalendarEventId(plan.records[0].operation.id));
 });
 
@@ -118,10 +120,34 @@ test('Google Task source must still match the version recorded before conversion
   const operation = buildOperation(googleTaskSource(), 'tasks-to-calendar');
   const same = { googleTasksById: new Map([['task-source', { updatedAt: operation.sourceVersion.remoteUpdatedAt }]]) };
   const changed = { googleTasksById: new Map([['task-source', { updatedAt: operation.sourceVersion.remoteUpdatedAt + 1000 }]]) };
+  assert.equal(currentSourceStatus(operation, same), 'unchanged');
   assert.equal(currentSourceUnchanged(operation, same), true);
+  assert.equal(currentSourceStatus(operation, changed), 'changed');
   assert.equal(currentSourceUnchanged(operation, changed), false);
   operation.sourceVersion.remoteUpdatedAt = 0;
+  assert.equal(currentSourceStatus(operation, same), 'unknown');
   assert.equal(currentSourceUnchanged(operation, same), false);
+});
+
+test('missing Google Task is not treated as safe unless its list was read completely', () => {
+  const operation = buildOperation(googleTaskSource(), 'tasks-to-calendar');
+  const unread = {
+    googleTasksById: new Map(),
+    googleTaskListReads: new Map(),
+  };
+  const partial = {
+    googleTasksById: new Map(),
+    googleTaskListReads: new Map([['@default', { startedFromFirstPage: true, complete: false, pages: 1, nextPageToken: 'next' }]]),
+  };
+  const complete = {
+    googleTasksById: new Map(),
+    googleTaskListReads: new Map([['@default', { startedFromFirstPage: true, complete: true, pages: 2, nextPageToken: '' }]]),
+  };
+
+  assert.equal(currentSourceStatus(operation, unread), 'unknown');
+  assert.equal(currentSourceStatus(operation, partial), 'unknown');
+  assert.equal(currentSourceStatus(operation, complete), 'absent');
+  assert.equal(currentSourceUnchanged(operation, complete), false);
 });
 
 test('confirmed source deletion is kept in journal until matching business state is saved', () => {
