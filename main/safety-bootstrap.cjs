@@ -16,7 +16,7 @@ const { runGoogleVersionGuard } = require('./google-version-guard.cjs');
 const { parseGoogleTaskNotes } = require('./google-task-notes.cjs');
 const {
   planConversions,
-  currentSourceUnchanged,
+  currentSourceStatus,
   removeSourceIdentity,
   reconcileConversionRecord,
   operationSatisfiedByState,
@@ -55,12 +55,26 @@ function clientExpectation(event) {
   return expected;
 }
 
-function remember(event, result) {
-  clients.set(senderKey(event), {
+function resultExpectation(result) {
+  return {
     revision: Number(result.meta?.revision || 0),
+    businessRevision: Number(result.meta?.businessRevision ?? result.meta?.revision ?? 0),
     storageId: result.state == null && Number(result.meta?.revision || 0) === 0 ? '' : String(result.meta?.storageId || ''),
     sessionId: String(result.sessionId || ''),
-  });
+  };
+}
+
+function snapshotToken(result) {
+  const expected = resultExpectation(result);
+  return {
+    businessRevision: expected.businessRevision,
+    storageId: expected.storageId,
+    sessionId: expected.sessionId,
+  };
+}
+
+function remember(event, result) {
+  clients.set(senderKey(event), resultExpectation(result));
 }
 
 function updateOperationMeta(event, method, ...args) {
@@ -236,11 +250,31 @@ async function reconcileConversions(event, result, records, context) {
       continue;
     }
 
-    if (!currentSourceUnchanged(operation, context)) {
+    const sourceStatus = currentSourceStatus(operation, context);
+    if (sourceStatus === 'absent') {
+      const meta = updateOperationMeta(event, 'advanceOperationMeta', operation.id, {
+        phase: 'source-delete-confirmed',
+        destinationIdentity: identity,
+        error: '',
+      });
+      record.operation = operationFor(record, meta);
+      removeSourceIdentity(item, record.operation);
+      delete item.googleSyncError;
+      continue;
+    }
+
+    if (sourceStatus !== 'unchanged') {
+      const sourceReadUnknown = operation.kind === 'tasks-to-calendar' && sourceStatus === 'unknown';
       const message = operation.kind === 'tasks-to-calendar'
-        ? 'Google Task 源事项在转换期间发生变化，已保留源与目标，等待确认'
+        ? (sourceReadUnknown
+          ? 'Google Task 源事项读取状态未完整确认，已保留源与目标，未执行删除'
+          : 'Google Task 源事项在转换期间发生变化，已保留源与目标，等待确认')
         : 'Google Calendar 源事项缺少可验证版本，已保留源与目标，等待确认';
-      const meta = updateOperationMeta(event, 'advanceOperationMeta', operation.id, { phase: 'conflict', error: message });
+      const meta = updateOperationMeta(event, 'advanceOperationMeta', operation.id, {
+        phase: sourceReadUnknown ? 'source-delete-pending' : 'conflict',
+        destinationIdentity: identity,
+        error: message,
+      });
       record.operation = operationFor(record, meta);
       item.googleSyncError = message;
       continue;
@@ -289,7 +323,7 @@ function wrapRegistration(channel, registeredHandler) {
       try {
         const result = store().load();
         remember(event, result);
-        return result.state;
+        return { state: result.state, token: snapshotToken(result) };
       } catch (error) {
         showRecovery(error);
         throw error;
@@ -298,11 +332,11 @@ function wrapRegistration(channel, registeredHandler) {
   }
 
   if (channel === 'data:save') {
-    return async (event, payload) => {
+    return async (event, payload, token) => {
       assertMainRenderer(event);
-      const result = store().commit(payload, clientExpectation(event), (meta) => completeCommittedConversions(meta, payload));
+      const result = store().commit(payload, token, (meta) => completeCommittedConversions(meta, payload));
       remember(event, result);
-      return true;
+      return { token: snapshotToken(result) };
     };
   }
 
