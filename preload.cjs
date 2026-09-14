@@ -52,10 +52,20 @@ async function saveState(payload) {
   return true;
 }
 
+async function chooseLocal(kind) {
+  const result = await ipcRenderer.invoke('local:choose', kind);
+  if (kind === 'storage') {
+    const loaded = await ipcRenderer.invoke('data:load');
+    if (!loaded?.token) throw new Error('新的本地数据位置无法建立保存凭证，请重新加载 Luma');
+    await setRendererSnapshotToken(loaded.token);
+  }
+  return result;
+}
+
 contextBridge.exposeInMainWorld('luma', {
   localStatus: () => ipcRenderer.invoke('local:status'),
   localConfigure: (values) => ipcRenderer.invoke('local:configure', values),
-  localChoose: (kind) => ipcRenderer.invoke('local:choose', kind),
+  localChoose: chooseLocal,
   localScan: () => ipcRenderer.invoke('local:scan'),
   setExpanded: (expanded) => ipcRenderer.invoke('window:set-expanded', expanded),
   setAlwaysOnTop: (enabled) => ipcRenderer.invoke('window:set-always-on-top', enabled),
