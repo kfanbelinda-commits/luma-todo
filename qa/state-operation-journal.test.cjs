@@ -25,6 +25,7 @@ function state(title) {
 function expected(result) {
   return {
     revision: result.meta.revision,
+    businessRevision: result.meta.businessRevision,
     storageId: result.state == null && result.meta.revision === 0 ? '' : result.meta.storageId,
     sessionId: result.sessionId,
   };
@@ -51,6 +52,7 @@ test('metadata-only journal writes leave the current business state unchanged', 
   const prepared = store.prepareOperationMeta(expected(loaded), operation);
   assert.equal(prepared.state.tasks[0].title, 'A');
   assert.equal(prepared.meta.pendingOperations.length, 1);
+  assert.equal(prepared.meta.businessRevision, loaded.meta.businessRevision);
 
   const edited = store.commit(state('B'), expected(prepared));
   assert.equal(edited.state.tasks[0].title, 'B');
