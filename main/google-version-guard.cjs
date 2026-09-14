@@ -56,6 +56,7 @@ function seedContext(state, protection, conversionCalendarIds) {
     calendarByLumaTaskId: new Map(),
     googleTaskByLumaTaskId: new Map(),
     googleTasksById: new Map(),
+    knownGoogleTaskUpdatedAt: new Map(),
     googleTaskListReads: new Map(),
     calendarEventsByKey: new Map(),
     conversionCalendarIds: conversionCalendarIds instanceof Map
@@ -64,6 +65,9 @@ function seedContext(state, protection, conversionCalendarIds) {
   };
 
   for (const task of state?.tasks || []) {
+    if (task?.googleTaskId && Number(task.googleRemoteUpdatedAt || 0) > 0) {
+      context.knownGoogleTaskUpdatedAt.set(String(task.googleTaskId), Number(task.googleRemoteUpdatedAt));
+    }
     if (!task?.googleCalendarEventId) continue;
     const key = eventKey(task.googleCalendarId || 'primary', task.googleCalendarEventId);
     if (task.googleCalendarEtag) context.knownCalendarEtags.set(key, String(task.googleCalendarEtag));
@@ -74,6 +78,13 @@ function seedContext(state, protection, conversionCalendarIds) {
   }
 
   for (const entry of state?.googleDeletedItems || []) {
+    const queuedTask = entry?.task || entry;
+    if (queuedTask?.googleTaskId && Number(queuedTask.googleRemoteUpdatedAt || entry?.googleRemoteUpdatedAt || 0) > 0) {
+      context.knownGoogleTaskUpdatedAt.set(
+        String(queuedTask.googleTaskId),
+        Number(queuedTask.googleRemoteUpdatedAt || entry.googleRemoteUpdatedAt)
+      );
+    }
     if (entry?.source !== 'calendar' || !entry.googleCalendarEventId) continue;
     const key = eventKey(entry.googleCalendarId || 'primary', entry.googleCalendarEventId);
     context.frozenDeleteKeys.add(key);
@@ -162,6 +173,44 @@ function expectedDeleteEtag(context, key) {
   return context.calendarEtags.get(key) || context.knownCalendarEtags.get(key) || '';
 }
 
+function expectedGoogleTaskUpdatedAt(context, taskId) {
+  const id = String(taskId || '');
+  return Number(context.googleTasksById.get(id)?.updatedAt || context.knownGoogleTaskUpdatedAt.get(id) || 0);
+}
+
+function getOptionsFromMutation(options) {
+  const { body: _body, ...rest } = options || {};
+  return { ...rest, method: 'GET' };
+}
+
+async function preflightGoogleTaskDelete(url, options, request, context, fetchImpl, parseTaskNotes) {
+  const expected = expectedGoogleTaskUpdatedAt(context, request.taskId);
+  if (!expected) {
+    const error = new Error('缺少 Google Task 已确认版本，已停止删除');
+    error.code = 'GOOGLE_TASK_VERSION_REQUIRED';
+    throw error;
+  }
+
+  const checked = await fetchImpl(url, getOptionsFromMutation(options));
+  const body = await responseJson(checked);
+  if (!checked?.ok) return checked;
+
+  const current = Date.parse(body?.updated || 0) || 0;
+  if (!body?.id || !current) {
+    const error = new Error('Google Task 当前版本无法确认，已停止删除');
+    error.code = 'GOOGLE_TASK_VERSION_REQUIRED';
+    throw error;
+  }
+  if (current !== expected) {
+    const error = new Error('Google Task 在删除前已发生变化，已停止删除并保留远端事项');
+    error.code = 'GOOGLE_TASK_VERSION_CHANGED';
+    throw error;
+  }
+
+  recordGoogleTask(context, body, parseTaskNotes);
+  return null;
+}
+
 function annotateCalendarEtags(state, context) {
   if (!state || !Array.isArray(state.tasks)) return state;
   for (const task of state.tasks) {
@@ -220,6 +269,11 @@ async function runGoogleVersionGuard({ state, protection, fetchImpl, parseTaskNo
       const error = new Error('该 Google Task 副本关联到 Apple 来源事项，已停止跨来源修改');
       error.code = 'PROVIDER_OWNERSHIP_CONFLICT';
       throw error;
+    }
+
+    if (task?.taskId && method === 'DELETE') {
+      const shortCircuit = await preflightGoogleTaskDelete(url, options, task, context, fetchImpl, parseTaskNotes);
+      if (shortCircuit) return shortCircuit;
     }
 
     const response = await fetchImpl(url, options);
