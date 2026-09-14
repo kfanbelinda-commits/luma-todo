@@ -38,6 +38,7 @@ function requestHeader(options, key) {
 
 const listUrl = 'https://www.googleapis.com/calendar/v3/calendars/primary/events?showDeleted=true';
 const eventUrl = 'https://www.googleapis.com/calendar/v3/calendars/primary/events/event-1';
+const taskListUrl = 'https://tasks.googleapis.com/tasks/v1/lists/%40default/tasks?showDeleted=true';
 const taskItemUrl = 'https://tasks.googleapis.com/tasks/v1/lists/%40default/tasks/task-1';
 
 function state(overrides = {}) {
@@ -153,7 +154,6 @@ test('Apple-source Luma identity found in Calendar list blocks later Google muta
 });
 
 test('Apple-source task identity discovered in Google Tasks list blocks PATCH and DELETE', async () => {
-  const taskListUrl = 'https://tasks.googleapis.com/tasks/v1/lists/%40default/tasks?showDeleted=true';
   let mutations = 0;
   const protection = {
     protectedTaskIds: new Set(['apple-local']),
@@ -181,7 +181,7 @@ test('Apple-source task identity discovered in Google Tasks list blocks PATCH an
 });
 
 test('Google Tasks absence is trusted only after a complete first-to-final pagination chain', async () => {
-  const first = 'https://tasks.googleapis.com/tasks/v1/lists/%40default/tasks?showDeleted=true';
+  const first = taskListUrl;
   const second = 'https://tasks.googleapis.com/tasks/v1/lists/%40default/tasks?showDeleted=true&pageToken=next-1';
   const { context } = await runGoogleVersionGuard({
     state: state(),
@@ -214,6 +214,71 @@ test('an orphan Google Tasks page cannot prove list completeness', async () => {
     },
   });
   assert.equal(context.googleTaskListReads.get('@default').complete, false);
+});
+
+test('Google Task PATCH validates the list version immediately before writing without re-deciding the merge', async () => {
+  const listUpdated = '2026-09-14T01:00:00Z';
+  const localOlder = '2026-09-14T00:59:00Z';
+  const calls = [];
+  const body = JSON.stringify({ title: 'local decision already made' });
+  const fakeFetch = async (url, options = {}) => {
+    const method = String(options.method || 'GET').toUpperCase();
+    calls.push({ url, method, body: options.body });
+    if (url === taskListUrl) return response({ items: [{ id: 'task-1', updated: listUpdated, title: 'list copy' }] });
+    if (url === taskItemUrl && method === 'GET') return response({ id: 'task-1', updated: listUpdated, title: 'same version' });
+    if (url === taskItemUrl && method === 'PATCH') {
+      assert.equal(options.body, body, 'guard must pass through the engine-approved PATCH body unchanged');
+      return response({ id: 'task-1', updated: '2026-09-14T01:00:02Z', title: 'saved' });
+    }
+    throw new Error('unexpected request ' + method + ' ' + url);
+  };
+
+  await runGoogleVersionGuard({
+    state: state({ tasks: [{ id: 'local-1', googleTaskId: 'task-1', googleRemoteUpdatedAt: Date.parse(localOlder) }] }),
+    fetchImpl: fakeFetch,
+    invoke: async (guardedFetch) => {
+      await guardedFetch(taskListUrl);
+      return guardedFetch(taskItemUrl, { method: 'PATCH', body });
+    },
+  });
+
+  assert.deepEqual(calls.map((call) => call.method), ['GET', 'GET', 'PATCH']);
+});
+
+test('Google Task PATCH stops if the remote changed after the reconciliation read', async () => {
+  const listUpdated = '2026-09-14T01:00:00Z';
+  let patches = 0;
+  await assert.rejects(
+    runGoogleVersionGuard({
+      state: state(),
+      fetchImpl: async (url, options = {}) => {
+        const method = String(options.method || 'GET').toUpperCase();
+        if (url === taskListUrl) return response({ items: [{ id: 'task-1', updated: listUpdated }] });
+        if (url === taskItemUrl && method === 'GET') return response({ id: 'task-1', updated: '2026-09-14T01:00:01Z' });
+        if (method === 'PATCH') patches += 1;
+        return response({ id: 'task-1', updated: '2026-09-14T01:00:02Z' });
+      },
+      invoke: async (guardedFetch) => {
+        await guardedFetch(taskListUrl);
+        return guardedFetch(taskItemUrl, { method: 'PATCH', body: '{}' });
+      },
+    }),
+    (error) => error.code === 'GOOGLE_TASK_VERSION_CHANGED'
+  );
+  assert.equal(patches, 0);
+});
+
+test('Google Task PATCH without a known version is stopped before network access', async () => {
+  let calls = 0;
+  await assert.rejects(
+    runGoogleVersionGuard({
+      state: state({ tasks: [{ id: 'local-1', googleTaskId: 'task-1' }] }),
+      fetchImpl: async () => { calls += 1; return response({ id: 'task-1' }); },
+      invoke: async (guardedFetch) => guardedFetch(taskItemUrl, { method: 'PATCH', body: '{}' }),
+    }),
+    (error) => error.code === 'GOOGLE_TASK_VERSION_REQUIRED'
+  );
+  assert.equal(calls, 0);
 });
 
 test('Google Task DELETE rechecks the exact updated version immediately before deletion', async () => {
