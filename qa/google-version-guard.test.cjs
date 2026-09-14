@@ -38,6 +38,7 @@ function requestHeader(options, key) {
 
 const listUrl = 'https://www.googleapis.com/calendar/v3/calendars/primary/events?showDeleted=true';
 const eventUrl = 'https://www.googleapis.com/calendar/v3/calendars/primary/events/event-1';
+const taskItemUrl = 'https://tasks.googleapis.com/tasks/v1/lists/%40default/tasks/task-1';
 
 function state(overrides = {}) {
   return {
@@ -153,7 +154,6 @@ test('Apple-source Luma identity found in Calendar list blocks later Google muta
 
 test('Apple-source task identity discovered in Google Tasks list blocks PATCH and DELETE', async () => {
   const taskListUrl = 'https://tasks.googleapis.com/tasks/v1/lists/%40default/tasks?showDeleted=true';
-  const taskItemUrl = 'https://tasks.googleapis.com/tasks/v1/lists/%40default/tasks/task-1';
   let mutations = 0;
   const protection = {
     protectedTaskIds: new Set(['apple-local']),
@@ -214,6 +214,64 @@ test('an orphan Google Tasks page cannot prove list completeness', async () => {
     },
   });
   assert.equal(context.googleTaskListReads.get('@default').complete, false);
+});
+
+test('Google Task DELETE rechecks the exact updated version immediately before deletion', async () => {
+  const updated = '2026-09-14T01:00:00Z';
+  const calls = [];
+  const fakeFetch = async (url, options = {}) => {
+    calls.push({ url, method: String(options.method || 'GET').toUpperCase(), body: options.body });
+    if (String(options.method || 'GET').toUpperCase() === 'GET') {
+      return response({ id: 'task-1', updated, title: 'still the same' });
+    }
+    if (options.method === 'DELETE') return response(null, { status: 204 });
+    throw new Error('unexpected request');
+  };
+
+  await runGoogleVersionGuard({
+    state: state({ tasks: [{ id: 'local-1', googleTaskId: 'task-1', googleRemoteUpdatedAt: Date.parse(updated) }] }),
+    fetchImpl: fakeFetch,
+    invoke: async (guardedFetch) => guardedFetch(taskItemUrl, {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer test' },
+    }),
+  });
+
+  assert.deepEqual(calls.map((call) => call.method), ['GET', 'DELETE']);
+  assert.equal(calls[0].body, undefined);
+});
+
+test('Google Task DELETE stops if the task changed after the previously confirmed version', async () => {
+  const original = '2026-09-14T01:00:00Z';
+  let deletes = 0;
+  await assert.rejects(
+    runGoogleVersionGuard({
+      state: state({ tasks: [{ id: 'local-1', googleTaskId: 'task-1', googleRemoteUpdatedAt: Date.parse(original) }] }),
+      fetchImpl: async (_url, options = {}) => {
+        if (String(options.method || 'GET').toUpperCase() === 'GET') {
+          return response({ id: 'task-1', updated: '2026-09-14T01:00:01Z', title: 'changed remotely' });
+        }
+        if (options.method === 'DELETE') deletes += 1;
+        return response(null, { status: 204 });
+      },
+      invoke: async (guardedFetch) => guardedFetch(taskItemUrl, { method: 'DELETE' }),
+    }),
+    (error) => error.code === 'GOOGLE_TASK_VERSION_CHANGED'
+  );
+  assert.equal(deletes, 0);
+});
+
+test('Google Task DELETE without a known version is stopped before network access', async () => {
+  let calls = 0;
+  await assert.rejects(
+    runGoogleVersionGuard({
+      state: state({ tasks: [{ id: 'local-1', googleTaskId: 'task-1' }] }),
+      fetchImpl: async () => { calls += 1; return response(null, { status: 204 }); },
+      invoke: async (guardedFetch) => guardedFetch(taskItemUrl, { method: 'DELETE' }),
+    }),
+    (error) => error.code === 'GOOGLE_TASK_VERSION_REQUIRED'
+  );
+  assert.equal(calls, 0);
 });
 
 test('Tasks to Calendar conversion insert receives its stable proposed event id', async () => {
