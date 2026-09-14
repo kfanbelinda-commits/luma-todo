@@ -23,6 +23,7 @@ function taskRequest(url) {
     listId: decodeURIComponent(match[1]),
     taskId: match[2] ? decodeURIComponent(match[2]) : '',
     collection: !match[2],
+    pageToken: parsed.searchParams.get('pageToken') || '',
   };
 }
 
@@ -55,6 +56,7 @@ function seedContext(state, protection, conversionCalendarIds) {
     calendarByLumaTaskId: new Map(),
     googleTaskByLumaTaskId: new Map(),
     googleTasksById: new Map(),
+    googleTaskListReads: new Map(),
     calendarEventsByKey: new Map(),
     conversionCalendarIds: conversionCalendarIds instanceof Map
       ? new Map(conversionCalendarIds)
@@ -121,6 +123,32 @@ function recordGoogleTask(context, item, parseTaskNotes) {
 
 function protectTasksList(context, body, parseTaskNotes) {
   for (const item of body?.items || []) recordGoogleTask(context, item, parseTaskNotes);
+}
+
+function recordGoogleTaskListPage(context, request, body) {
+  const listId = String(request?.listId || '@default');
+  const pageToken = String(request?.pageToken || '');
+  const nextPageToken = String(body?.nextPageToken || '');
+  const previous = context.googleTaskListReads.get(listId) || null;
+
+  let validChain = false;
+  let pages = 0;
+  if (!pageToken) {
+    validChain = true;
+    pages = 1;
+  } else if (previous?.startedFromFirstPage
+    && !previous.complete
+    && String(previous.nextPageToken || '') === pageToken) {
+    validChain = true;
+    pages = Number(previous.pages || 0) + 1;
+  }
+
+  context.googleTaskListReads.set(listId, {
+    startedFromFirstPage: validChain,
+    complete: validChain && !nextPageToken,
+    pages: validChain ? pages : 0,
+    nextPageToken,
+  });
 }
 
 function setConditionalHeader(options, etag) {
@@ -215,6 +243,7 @@ async function runGoogleVersionGuard({ state, protection, fetchImpl, parseTaskNo
 
     if (task?.collection && method === 'GET' && response?.ok && body) {
       protectTasksList(context, body, parseTaskNotes);
+      recordGoogleTaskListPage(context, task, body);
     } else if (task?.taskId && response?.ok && body?.id) {
       recordGoogleTask(context, body, parseTaskNotes);
     } else if (task?.collection && method === 'POST' && response?.ok && body?.id) {
