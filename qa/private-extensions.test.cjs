@@ -86,6 +86,8 @@ test("only a recipient code can decrypt and install the plugin package", () => {
     manager.activate(right);
     const status = manager.installPackage(packFor(right));
     assert.equal(status.plugins[0].version, "0.1.0");
+    assert.equal(status.plugins[0].contributions.panel.web, true);
+    assert.equal(status.plugins[0].contributions.panel.webLabel, "网页详情");
     assert.deepEqual(manager.call("example", "getPanel", {}), { ok: true });
     assert.deepEqual(manager.call("example", "getDayMarks", {}), { marks: [{ dateKey: "2026-09-17", label: "Test" }] });
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
