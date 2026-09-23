@@ -9,6 +9,9 @@ const source = fs.readFileSync(path.join(__dirname, '../src/week-view.js'), 'utf
   .replace(
     /  boot\(\);\s+document\.addEventListener\('DOMContentLoaded', boot\);/,
     '  globalThis.weekItems = weekItemsOnDate; globalThis.weekTodoMarkup = weekTodoMarkup;'
+      + ' globalThis.weekTimedSegment = weekTimedSegment; globalThis.weekBlockMarkup = blockMarkup;'
+      + ' globalThis.weekConfig = { viewStart: VIEW_START, viewEnd: VIEW_END, todoVisible: WEEK_TODO_VISIBLE };'
+      + ' globalThis.defaultScrollTop = defaultScrollTop; globalThis.fitWeekTimeScale = fitWeekTimeScale;'
   );
 
 function loadWeek(tasks, pending = new Set()) {
@@ -59,4 +62,57 @@ test('week Todo markup exposes checkbox, time and pending completion state', () 
   assert.match(html, /week-todo-check is-checked/);
   assert.match(html, /09:30/);
   assert.match(html, /定时待办/);
+});
+
+test('timed events spanning three days use work-hour continuation segments', () => {
+  const task = {
+    id: 'trip', title: '跨日现场工作', itemType: 'event', projectId: 'calendar',
+    dueDate: '2026-09-21', time: '12:00', endDate: '2026-09-23', endTime: '15:00', completed: false,
+  };
+  const context = loadWeek([task]);
+
+  assert.deepEqual({ ...context.weekTimedSegment(task, '2026-09-21') }, {
+    begin: 720, finish: 1080, continuesBefore: false, continuesAfter: true,
+  });
+  assert.deepEqual({ ...context.weekTimedSegment(task, '2026-09-22') }, {
+    begin: 480, finish: 1080, continuesBefore: true, continuesAfter: true,
+  });
+  assert.deepEqual({ ...context.weekTimedSegment(task, '2026-09-23') }, {
+    begin: 480, finish: 900, continuesBefore: true, continuesAfter: false,
+  });
+  assert.match(context.weekBlockMarkup(task, '2026-09-22', 0, 1440), /continues-before continues-after/);
+  assert.match(context.weekBlockMarkup(task, '2026-09-22', 0, 1440), /续 · 08:00 →/);
+  assert.doesNotMatch(context.weekBlockMarkup(task, '2026-09-22', 0, 1440), /is-draggable/);
+});
+
+test('multi-day display keeps real endpoints outside the continuation window', () => {
+  const task = {
+    id: 'overnight', title: '早晚跨日', itemType: 'event', projectId: 'calendar',
+    dueDate: '2026-09-21', time: '06:00', endDate: '2026-09-22', endTime: '20:00', completed: false,
+  };
+  const context = loadWeek([task]);
+  assert.deepEqual({ ...context.weekTimedSegment(task, '2026-09-21') }, {
+    begin: 360, finish: 1080, continuesBefore: false, continuesAfter: true,
+  });
+  assert.deepEqual({ ...context.weekTimedSegment(task, '2026-09-22') }, {
+    begin: 480, finish: 1200, continuesBefore: true, continuesAfter: false,
+  });
+});
+
+test('week defaults show three Todos and focus the initial 07:00–21:00 window', () => {
+  const context = loadWeek([]);
+  assert.deepEqual({ ...context.weekConfig }, { viewStart: 7, viewEnd: 21, todoVisible: 3 });
+  assert.equal(context.defaultScrollTop(32), 7 * 32);
+
+  const values = {};
+  const style = { setProperty: (name, value) => { values[name] = value; } };
+  const scroll = { clientHeight: 448 };
+  const gutter = { style };
+  const days = { style };
+  const board = {
+    dataset: {},
+    querySelector: (selector) => ({ '.week-scroll': scroll, '.week-gutter': gutter, '.week-days': days })[selector],
+  };
+  assert.deepEqual({ ...context.fitWeekTimeScale(board) }, { hourPx: 32, previousHourPx: 44 });
+  assert.equal(values['--hour-h'], '32px');
 });

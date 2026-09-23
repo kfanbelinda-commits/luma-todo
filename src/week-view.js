@@ -3,12 +3,15 @@
 (function () {
   const DAY_START = 0;
   const DAY_END = 24;
-  const VIEW_START = 8;
-  const VIEW_END = 20;
+  const VIEW_START = 7;
+  const VIEW_END = 21;
   const HOUR_PX = 44;
+  const MIN_HOUR_PX = 32;
+  const MULTIDAY_VIEW_START = 8 * 60;
+  const MULTIDAY_VIEW_END = 18 * 60;
   const SNAP = 15;
   const MIN_SPAN = 15;
-  const WEEK_TODO_VISIBLE = 2;
+  const WEEK_TODO_VISIBLE = 3;
   const WEEK_ALLDAY_VISIBLE = 2;
   const WEEKDAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
   function weekLunarParts(date) {
@@ -370,14 +373,40 @@
       });
     });
   }
+  function weekTimedSegment(task, key) {
+    const actualStart = minutes(task.time);
+    if (actualStart == null) return null;
+    const startDate = String(task.dueDate || key);
+    const endDate = String(task.endDate || startDate);
+    const actualEnd = minutes(task.endTime) ?? (actualStart + 30);
+    if (endDate <= startDate) {
+      return { begin: actualStart, finish: actualEnd, continuesBefore: false, continuesAfter: false };
+    }
+
+    const continuesBefore = key > startDate;
+    const continuesAfter = key < endDate;
+    let begin = continuesBefore ? MULTIDAY_VIEW_START : actualStart;
+    let finish = continuesAfter ? MULTIDAY_VIEW_END : actualEnd;
+
+    // Preserve real early/late endpoints. If an endpoint sits wholly outside the
+    // 08:00–18:00 continuation window, keep a small visible segment at that time.
+    if (finish <= begin) {
+      if (!continuesBefore) finish = Math.min(24 * 60, begin + 60);
+      else begin = Math.max(0, finish - 60);
+    }
+    return { begin, finish, continuesBefore, continuesAfter };
+  }
   function blockMarkup(task, key, rangeStart, rangeMinutes) {
-    const begin = minutes(task.time);
-    const finish = minutes(task.endTime) ?? (begin + 30);
+    const segment = weekTimedSegment(task, key);
+    if (!segment) return '';
+    const { begin, finish, continuesBefore, continuesAfter } = segment;
     const top = ((clamp(begin, rangeStart, rangeStart + rangeMinutes) - rangeStart) / rangeMinutes) * 100;
     const height = Math.max(6, ((clamp(finish, begin + MIN_SPAN, rangeStart + rangeMinutes) - clamp(begin, rangeStart, rangeStart + rangeMinutes)) / rangeMinutes) * 100);
-    const draggable = canDragTime(task);
+    const draggable = canDragTime(task) && !continuesBefore && !continuesAfter;
     const handles = draggable ? '<i class="week-handle week-handle-start" data-edge="start"></i><i class="week-handle week-handle-end" data-edge="end"></i>' : '';
-    return `<button type="button" class="week-block${draggable ? ' is-draggable' : ''}${isExternal(task) ? ' is-external' : ''}" data-date="${key}" data-id="${escapeText(task.id)}" style="top:${top}%;height:${height}%;--event-color:${projectColor(task)}">${handles}<em>${escapeText(task.time)}</em><span>${escapeText(task.title)}</span></button>`;
+    const continuationClass = `${continuesBefore ? ' continues-before' : ''}${continuesAfter ? ' continues-after' : ''}`;
+    const timeLabel = `${continuesBefore ? '续 · ' : ''}${formatMinutes(begin)}${continuesAfter ? ' →' : ''}`;
+    return `<button type="button" class="week-block${draggable ? ' is-draggable' : ''}${isExternal(task) ? ' is-external' : ''}${continuationClass}" data-date="${key}" data-id="${escapeText(task.id)}" style="top:${top}%;height:${height}%;--event-color:${projectColor(task)}">${handles}<em>${escapeText(timeLabel)}</em><span>${escapeText(task.title)}</span></button>`;
   }
   function nowLineMarkup(keys, rangeStart, rangeMinutes) {
     const key = todayKey();
@@ -396,13 +425,21 @@
     line.style.top = `${((nowMinutes() - rangeStart) / rangeMinutes) * 100}%`;
     if (line.parentElement !== days) days.appendChild(line);
   }
-  function defaultScrollTop() {
-    const keys = weekKeys(anchorKey);
-    const now = nowMinutes();
-    if (keys.includes(todayKey()) && (now < VIEW_START * 60 || now > VIEW_END * 60)) {
-      return Math.max(0, (now / 60) * HOUR_PX - HOUR_PX * 2);
-    }
-    return VIEW_START * HOUR_PX;
+  function defaultScrollTop(hourPx = HOUR_PX) {
+    return VIEW_START * hourPx;
+  }
+  function fitWeekTimeScale(board) {
+    const scroll = board.querySelector('.week-scroll');
+    const gutter = board.querySelector('.week-gutter');
+    const days = board.querySelector('.week-days');
+    const previousHourPx = Number(board.dataset.hourPx) || HOUR_PX;
+    const available = Number(scroll?.clientHeight || 0);
+    const ideal = available > 0 ? Math.floor(available / (VIEW_END - VIEW_START)) : HOUR_PX;
+    const hourPx = clamp(ideal, MIN_HOUR_PX, HOUR_PX);
+    gutter?.style.setProperty('--hour-h', `${hourPx}px`);
+    days?.style.setProperty('--hour-h', `${hourPx}px`);
+    board.dataset.hourPx = String(hourPx);
+    return { hourPx, previousHourPx };
   }
   function syncWeekScrollbarGutter() {
     const main = document.querySelector('.week-main');
@@ -415,7 +452,20 @@
   function restoreScroll(board) {
     const scroll = board.querySelector('.week-scroll');
     if (!scroll) return;
-    scroll.scrollTop = savedScroll == null ? defaultScrollTop() : savedScroll;
+    const { hourPx, previousHourPx } = fitWeekTimeScale(board);
+    scroll.scrollTop = savedScroll == null
+      ? defaultScrollTop(hourPx)
+      : savedScroll * hourPx / previousHourPx;
+  }
+  function refitWeekTimeScale() {
+    const board = document.querySelector('#weekBoard');
+    const scroll = board?.querySelector('.week-scroll');
+    if (!board || !scroll) return;
+    const previousHourPx = Number(board.dataset.hourPx) || HOUR_PX;
+    const topHour = scroll.scrollTop / previousHourPx;
+    const { hourPx } = fitWeekTimeScale(board);
+    scroll.scrollTop = topHour * hourPx;
+    savedScroll = scroll.scrollTop;
   }
   function renderBoard() {
     const board = ensureBoard();
@@ -686,7 +736,10 @@
     });
     if (!window.__weekSbResizeBound) {
       window.__weekSbResizeBound = true;
-      window.addEventListener('resize', () => syncWeekScrollbarGutter());
+      window.addEventListener('resize', () => {
+        syncWeekScrollbarGutter();
+        refitWeekTimeScale();
+      });
     }
     board.addEventListener('click', (event) => {
       if (board.dataset.skipClick === '1') {
