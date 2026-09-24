@@ -3,11 +3,13 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const { registerPrivateExtensionWebOpener } = require("./private-extension-open.cjs");
 
 const MAX_PACKAGE_BYTES = 8 * 1024 * 1024;
 const MAX_FILES = 24;
 const METHODS = new Set(['getPanel','getSettings','getDayMarks','getCalendarEvents','identifyCalendarEvent','getCalendarRange']);
 const validId = id => typeof id === 'string' && /^[a-z][a-z0-9-]{0,63}$/.test(id);
+const validFullUrl = value => /^https:\/\/\S+$/i.test(String(value || ''));
 function contributions(manifest) {
   if (manifest.apiVersion !== 2) return {};
   const c = manifest.contributions || {};
@@ -15,6 +17,8 @@ function contributions(manifest) {
     panel:c.panel && {
       label:String(c.panel.label || manifest.name || manifest.id).slice(0,30),
       title:String(c.panel.title || manifest.name || manifest.id).slice(0,120),
+      web:Boolean(validFullUrl(manifest.fullUrl)),
+      webLabel:String(c.panel.webLabel || '网页详情').slice(0,30),
     },
     settings:Boolean(c.settings),
     dayMarks:Boolean(c.dayMarks),
@@ -207,7 +211,7 @@ function createPrivateExtensionManager({
         entry: safeEntry,
         apiVersion: manifest.apiVersion || 1,
         contributions: contributions(manifest),
-        fullUrl: /^https:\/\//i.test(String(manifest.fullUrl || "")) ? String(manifest.fullUrl) : "",
+        fullUrl: validFullUrl(manifest.fullUrl) ? String(manifest.fullUrl) : "",
       },
       files: safeFiles,
     };
@@ -272,7 +276,7 @@ function createPrivateExtensionManager({
     return readManifest(id);
   }
 
-  return {
+  const api = {
     activate,
     status,
     installPackage,
@@ -281,6 +285,8 @@ function createPrivateExtensionManager({
     manifest,
     _test: { codeHash, parseAndDecryptPackage, safeRelativePath },
   };
+  registerPrivateExtensionWebOpener(api);
+  return api;
 }
 
 function isIsoDateKey(value) {
